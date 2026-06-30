@@ -439,7 +439,7 @@ function getCheckItemsArmonia() {
 // In produzione impostare DEMO_MODE=false: l'autenticazione passa da Supabase
 // e le password reali vivono solo lì (mai nel codice).
 const DEMO_USERS = [
-  { email: 'marco.manfredini@area62.it', password: 'Demo2025!', name: 'Marco Manfredini', role: 'admin', avatar: 'MM' },
+  { email: 'marco.manfredini@area62.it', password: 'area62', name: 'Marco Manfredini', role: 'admin', avatar: 'MM' },
 ];
 
 // ── LOCAL STORAGE KEYS ──
