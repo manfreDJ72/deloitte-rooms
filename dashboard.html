@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dashboard – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span style="font-family:'Inter Tight',sans-serif;font-size:16px;font-weight:800;color:#86BC25;letter-spacing:1px;">AREA62</span>
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link active"><span class="nav-icon">⊞</span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon">📅</span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon">✓</span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon">⚠</span> Anomalie</a>
+  </nav>
+  <div class="header-right">
+    <button class="notif-btn" id="notif-btn" title="Notifiche">🔔<span class="notif-dot" id="notif-dot"></span></button>
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1 class="page-title">Benvenuto nel sistema</h1>
+    <p class="page-sub" id="date-sub">Gestione sale Solaria &amp; Armonia · Deloitte</p>
+  </div>
+
+  <!-- Alert banner -->
+  <div id="alerts-section" style="margin-bottom:24px;display:none;">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-icon">⚠</span> Anomalie aperte</div>
+        <a href="tickets.html" class="btn btn-ghost btn-sm">Vedi tutte →</a>
+      </div>
+      <div class="alert-strip" id="alerts-list"></div>
+    </div>
+  </div>
+
+  <!-- Main cards -->
+  <div class="dash-cards">
+
+    <a href="booking.html" class="dash-card solaria">
+      <div class="dc-icon">📅</div>
+      <div class="dc-title">Prenotazioni Sale</div>
+      <div class="dc-desc">Calendario settimanale, prenota le sale, gestisci allestimenti e partecipanti.</div>
+      <div class="dc-foot">
+        <span class="room-tag tag-solaria">Solaria</span>
+        <span class="room-tag tag-armonia">Armonia</span>
+        <span class="tag-roma">Roma</span>
+        <span class="tag-milano">Milano</span>
+      </div>
+    </a>
+
+    <a href="checks.html" class="dash-card green">
+      <div class="dc-icon">✅</div>
+      <div class="dc-title">Check Mattutini</div>
+      <div class="dc-desc">Verifica giornaliera dello stato di tutti i sistemi. Segnala anomalie direttamente dal check.</div>
+      <div class="dc-foot" id="checks-foot">
+        <span class="badge badge-ok" id="checks-ok-badge" style="display:none"></span>
+        <span class="badge badge-ko" id="checks-ko-badge" style="display:none"></span>
+      </div>
+    </a>
+
+    <a href="tickets.html" class="dash-card" style="--accent:#ff4d4d;--accent-glow:rgba(255,77,77,.08)">
+      <div class="dc-icon">🎫</div>
+      <div class="dc-title">Gestione Anomalie</div>
+      <div class="dc-desc">Segnala guasti, traccia interventi, monitora SLA contrattuali e storico risoluzioni.</div>
+      <div class="dc-foot">
+        <span id="tickets-open" class="badge badge-open" style="display:none"></span>
+        <span id="tickets-inprogress" class="badge badge-p2" style="display:none"></span>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row" style="margin-bottom:24px;">
+    <div class="stat-tile">
+      <div class="stat-val" id="stat-bookings-today">–</div>
+      <div class="stat-label">Prenotazioni oggi</div>
+      <div class="stat-sub" id="stat-bookings-sub"></div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-val" id="stat-checks">–</div>
+      <div class="stat-label">Check oggi</div>
+      <div class="stat-sub" id="stat-checks-sub"></div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-val" id="stat-tickets">–</div>
+      <div class="stat-label">Ticket aperti</div>
+      <div class="stat-sub" id="stat-tickets-sub"></div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-val" id="stat-maint">–</div>
+      <div class="stat-label">Manutenzioni programmate</div>
+      <div class="stat-sub" id="stat-maint-sub"></div>
+    </div>
+  </div>
+
+  <!-- Bottom grid -->
+  <div class="cols2">
+
+    <!-- Today's bookings -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-icon">📅</span> Prenotazioni di oggi</div>
+        <a href="booking.html" class="btn btn-ghost btn-sm">Calendario →</a>
+      </div>
+      <div id="today-bookings"></div>
+    </div>
+
+    <!-- Upcoming maintenance -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-icon">🔧</span> Manutenzioni prossime</div>
+        <a href="booking.html" class="btn btn-ghost btn-sm">Gestisci →</a>
+      </div>
+      <div id="upcoming-maint"></div>
+    </div>
+
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/db.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireAuth()) return;
+
+  // Date subtitle
+  const now = new Date();
+  document.getElementById('date-sub').textContent =
+    now.toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' }) +
+    ' · Solaria & Armonia · Deloitte';
+
+  // Stats
+  const bookings = ls(LS.bookings) || [];
+  const tickets  = ls(LS.tickets)  || [];
+  const maint    = ls(LS.maint)    || [];
+
+  const todayStr = now.toDateString();
+  const todayBookings = bookings.filter(b => new Date(b.start).toDateString() === todayStr);
+  const openTickets   = tickets.filter(t => t.status === 'open');
+  const inprogress    = tickets.filter(t => t.status === 'in-progress');
+  const upcomingMaint = maint.filter(m => new Date(m.start) >= now);
+
+  document.getElementById('stat-bookings-today').textContent = todayBookings.length;
+  document.getElementById('stat-bookings-sub').textContent   = todayBookings.length === 1 ? '1 sala impegnata' : `${todayBookings.length} eventi in programma`;
+  document.getElementById('stat-checks').textContent = '–';
+  document.getElementById('stat-checks-sub').textContent = 'Da completare';
+  document.getElementById('stat-tickets').textContent = openTickets.length;
+  document.getElementById('stat-tickets-sub').textContent = inprogress.length ? `${inprogress.length} in lavorazione` : 'Nessuno in lavorazione';
+  document.getElementById('stat-maint').textContent = upcomingMaint.length;
+  document.getElementById('stat-maint-sub').textContent = upcomingMaint[0] ? `Prossima: ${formatDate(upcomingMaint[0].start)}` : '';
+
+  // Alerts
+  const allOpen = tickets.filter(t => t.status !== 'resolved');
+  if (allOpen.length) {
+    document.getElementById('alerts-section').style.display = '';
+    const list = document.getElementById('alerts-list');
+    list.innerHTML = allOpen.slice(0, 3).map(t => `
+      <div class="alert-row ${t.priority.toLowerCase()}">
+        <div class="alert-dot dot-${t.priority==='P1'?'red':t.priority==='P2'?'orange':'blue'}"></div>
+        <div class="alert-body">
+          <div class="alert-title">${t.title}</div>
+          <div class="alert-meta">
+            <span class="room-tag ${t.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${ROOMS.find(r=>r.id===t.room)?.name||t.room}</span>
+            <span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span>
+            <span>${formatDateTime(t.createdAt)}</span>
+          </div>
+        </div>
+        <div class="alert-actions">
+          <a href="tickets.html" class="btn btn-ghost btn-xs">Dettaglio</a>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Ticket badges
+  if (openTickets.length) {
+    const b = document.getElementById('tickets-open');
+    b.textContent = `${openTickets.length} aperti`;
+    b.style.display = '';
+  }
+  if (inprogress.length) {
+    const b = document.getElementById('tickets-inprogress');
+    b.textContent = `${inprogress.length} in corso`;
+    b.style.display = '';
+  }
+
+  // Today bookings list
+  const tbEl = document.getElementById('today-bookings');
+  if (todayBookings.length === 0) {
+    tbEl.innerHTML = '<div class="empty"><div class="empty-icon">📅</div><div class="empty-title">Nessuna prenotazione oggi</div></div>';
+  } else {
+    tbEl.innerHTML = todayBookings.map(b => {
+      const room = ROOMS.find(r => r.id === b.room);
+      return `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+          <div style="min-width:80px;text-align:right;">
+            <div style="font-size:13px;font-weight:700;">${formatTime(b.start)}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${formatTime(b.end)}</div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;">${b.title}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">
+              <span class="room-tag ${b.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name||b.room}</span>
+              · Ref: ${b.referente}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // Upcoming maintenance
+  const umEl = document.getElementById('upcoming-maint');
+  if (upcomingMaint.length === 0) {
+    umEl.innerHTML = '<div class="empty"><div class="empty-icon">🔧</div><div class="empty-title">Nessuna manutenzione pianificata</div></div>';
+  } else {
+    umEl.innerHTML = upcomingMaint.slice(0, 4).map(m => {
+      const room = ROOMS.find(r => r.id === m.room);
+      return `
+        <div class="maint-chip">
+          <div class="maint-icon">🔧</div>
+          <div class="maint-info">
+            <div class="mi-title">${m.title}</div>
+            <div class="mi-date">
+              <span class="room-tag ${m.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name||m.room}</span>
+              ${formatDate(m.start)} – ${formatDate(m.end)}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Prenotazioni – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span style="font-family:'Inter Tight',sans-serif;font-size:16px;font-weight:800;color:#86BC25;letter-spacing:1px;">AREA62</span>
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon">⊞</span> Dashboard</a>
+    <a href="booking.html"   class="nav-link active"><span class="nav-icon">📅</span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon">✓</span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon">⚠</span> Anomalie</a>
+  </nav>
+  <div class="header-right">
+    <button class="notif-btn" title="Notifiche">🔔</button>
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title">Prenotazioni Sale</h1>
+      <p class="page-sub">Calendario settimanale · Solaria Roma &amp; Milano · Armonia Roma</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="btn btn-outline btn-sm" id="btn-lista">📋 Vista lista</button>
+      <button class="btn btn-primary" id="btn-nuova">+ Nuova prenotazione</button>
+    </div>
+  </div>
+
+  <div class="cols-booking">
+
+    <!-- Calendar column -->
+    <div>
+
+      <!-- Room filter tabs -->
+      <div class="tabs" id="room-filter" style="margin-bottom:16px;">
+        <div class="tab active" data-room="all">Tutte le sale</div>
+        <div class="tab" data-room="solaria-roma">
+          <span class="room-tag tag-solaria" style="pointer-events:none;">Solaria</span> Roma
+        </div>
+        <div class="tab" data-room="solaria-milano">
+          <span class="room-tag tag-solaria" style="pointer-events:none;">Solaria</span> Milano
+        </div>
+        <div class="tab" data-room="armonia-roma">
+          <span class="room-tag tag-armonia" style="pointer-events:none;">Armonia</span> Roma
+        </div>
+      </div>
+
+      <!-- Calendar toolbar -->
+      <div class="cal-toolbar">
+        <div class="cal-period" id="cal-period">–</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="cal-nav-btns">
+            <button class="btn btn-ghost btn-sm btn-icon" id="cal-prev">‹</button>
+            <button class="btn btn-ghost btn-sm" id="cal-today">Oggi</button>
+            <button class="btn btn-ghost btn-sm btn-icon" id="cal-next">›</button>
+          </div>
+          <!-- Legend -->
+          <div style="display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text-muted);margin-left:8px;">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:#4da6ff;border-radius:2px;display:inline-block;"></span>Prenotazione</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:var(--orange);border-radius:2px;display:inline-block;"></span>Manutenzione</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:var(--green);border-radius:2px;display:inline-block;"></span>Mant. programmata</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar grid -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div id="cal-grid"></div>
+      </div>
+
+      <!-- List view -->
+      <div id="list-view" style="display:none;margin-top:16px;">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Data / Ora</th>
+                <th>Titolo</th>
+                <th>Sala</th>
+                <th>Referente</th>
+                <th>Tipo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="list-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+      <div class="sidebar" style="margin-bottom:16px;">
+        <div class="sidebar-title">🔧 Manutenzioni programmate</div>
+        <div id="maint-list"></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:10px;" id="btn-nuova-maint">+ Aggiungi manutenzione</button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-title">📊 Disponibilità questa settimana</div>
+        <div id="avail-list"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- Modal nuova prenotazione -->
+<div class="overlay" id="modal-booking">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-booking-title">Nuova Prenotazione</div>
+      <button class="modal-x" onclick="closeModal('modal-booking')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Titolo evento</label>
+        <input class="form-control" id="bk-title" placeholder="Es. Workshop, Demo, Riunione...">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sala</label>
+          <select class="form-control" id="bk-room">
+            <option value="solaria-roma">Solaria – Roma</option>
+            <option value="solaria-milano">Solaria – Milano</option>
+            <option value="armonia-roma">Armonia – Roma</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referente Operativo</label>
+          <input class="form-control" id="bk-referente" placeholder="Nome referente sala">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Organizzatore / Richiedente</label>
+        <input class="form-control" id="bk-organizzatore" placeholder="Chi ha richiesto la sala">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data e ora inizio</label>
+          <input class="form-control" type="datetime-local" id="bk-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data e ora fine</label>
+          <input class="form-control" type="datetime-local" id="bk-end">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Partecipanti</label>
+        <div class="tag-input-wrap" id="partecipanti-wrap" onclick="document.getElementById('partecipanti-input').focus()">
+          <input class="tag-text-input" id="partecipanti-input" placeholder="Nome partecipante + Invio">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Allestimento richiesto</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="allestimento-options">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Microfoni wireless"> Microfoni wireless
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Connessione video"> Connessione video
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Setup Armonia AI"> Setup Armonia AI
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Scenari personalizzati"> Scenari personalizzati
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Acqua e caffè"> Acqua e caffè
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Registrazione evento"> Registrazione evento
+          </label>
+        </div>
+        <input class="form-control" id="bk-allest-extra" placeholder="Altro allestimento..." style="margin-top:8px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note aggiuntive</label>
+        <textarea class="form-control" id="bk-note" placeholder="Informazioni aggiuntive per il presidio..."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="btn-elimina-bk" style="display:none;margin-right:auto;">Elimina</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-booking')">Annulla</button>
+      <button class="btn btn-primary" id="btn-salva-bk">Salva prenotazione</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal manutenzione -->
+<div class="overlay" id="modal-maint">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div class="modal-title">🔧 Nuova Manutenzione</div>
+      <button class="modal-x" onclick="closeModal('modal-maint')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Titolo</label>
+        <input class="form-control" id="mt-title" placeholder="Es. Manutenzione ordinaria Q3">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sala</label>
+          <select class="form-control" id="mt-room">
+            <option value="solaria-roma">Solaria – Roma</option>
+            <option value="solaria-milano">Solaria – Milano</option>
+            <option value="armonia-roma">Armonia – Roma</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-control" id="mt-type">
+            <option value="maint">Manutenzione ordinaria</option>
+            <option value="maint_prog">Manutenzione programmata</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data inizio</label>
+          <input class="form-control" type="date" id="mt-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data fine</label>
+          <input class="form-control" type="date" id="mt-end">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrizione intervento</label>
+        <textarea class="form-control" id="mt-desc" placeholder="Dettaglio delle attività previste..."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-maint')">Annulla</button>
+      <button class="btn btn-primary" id="btn-salva-maint">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal evento detail -->
+<div class="overlay" id="modal-event">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div class="modal-title" id="ev-title">–</div>
+      <button class="modal-x" onclick="closeModal('modal-event')">✕</button>
+    </div>
+    <div class="modal-body" id="ev-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="ev-delete">Elimina</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-event')">Chiudi</button>
+      <button class="btn btn-primary" id="ev-edit">Modifica</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/db.js"></script>
+<script>
+let weekOffset = 0;
+let filterRoom = 'all';
+let listView   = false;
+let editId     = null;
+let viewEventId = null;
+let participants = [];
+
+// ── PARTICIPANTS TAG INPUT ──
+document.getElementById('partecipanti-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if (val) { addParticipant(val); e.target.value = ''; }
+  }
+});
+
+function addParticipant(name) {
+  if (participants.includes(name)) return;
+  participants.push(name);
+  renderParticipants();
+}
+function removeParticipant(name) {
+  participants = participants.filter(p => p !== name);
+  renderParticipants();
+}
+function renderParticipants() {
+  const wrap = document.getElementById('partecipanti-wrap');
+  const inp  = document.getElementById('partecipanti-input');
+  wrap.querySelectorAll('.p-tag').forEach(t => t.remove());
+  participants.forEach(p => {
+    const tag = document.createElement('span');
+    tag.className = 'p-tag';
+    tag.innerHTML = `${p}<span class="p-tag-x" data-name="${p}">×</span>`;
+    wrap.insertBefore(tag, inp);
+  });
+  wrap.querySelectorAll('.p-tag-x').forEach(x => {
+    x.addEventListener('click', () => removeParticipant(x.dataset.name));
+  });
+}
+
+// ── WEEK DATES ──
+function getWeekDates() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff + weekOffset * 7);
+  monday.setHours(0,0,0,0);
+  const days = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+const HOURS = [8,9,10,11,12,13,14,15,16,17,18,19];
+const DAY_NAMES = ['Lun','Mar','Mer','Gio','Ven'];
+
+function renderCalendar() {
+  const days   = getWeekDates();
+  const today  = new Date(); today.setHours(0,0,0,0);
+  const months = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const startM = days[0].getMonth(), endM = days[4].getMonth();
+  const periodText = startM === endM
+    ? `${months[startM]} ${days[0].getFullYear()}`
+    : `${months[startM]} – ${months[endM]} ${days[0].getFullYear()}`;
+  document.getElementById('cal-period').textContent = periodText;
+
+  const allEvents = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const events    = filterRoom === 'all' ? allEvents : allEvents.filter(e => e.room === filterRoom);
+
+  let html = `<div class="cal-grid">
+    <div class="cal-head-empty" style="border-bottom:1px solid var(--border);"></div>
+    ${days.map((d,i) => {
+      const isToday = d.getTime() === today.getTime();
+      return `<div class="cal-day-head">
+        <div class="dn">${DAY_NAMES[i]}</div>
+        <div class="dd${isToday?' today':''}">${d.getDate()}</div>
+      </div>`;
+    }).join('')}`;
+
+  HOURS.forEach(h => {
+    html += `<div class="cal-time">${String(h).padStart(2,'0')}:00</div>`;
+    days.forEach(day => {
+      const dayStart = new Date(day); dayStart.setHours(h,0,0,0);
+      const dayEnd   = new Date(day); dayEnd.setHours(h+1,0,0,0);
+
+      const slotEvents = events.filter(ev => {
+        const s = new Date(ev.start), e2 = new Date(ev.end);
+        return s < dayEnd && e2 > dayStart && new Date(ev.start).toDateString() === day.toDateString();
+      });
+
+      let evHtml = '';
+      slotEvents.forEach(ev => {
+        const eStart = new Date(ev.start), eEnd = new Date(ev.end);
+        if (eStart.getHours() !== h) return;
+        const dur = (eEnd - eStart) / 3600000;
+        const heightPx = Math.max(20, dur * 52 - 4);
+        const cls = ev.type === 'booking' ? 'ev-booking' : ev.type === 'maint_prog' ? 'ev-maint-prog' : 'ev-maint';
+        const room = ROOMS.find(r => r.id === ev.room);
+        evHtml += `<div class="cal-event ${cls}" style="height:${heightPx}px;" data-id="${ev.id}" onclick="showEvent('${ev.id}')">
+          <div class="ev-name">${ev.title}</div>
+          <div class="ev-time">${eStart.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}–${eEnd.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}</div>
+        </div>`;
+      });
+
+      html += `<div class="cal-cell" onclick="cellClick(event,'${day.toISOString()}','${h}')">${evHtml}</div>`;
+    });
+  });
+
+  html += '</div>';
+  document.getElementById('cal-grid').innerHTML = html;
+  renderAvailability(days, events);
+}
+
+function cellClick(e, dayISO, h) {
+  if (e.target.classList.contains('cal-event') || e.target.closest('.cal-event')) return;
+  const d = new Date(dayISO);
+  d.setHours(parseInt(h), 0);
+  const end = new Date(d); end.setHours(d.getHours()+1);
+  openNewBooking(d, end);
+}
+
+function renderListView() {
+  const allEvents = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const events    = (filterRoom === 'all' ? allEvents : allEvents.filter(e => e.room === filterRoom))
+    .sort((a,b) => new Date(a.start) - new Date(b.start));
+  const tbody = document.getElementById('list-tbody');
+  tbody.innerHTML = events.map(ev => {
+    const room = ROOMS.find(r => r.id === ev.room);
+    const isBook = ev.type === 'booking';
+    return `<tr onclick="showEvent('${ev.id}')" style="cursor:pointer;">
+      <td>
+        <div style="font-weight:600;">${formatDate(ev.start)}</div>
+        <div style="font-size:12px;color:#666;">${isBook?formatTime(ev.start)+' – '+formatTime(ev.end):''}</div>
+      </td>
+      <td style="font-weight:600;">${ev.title}</td>
+      <td>
+        <span class="room-tag ${ev.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name}</span>
+        <span class="tag-${ev.room.includes('milano')?'milano':'roma'}">${room?.city}</span>
+      </td>
+      <td>${isBook ? (ev.referente||'–') : '–'}</td>
+      <td><span class="badge ${isBook?'badge-ok':'badge-p2'}">${isBook?'Prenotazione':ev.type==='maint_prog'?'Mant. prog.':'Manutenzione'}</span></td>
+      <td><button class="btn btn-ghost btn-xs">→</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMaintSidebar() {
+  const maint = (ls(LS.maint)||[]).filter(m => new Date(m.end) >= new Date())
+    .sort((a,b) => new Date(a.start)-new Date(b.start));
+  const el = document.getElementById('maint-list');
+  if (!maint.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);">Nessuna manutenzione pianificata.</div>';
+    return;
+  }
+  el.innerHTML = maint.map(m => {
+    const room = ROOMS.find(r => r.id === m.room);
+    return `<div class="maint-chip">
+      <div class="maint-icon">🔧</div>
+      <div class="maint-info">
+        <div class="mi-title">${m.title}</div>
+        <div class="mi-date">
+          <span class="room-tag ${m.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span>
+          ${formatDate(m.start)}
+          ${m.start !== m.end ? ' – '+formatDate(m.end) : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAvailability(days, events) {
+  const el = document.getElementById('avail-list');
+  el.innerHTML = ROOMS.map(room => {
+    const roomEvents = events.filter(e => e.room === room.id);
+    const busyDays = days.filter(d =>
+      roomEvents.some(ev => new Date(ev.start).toDateString() === d.toDateString())
+    ).length;
+    const pct = Math.round((1 - busyDays/5)*100);
+    const color = pct > 60 ? 'var(--green)' : pct > 30 ? 'var(--orange)' : 'var(--red)';
+    return `<div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+        <span class="room-tag ${room.id.includes('armonia')?'tag-armonia':'tag-solaria'}">${room.name}</span>
+        <span style="font-size:12px;color:var(--text-muted);">${room.city}</span>
+        <span style="font-weight:700;color:${color};">${pct}% libera</span>
+      </div>
+      <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${5-busyDays}/5 giorni disponibili</div>
+    </div>`;
+  }).join('');
+}
+
+// ── SHOW EVENT ──
+function showEvent(id) {
+  const all = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const ev  = all.find(e => e.id === id);
+  if (!ev) return;
+  viewEventId = id;
+  const room = ROOMS.find(r => r.id === ev.room);
+  document.getElementById('ev-title').textContent = ev.title;
+
+  let body = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+    <span class="room-tag ${ev.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span>
+    <span class="badge ${ev.type==='booking'?'badge-ok':'badge-p2'}">${ev.type==='booking'?'Prenotazione':ev.type==='maint_prog'?'Mant. prog.':'Manutenzione'}</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+    <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">INIZIO</div><div style="font-weight:600;">${formatDateTime(ev.start)}</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">FINE</div><div style="font-weight:600;">${formatDateTime(ev.end)}</div></div>
+  </div>`;
+
+  if (ev.type === 'booking') {
+    body += `<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">REFERENTE OPERATIVO</div><div style="font-weight:600;">${ev.referente||'–'}</div></div>
+    <div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">ORGANIZZATORE</div><div style="font-weight:600;">${ev.organizzatore||'–'}</div></div>`;
+    if (ev.partecipanti?.length) {
+      body += `<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">PARTECIPANTI</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">${ev.partecipanti.map(p=>`<span class="p-tag">${p}</span>`).join('')}</div></div>`;
+    }
+    if (ev.allestimento?.length) {
+      body += `<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">ALLESTIMENTO</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">${ev.allestimento.map(a=>`<span class="badge badge-ok">${a}</span>`).join('')}</div></div>`;
+    }
+    if (ev.note) {
+      body += `<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">NOTE</div><div style="font-size:13px;">${ev.note}</div></div>`;
+    }
+  } else {
+    if (ev.desc) body += `<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">DESCRIZIONE</div><div style="font-size:13px;">${ev.desc}</div></div>`;
+  }
+
+  document.getElementById('ev-body').innerHTML = body;
+  openModal('modal-event');
+}
+
+document.getElementById('ev-delete').addEventListener('click', () => {
+  if (!viewEventId) return;
+  let b = ls(LS.bookings)||[];
+  let m = ls(LS.maint)||[];
+  b = b.filter(e => e.id !== viewEventId);
+  m = m.filter(e => e.id !== viewEventId);
+  lsSet(LS.bookings, b); lsSet(LS.maint, m);
+  closeModal('modal-event');
+  refresh(); toast('Evento eliminato', 'info');
+});
+document.getElementById('ev-edit').addEventListener('click', () => {
+  closeModal('modal-event');
+  const all = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const ev  = all.find(e => e.id === viewEventId);
+  if (ev?.type === 'booking') openEditBooking(ev);
+});
+
+// ── NEW / EDIT BOOKING ──
+function openNewBooking(start, end) {
+  editId = null;
+  participants = [];
+  document.getElementById('modal-booking-title').textContent = 'Nuova Prenotazione';
+  document.getElementById('btn-elimina-bk').style.display = 'none';
+  document.getElementById('bk-title').value = '';
+  document.getElementById('bk-referente').value = '';
+  document.getElementById('bk-organizzatore').value = '';
+  document.getElementById('bk-note').value = '';
+  document.getElementById('bk-allest-extra').value = '';
+  document.querySelectorAll('#allestimento-options input').forEach(c => c.checked = false);
+  renderParticipants();
+
+  if (start) {
+    document.getElementById('bk-start').value = toLocalInput(start);
+    document.getElementById('bk-end').value   = toLocalInput(end);
+  }
+  openModal('modal-booking');
+}
+
+function openEditBooking(ev) {
+  editId = ev.id;
+  participants = [...(ev.partecipanti||[])];
+  document.getElementById('modal-booking-title').textContent = 'Modifica Prenotazione';
+  document.getElementById('btn-elimina-bk').style.display = '';
+  document.getElementById('bk-title').value        = ev.title||'';
+  document.getElementById('bk-room').value         = ev.room;
+  document.getElementById('bk-referente').value    = ev.referente||'';
+  document.getElementById('bk-organizzatore').value= ev.organizzatore||'';
+  document.getElementById('bk-note').value         = ev.note||'';
+  document.getElementById('bk-allest-extra').value = '';
+  document.getElementById('bk-start').value        = toLocalInput(new Date(ev.start));
+  document.getElementById('bk-end').value          = toLocalInput(new Date(ev.end));
+  document.querySelectorAll('#allestimento-options input').forEach(c => {
+    c.checked = (ev.allestimento||[]).includes(c.value);
+  });
+  renderParticipants();
+  openModal('modal-booking');
+}
+
+function toLocalInput(d) {
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+document.getElementById('btn-salva-bk').addEventListener('click', () => {
+  const title = document.getElementById('bk-title').value.trim();
+  const start = document.getElementById('bk-start').value;
+  const end   = document.getElementById('bk-end').value;
+  if (!title || !start || !end) { toast('Compila i campi obbligatori', 'error'); return; }
+
+  const allestimento = [];
+  document.querySelectorAll('#allestimento-options input:checked').forEach(c => allestimento.push(c.value));
+  const extra = document.getElementById('bk-allest-extra').value.trim();
+  if (extra) allestimento.push(extra);
+
+  let bookings = ls(LS.bookings)||[];
+  const booking = {
+    id: editId || genId(), type: 'booking',
+    room: document.getElementById('bk-room').value,
+    title,
+    referente: document.getElementById('bk-referente').value,
+    organizzatore: document.getElementById('bk-organizzatore').value,
+    partecipanti: [...participants],
+    allestimento,
+    start: new Date(start).toISOString(),
+    end:   new Date(end).toISOString(),
+    note: document.getElementById('bk-note').value,
+  };
+
+  if (editId) {
+    bookings = bookings.map(b => b.id === editId ? booking : b);
+  } else {
+    bookings.push(booking);
+  }
+  lsSet(LS.bookings, bookings);
+  closeModal('modal-booking');
+  refresh();
+  toast(editId ? 'Prenotazione aggiornata ✓' : 'Prenotazione salvata ✓', 'success');
+  editId = null;
+});
+
+document.getElementById('btn-elimina-bk').addEventListener('click', () => {
+  let b = ls(LS.bookings)||[];
+  b = b.filter(e => e.id !== editId);
+  lsSet(LS.bookings, b);
+  closeModal('modal-booking');
+  refresh(); toast('Prenotazione eliminata', 'info');
+  editId = null;
+});
+
+// ── MAINTENANCE ──
+document.getElementById('btn-nuova-maint').addEventListener('click', () => openModal('modal-maint'));
+document.getElementById('btn-salva-maint').addEventListener('click', () => {
+  const title = document.getElementById('mt-title').value.trim();
+  const start = document.getElementById('mt-start').value;
+  if (!title || !start) { toast('Compila titolo e data inizio', 'error'); return; }
+  const maint = ls(LS.maint)||[];
+  const endV  = document.getElementById('mt-end').value || start;
+  maint.push({
+    id: genId(), type: document.getElementById('mt-type').value,
+    room: document.getElementById('mt-room').value,
+    title, desc: document.getElementById('mt-desc').value,
+    start: new Date(start+'T09:00').toISOString(),
+    end:   new Date(endV+'T18:00').toISOString(),
+  });
+  lsSet(LS.maint, maint);
+  closeModal('modal-maint');
+  refresh(); toast('Manutenzione aggiunta ✓', 'success');
+});
+
+// ── CONTROLS ──
+function refresh() {
+  if (listView) renderListView(); else renderCalendar();
+  renderMaintSidebar();
+}
+
+document.getElementById('cal-prev').addEventListener('click', () => { weekOffset--; refresh(); });
+document.getElementById('cal-next').addEventListener('click', () => { weekOffset++; refresh(); });
+document.getElementById('cal-today').addEventListener('click', () => { weekOffset = 0; refresh(); });
+
+document.getElementById('btn-nuova').addEventListener('click', () => {
+  const now = new Date(); now.setMinutes(0,0,0);
+  const end = new Date(now); end.setHours(now.getHours()+1);
+  openNewBooking(now, end);
+});
+
+document.getElementById('btn-lista').addEventListener('click', () => {
+  listView = !listView;
+  document.getElementById('cal-grid').style.display = listView ? 'none' : '';
+  document.getElementById('list-view').style.display = listView ? '' : 'none';
+  document.getElementById('btn-lista').textContent = listView ? '📅 Vista calendario' : '📋 Vista lista';
+  refresh();
+});
+
+document.querySelectorAll('#room-filter .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#room-filter .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    filterRoom = tab.dataset.room;
+    refresh();
+  });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireAuth()) return;
+  refresh();
+});
+</script>
+</body>
+</html>
