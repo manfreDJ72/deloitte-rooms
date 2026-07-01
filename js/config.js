@@ -451,6 +451,8 @@ const LS = {
   maint:    'dlt_maintenance',
   users:    'dlt_users',
   settings: 'dlt_settings',
+  meetings: 'dlt_meetings',   // call del giovedì
+  reqspec:  'dlt_reqspec',    // richieste speciali software/hardware
 };
 
 // ── CAPABILITIES (chi può fare cosa) ──

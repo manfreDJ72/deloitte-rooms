@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Richieste da Cliente – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=4">
+  <style>
+    /* ── Task aperti (tracking) ── */
+    .track-card {
+      background: linear-gradient(135deg, rgba(181,126,220,.06) 0%, var(--bg-card) 100%);
+      border: 1.5px solid rgba(181,126,220,.3); border-radius: 12px;
+      padding: 18px 20px; margin-bottom: 20px;
+    }
+    .track-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+    .track-head .th-title { font-weight:800; font-size:15px; }
+    .track-count { background:rgba(181,126,220,.2); color:#c9a0e8; font-weight:800; font-size:12px; padding:3px 10px; border-radius:20px; }
+
+    .task-row {
+      display:flex; align-items:center; gap:12px; padding:11px 0;
+      border-bottom:1px solid var(--border);
+    }
+    .task-row:last-child { border-bottom:none; }
+    .task-main { flex:1; min-width:0; }
+    .task-desc { font-size:13px; font-weight:600; }
+    .task-meta { font-size:11px; color:var(--text-muted); margin-top:3px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .task-age { color:var(--orange); font-weight:700; }
+    .task-age.old { color:var(--red); }
+    .task-status-sel { width:130px; flex-shrink:0; }
+
+    .type-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; }
+    .tb-fix   { background:rgba(255,77,77,.15); color:var(--red); }
+    .tb-nuova { background:rgba(77,166,255,.15); color:var(--blue); }
+
+    /* ── Meeting cards ── */
+    .meeting-card { background:var(--bg-card); border:1.5px solid var(--border); border-radius:12px; margin-bottom:12px; overflow:hidden; }
+    .meeting-head {
+      display:flex; align-items:center; gap:14px; padding:15px 18px; cursor:pointer;
+      user-select:none; transition:background .15s;
+    }
+    .meeting-head:hover { background:rgba(255,255,255,.03); }
+    .meeting-date-box {
+      width:52px; text-align:center; flex-shrink:0;
+      background:var(--bg-card2); border-radius:8px; padding:6px 0;
+    }
+    .mdb-day { font-size:18px; font-weight:800; line-height:1; }
+    .mdb-mon { font-size:10px; text-transform:uppercase; color:var(--text-muted); margin-top:2px; }
+    .meeting-info { flex:1; min-width:0; }
+    .meeting-title { font-weight:700; font-size:14px; }
+    .meeting-sub { font-size:12px; color:var(--text-muted); margin-top:2px; }
+    .meeting-body { display:none; padding:0 18px 18px; border-top:1px solid var(--border); }
+    .meeting-card.open .meeting-body { display:block; }
+    .meeting-card.open .m-arrow { transform:rotate(180deg); }
+    .m-arrow { color:var(--text-faint); transition:transform .2s; }
+
+    /* ── Richieste speciali ── */
+    .req-card {
+      background:var(--bg-card); border:1.5px solid var(--border);
+      border-left:3px solid var(--border); border-radius:10px;
+      padding:15px 18px; margin-bottom:10px; cursor:pointer; transition:border-color .15s;
+    }
+    .req-card:hover { border-color:var(--text-muted); }
+    .req-card.sw { border-left-color:var(--blue); }
+    .req-card.hw { border-left-color:var(--orange); }
+    .req-top { display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+    .req-title { font-weight:700; font-size:14px; flex:1; min-width:140px; }
+    .badge-sw { background:rgba(77,166,255,.15); color:var(--blue); }
+    .badge-hw { background:rgba(240,160,48,.15); color:var(--orange); }
+    .req-meta { font-size:12px; color:var(--text-muted); display:flex; gap:14px; flex-wrap:wrap; }
+
+    .report-body { font-size:13px; line-height:1.6; }
+    .report-body h4 { font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin:16px 0 8px; }
+    .report-body ul { margin:0; padding-left:18px; }
+
+    @media print {
+      .header, .modal-foot, .no-print { display:none !important; }
+      .overlay { position:static; background:none; }
+      .modal { box-shadow:none; border:none; max-width:100%; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span style="font-family:'Inter Tight',sans-serif;font-size:16px;font-weight:800;color:#86BC25;letter-spacing:1px;">AREA62</span>
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon">⊞</span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon">📅</span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon">✓</span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon">⚠</span> Anomalie</a>
+    <a href="richieste.html" class="nav-link active"><span class="nav-icon">📨</span> Richieste</a>
+    <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon">⚙</span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <button class="notif-btn" title="Notifiche">🔔</button>
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1 class="page-title">Richieste da Cliente</h1>
+    <p class="page-sub">Call settimanali del giovedì &amp; richieste speciali software / hardware</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="main-tabs" style="margin-bottom:20px;">
+    <div class="tab active" data-tab="giovedi">🗓 Call del Giovedì</div>
+    <div class="tab" data-tab="speciali">⭐ Richieste Speciali</div>
+  </div>
+
+  <!-- ══════════ TAB GIOVEDÌ ══════════ -->
+  <div id="tab-giovedi">
+
+    <!-- Task tracking -->
+    <div class="track-card" id="track-card">
+      <div class="track-head">
+        <span style="font-size:18px;">📌</span>
+        <span class="th-title">Task aperti da risolvere</span>
+        <span class="track-count" id="track-count">0</span>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:6px;">tracciati tra un giovedì e l'altro</span>
+      </div>
+      <div id="track-list"></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Storico call</div>
+      <button class="btn btn-primary btn-sm" id="btn-new-meeting">+ Nuova call giovedì</button>
+    </div>
+    <div id="meetings-list"></div>
+
+  </div>
+
+  <!-- ══════════ TAB SPECIALI ══════════ -->
+  <div id="tab-speciali" style="display:none;">
+
+    <!-- Stats -->
+    <div class="stats-row" style="margin-bottom:18px;">
+      <div class="stat-tile"><div class="stat-val" id="rs-tot">0</div><div class="stat-label">Richieste totali</div></div>
+      <div class="stat-tile"><div class="stat-val" id="rs-sw" style="color:var(--blue);">0</div><div class="stat-label">Software (webapp)</div></div>
+      <div class="stat-tile"><div class="stat-val" id="rs-hw" style="color:var(--orange);">0</div><div class="stat-label">Hardware (STS)</div></div>
+      <div class="stat-tile"><div class="stat-val" id="rs-open" style="color:var(--red);">0</div><div class="stat-label">Aperte</div></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;">
+      <div class="tabs" id="req-filter">
+        <div class="tab active" data-f="all">Tutte</div>
+        <div class="tab" data-f="software">Software</div>
+        <div class="tab" data-f="hardware">Hardware</div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btn-new-req">+ Nuova richiesta speciale</button>
+    </div>
+    <div id="req-list"></div>
+
+  </div>
+</main>
+
+<!-- ══════════ MODAL: MEETING ══════════ -->
+<div class="overlay" id="modal-meeting">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-meeting-title">Nuova call del giovedì</div>
+      <button class="modal-x" onclick="closeModal('modal-meeting')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Data call (giovedì)</label>
+          <input class="form-control" type="date" id="mt-date">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Partecipanti</label>
+          <input class="form-control" id="mt-part" placeholder="Es. Area62, Referente Deloitte...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Argomenti discussi / Note</label>
+        <textarea class="form-control" id="mt-argomenti" rows="3" placeholder="Necessità della sala, punti aperti, decisioni prese..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Task assegnati in questa call</label>
+        <div id="mt-tasks"></div>
+        <button class="btn btn-outline btn-sm" id="btn-add-task" style="width:100%;margin-top:8px;">+ Aggiungi task</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="btn-del-meeting" style="display:none;margin-right:auto;">Elimina</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-meeting')">Annulla</button>
+      <button class="btn btn-primary" id="btn-save-meeting">Salva call</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: REPORT ══════════ -->
+<div class="overlay" id="modal-report">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">📄 Meeting Report</div>
+      <button class="modal-x" onclick="closeModal('modal-report')">✕</button>
+    </div>
+    <div class="modal-body report-body" id="report-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-report')">Chiudi</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨 Stampa / PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL: RICHIESTA SPECIALE ══════════ -->
+<div class="overlay" id="modal-req">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-req-title">Nuova richiesta speciale</div>
+      <button class="modal-x" onclick="closeModal('modal-req')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Tipo di richiesta</label>
+        <div class="tabs" id="req-type-tabs">
+          <div class="tab active" data-t="software">💻 Software (webapp Area62)</div>
+          <div class="tab" data-t="hardware">🔧 Hardware (fornitore STS)</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Titolo</label>
+        <input class="form-control" id="rq-title" placeholder="Es. Nuova sezione webapp / Riconfigurazione LED Wall">
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Area cliente richiedente</label>
+          <input class="form-control" id="rq-richiedente" placeholder="Es. Marketing, HR, Consulting...">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Priorità</label>
+          <select class="form-control" id="rq-priorita">
+            <option value="alta">Alta</option>
+            <option value="media" selected>Media</option>
+            <option value="bassa">Bassa</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Assegnatario</label>
+        <input class="form-control" id="rq-assegnatario" placeholder="Area62 dev / STS">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrizione</label>
+        <textarea class="form-control" id="rq-desc" rows="4" placeholder="Dettaglio della richiesta..."></textarea>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Stato</label>
+        <select class="form-control" id="rq-stato">
+          <option value="nuova">Nuova</option>
+          <option value="in-corso">In lavorazione</option>
+          <option value="completata">Completata</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="btn-del-req" style="display:none;margin-right:auto;">Elimina</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-req')">Annulla</button>
+      <button class="btn btn-primary" id="btn-save-req">Salva richiesta</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=4"></script>
+<script src="js/app.js?v=4"></script>
+<script src="js/db.js?v=4"></script>
+<script>
+const MONTHS_SHORT = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
+const TASK_STATI = { aperto:'Aperto', 'in-corso':'In corso', risolto:'Risolto' };
+let meetings = [];
+let reqspec  = [];
+let editMeetingId = null;
+let editReqId = null;
+let reqType = 'software';
+let reqFilter = 'all';
+let modalTasks = []; // task in editing nel modal meeting
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireAuth()) return;
+  seedIfEmpty();
+  meetings = ls(LS.meetings) || [];
+  reqspec  = ls(LS.reqspec)  || [];
+
+  // Tabs principali
+  document.querySelectorAll('#main-tabs .tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('#main-tabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    document.getElementById('tab-giovedi').style.display  = tab === 'giovedi' ? '' : 'none';
+    document.getElementById('tab-speciali').style.display = tab === 'speciali' ? '' : 'none';
+  }));
+
+  // Filtro richieste
+  document.querySelectorAll('#req-filter .tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('#req-filter .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); reqFilter = t.dataset.f; renderReqs();
+  }));
+
+  // Tipo richiesta nel modal
+  document.querySelectorAll('#req-type-tabs .tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('#req-type-tabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); reqType = t.dataset.t;
+    if (reqType === 'hardware' && !document.getElementById('rq-assegnatario').value) {
+      document.getElementById('rq-assegnatario').value = 'STS';
+    }
+  }));
+
+  document.getElementById('btn-new-meeting').addEventListener('click', () => openMeeting());
+  document.getElementById('btn-add-task').addEventListener('click', () => { modalTasks.push(newTask()); renderModalTasks(); });
+  document.getElementById('btn-save-meeting').addEventListener('click', saveMeeting);
+  document.getElementById('btn-del-meeting').addEventListener('click', deleteMeeting);
+  document.getElementById('btn-new-req').addEventListener('click', () => openReq());
+  document.getElementById('btn-save-req').addEventListener('click', saveReq);
+  document.getElementById('btn-del-req').addEventListener('click', deleteReq);
+
+  renderTracking();
+  renderMeetings();
+  renderReqs();
+});
+
+/* ─────────── TASK TRACKING ─────────── */
+function allTasks() {
+  return meetings.flatMap(m => (m.tasks||[]).map(t => ({ ...t, meetingId:m.id, meetingDate:m.date })));
+}
+function weeksSince(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.max(0, Math.floor(diff / (7*24*3600*1000)));
+}
+function renderTracking() {
+  const open = allTasks().filter(t => t.stato !== 'risolto')
+    .sort((a,b) => new Date(a.meetingDate) - new Date(b.meetingDate));
+  document.getElementById('track-count').textContent = open.length;
+  const el = document.getElementById('track-list');
+  if (!open.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);padding:6px 0;">Nessun task aperto. Tutto risolto ✓</div>';
+    return;
+  }
+  el.innerHTML = open.map(t => {
+    const w = weeksSince(t.meetingDate);
+    const ageCls = w >= 2 ? 'old' : '';
+    return `
+    <div class="task-row">
+      <div class="task-main">
+        <div class="task-desc">${t.desc}</div>
+        <div class="task-meta">
+          <span class="type-badge ${t.tipo==='fix'?'tb-fix':'tb-nuova'}">${t.tipo==='fix'?'Fix':'Nuova'}</span>
+          ${t.area ? `<span>👤 ${t.area}</span>` : ''}
+          ${t.assegnato ? `<span>→ ${t.assegnato}</span>` : ''}
+          <span>dal ${formatDate(t.meetingDate)}</span>
+          <span class="task-age ${ageCls}">${w===0?'questa settimana':w+ (w===1?' settimana':' settimane')+' aperto'}</span>
+        </div>
+      </div>
+      <select class="form-control task-status-sel" data-mid="${t.meetingId}" data-tid="${t.id}">
+        ${Object.entries(TASK_STATI).map(([k,v]) => `<option value="${k}" ${t.stato===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.task-status-sel').forEach(sel => sel.addEventListener('change', () => {
+    const m = meetings.find(x => x.id === sel.dataset.mid);
+    const task = m?.tasks.find(x => x.id === sel.dataset.tid);
+    if (task) { task.stato = sel.value; lsSet(LS.meetings, meetings); renderTracking(); renderMeetings(); }
+  }));
+}
+
+/* ─────────── MEETINGS ─────────── */
+function newTask() { return { id: genId(), desc:'', tipo:'nuova', area:'', assegnato:'', stato:'aperto', scadenza:'' }; }
+
+function renderMeetings() {
+  const el = document.getElementById('meetings-list');
+  if (!meetings.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🗓</div><div class="empty-title">Nessuna call registrata</div></div>';
+    return;
+  }
+  const sorted = meetings.slice().sort((a,b) => new Date(b.date) - new Date(a.date));
+  el.innerHTML = sorted.map(m => {
+    const d = new Date(m.date);
+    const tasks = m.tasks || [];
+    const openN = tasks.filter(t => t.stato !== 'risolto').length;
+    return `
+    <div class="meeting-card" data-id="${m.id}">
+      <div class="meeting-head" onclick="toggleMeeting('${m.id}')">
+        <div class="meeting-date-box">
+          <div class="mdb-day">${d.getDate()}</div>
+          <div class="mdb-mon">${MONTHS_SHORT[d.getMonth()]}</div>
+        </div>
+        <div class="meeting-info">
+          <div class="meeting-title">Call giovedì ${formatDate(m.date)}</div>
+          <div class="meeting-sub">${m.partecipanti||'—'} · ${tasks.length} task${openN?` · <span style="color:var(--orange);">${openN} aperti</span>`:''}</div>
+        </div>
+        <span class="m-arrow">▾</span>
+      </div>
+      <div class="meeting-body">
+        ${m.argomenti ? `<div style="font-size:13px;color:var(--text-muted);padding:12px 0;line-height:1.6;">${m.argomenti}</div>` : ''}
+        ${tasks.length ? `<div style="margin:6px 0;">${tasks.map(t => `
+          <div class="task-row">
+            <div class="task-main">
+              <div class="task-desc">${t.desc}</div>
+              <div class="task-meta">
+                <span class="type-badge ${t.tipo==='fix'?'tb-fix':'tb-nuova'}">${t.tipo==='fix'?'Fix':'Nuova'}</span>
+                ${t.area?`<span>👤 ${t.area}</span>`:''}
+                ${t.assegnato?`<span>→ ${t.assegnato}</span>`:''}
+              </div>
+            </div>
+            <span class="badge ${t.stato==='risolto'?'badge-ok':t.stato==='in-corso'?'badge-p2':'badge-open'}">${TASK_STATI[t.stato]}</span>
+          </div>`).join('')}</div>` : '<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">Nessun task in questa call.</div>'}
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn btn-outline btn-sm" onclick="openReport('${m.id}')">📄 Meeting report</button>
+          <button class="btn btn-ghost btn-sm" onclick="openMeeting('${m.id}')">Modifica</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleMeeting(id) {
+  document.querySelector(`.meeting-card[data-id="${id}"]`)?.classList.toggle('open');
+}
+
+function openMeeting(id) {
+  editMeetingId = id || null;
+  const m = id ? meetings.find(x => x.id === id) : null;
+  document.getElementById('modal-meeting-title').textContent = m ? 'Modifica call' : 'Nuova call del giovedì';
+  document.getElementById('btn-del-meeting').style.display = m ? '' : 'none';
+  document.getElementById('mt-date').value = m ? m.date : nextThursday();
+  document.getElementById('mt-part').value = m?.partecipanti || 'Area62, Referente Deloitte';
+  document.getElementById('mt-argomenti').value = m?.argomenti || '';
+  modalTasks = m ? (m.tasks||[]).map(t => ({...t})) : [];
+  renderModalTasks();
+  openModal('modal-meeting');
+}
+
+function renderModalTasks() {
+  const el = document.getElementById('mt-tasks');
+  el.innerHTML = modalTasks.map((t,i) => `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input class="form-control" style="flex:1;" placeholder="Descrizione task" value="${t.desc.replace(/"/g,'&quot;')}" data-i="${i}" data-f="desc">
+        <button class="btn btn-ghost btn-sm" data-del="${i}">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <select class="form-control" data-i="${i}" data-f="tipo">
+          <option value="nuova" ${t.tipo==='nuova'?'selected':''}>Nuova richiesta</option>
+          <option value="fix" ${t.tipo==='fix'?'selected':''}>Fix malfunzionamento</option>
+        </select>
+        <input class="form-control" placeholder="Area richiedente" value="${(t.area||'').replace(/"/g,'&quot;')}" data-i="${i}" data-f="area">
+        <input class="form-control" placeholder="Assegnato a" value="${(t.assegnato||'').replace(/"/g,'&quot;')}" data-i="${i}" data-f="assegnato">
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('input[data-f],select[data-f]').forEach(inp => {
+    inp.addEventListener('input', () => { modalTasks[inp.dataset.i][inp.dataset.f] = inp.value; });
+  });
+  el.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => {
+    modalTasks.splice(parseInt(b.dataset.del),1); renderModalTasks();
+  }));
+}
+
+function saveMeeting() {
+  const date = document.getElementById('mt-date').value;
+  if (!date) { toast('Inserisci la data della call', 'error'); return; }
+  const m = {
+    id: editMeetingId || genId(),
+    date,
+    partecipanti: document.getElementById('mt-part').value.trim(),
+    argomenti: document.getElementById('mt-argomenti').value.trim(),
+    tasks: modalTasks.filter(t => t.desc.trim()),
+  };
+  if (editMeetingId) meetings = meetings.map(x => x.id === editMeetingId ? m : x);
+  else meetings.push(m);
+  lsSet(LS.meetings, meetings);
+  closeModal('modal-meeting');
+  renderTracking(); renderMeetings();
+  toast(editMeetingId ? 'Call aggiornata ✓' : 'Call registrata ✓', 'success');
+}
+
+function deleteMeeting() {
+  meetings = meetings.filter(x => x.id !== editMeetingId);
+  lsSet(LS.meetings, meetings);
+  closeModal('modal-meeting');
+  renderTracking(); renderMeetings();
+  toast('Call eliminata', 'info');
+}
+
+/* ─────────── MEETING REPORT ─────────── */
+function openReport(id) {
+  const m = meetings.find(x => x.id === id);
+  if (!m) return;
+  const tasks = m.tasks || [];
+  const nuovi   = tasks.filter(t => t.tipo === 'nuova');
+  const fix     = tasks.filter(t => t.tipo === 'fix');
+  // task ancora aperti da call precedenti
+  const carried = allTasks().filter(t => t.meetingId !== id && t.stato !== 'risolto' && new Date(t.meetingDate) < new Date(m.date));
+
+  document.getElementById('report-body').innerHTML = `
+    <div style="text-align:center;border-bottom:2px solid var(--border);padding-bottom:14px;margin-bottom:8px;">
+      <div style="font-size:17px;font-weight:800;">Meeting Report — Call Giovedì</div>
+      <div style="color:var(--text-muted);font-size:13px;margin-top:4px;">${new Date(m.date).toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+      <div style="color:var(--text-faint);font-size:12px;margin-top:2px;">Area62 · Deloitte Room Management</div>
+    </div>
+    <h4>Partecipanti</h4>
+    <div>${m.partecipanti || '—'}</div>
+    <h4>Argomenti discussi</h4>
+    <div>${m.argomenti ? m.argomenti.replace(/\n/g,'<br>') : '—'}</div>
+    <h4>Nuove richieste assegnate (${nuovi.length})</h4>
+    ${nuovi.length ? `<ul>${nuovi.map(t=>`<li><strong>${t.desc}</strong>${t.area?` — ${t.area}`:''}${t.assegnato?` → ${t.assegnato}`:''}</li>`).join('')}</ul>` : '<div>Nessuna</div>'}
+    <h4>Fix malfunzionamenti (${fix.length})</h4>
+    ${fix.length ? `<ul>${fix.map(t=>`<li><strong>${t.desc}</strong>${t.assegnato?` → ${t.assegnato}`:''}</li>`).join('')}</ul>` : '<div>Nessuno</div>'}
+    <h4>Task ancora aperti da call precedenti (${carried.length})</h4>
+    ${carried.length ? `<ul>${carried.map(t=>`<li>${t.desc} <span style="color:var(--orange);">(${weeksSince(t.meetingDate)} sett. aperto)</span></li>`).join('')}</ul>` : '<div>Nessuno — tutto allineato ✓</div>'}
+  `;
+  openModal('modal-report');
+}
+
+function nextThursday() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = (4 - day + 7) % 7; // 4 = giovedì
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0,10);
+}
+
+/* ─────────── RICHIESTE SPECIALI ─────────── */
+function renderReqs() {
+  const list = reqFilter === 'all' ? reqspec : reqspec.filter(r => r.tipo === reqFilter);
+  document.getElementById('rs-tot').textContent  = reqspec.length;
+  document.getElementById('rs-sw').textContent   = reqspec.filter(r => r.tipo === 'software').length;
+  document.getElementById('rs-hw').textContent   = reqspec.filter(r => r.tipo === 'hardware').length;
+  document.getElementById('rs-open').textContent = reqspec.filter(r => r.stato !== 'completata').length;
+
+  const el = document.getElementById('req-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div><div class="empty-title">Nessuna richiesta speciale</div></div>';
+    return;
+  }
+  el.innerHTML = list.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).map(r => {
+    const isSw = r.tipo === 'software';
+    const statoBadge = r.stato==='completata'?'badge-ok':r.stato==='in-corso'?'badge-p2':'badge-open';
+    return `
+    <div class="req-card ${isSw?'sw':'hw'}" onclick="openReq('${r.id}')">
+      <div class="req-top">
+        <span class="type-badge ${isSw?'badge-sw':'badge-hw'}">${isSw?'💻 Software':'🔧 Hardware · STS'}</span>
+        <span class="req-title">${r.num?`<span style="color:var(--text-faint);">${r.num}</span> `:''}${r.title}</span>
+        <span class="badge ${statoBadge}">${r.stato==='completata'?'Completata':r.stato==='in-corso'?'In lavorazione':'Nuova'}</span>
+        <span class="badge badge-${r.priorita==='alta'?'p1':r.priorita==='media'?'p2':'p3'}">${r.priorita}</span>
+      </div>
+      <div class="req-meta">
+        ${r.richiedente?`<span>👤 ${r.richiedente}</span>`:''}
+        ${r.assegnatario?`<span>→ ${r.assegnatario}</span>`:''}
+        <span>${formatDate(r.createdAt)}</span>
+      </div>
+      ${r.desc?`<div style="font-size:13px;color:var(--text-muted);margin-top:8px;">${r.desc}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openReq(id) {
+  editReqId = id || null;
+  const r = id ? reqspec.find(x => x.id === id) : null;
+  document.getElementById('modal-req-title').textContent = r ? 'Modifica richiesta speciale' : 'Nuova richiesta speciale';
+  document.getElementById('btn-del-req').style.display = r ? '' : 'none';
+  reqType = r?.tipo || 'software';
+  document.querySelectorAll('#req-type-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.t === reqType));
+  document.getElementById('rq-title').value = r?.title || '';
+  document.getElementById('rq-richiedente').value = r?.richiedente || '';
+  document.getElementById('rq-priorita').value = r?.priorita || 'media';
+  document.getElementById('rq-assegnatario').value = r?.assegnatario || (reqType==='hardware'?'STS':'Area62 dev');
+  document.getElementById('rq-desc').value = r?.desc || '';
+  document.getElementById('rq-stato').value = r?.stato || 'nuova';
+  openModal('modal-req');
+}
+
+function saveReq() {
+  const title = document.getElementById('rq-title').value.trim();
+  if (!title) { toast('Inserisci il titolo', 'error'); return; }
+  const r = {
+    id: editReqId || genId(),
+    num: editReqId ? reqspec.find(x=>x.id===editReqId)?.num : 'REQ-' + String(reqspec.length+1).padStart(3,'0'),
+    tipo: reqType,
+    title,
+    richiedente: document.getElementById('rq-richiedente').value.trim(),
+    priorita: document.getElementById('rq-priorita').value,
+    assegnatario: document.getElementById('rq-assegnatario').value.trim(),
+    desc: document.getElementById('rq-desc').value.trim(),
+    stato: document.getElementById('rq-stato').value,
+    createdAt: editReqId ? reqspec.find(x=>x.id===editReqId)?.createdAt : new Date().toISOString(),
+  };
+  if (editReqId) reqspec = reqspec.map(x => x.id === editReqId ? r : x);
+  else reqspec.unshift(r);
+  lsSet(LS.reqspec, reqspec);
+  closeModal('modal-req');
+  renderReqs();
+  toast(editReqId ? 'Richiesta aggiornata ✓' : 'Richiesta creata ✓', 'success');
+}
+
+function deleteReq() {
+  reqspec = reqspec.filter(x => x.id !== editReqId);
+  lsSet(LS.reqspec, reqspec);
+  closeModal('modal-req');
+  renderReqs();
+  toast('Richiesta eliminata', 'info');
+}
+
+/* ─────────── SEED DEMO ─────────── */
+function seedIfEmpty() {
+  if (!ls(LS.meetings)) {
+    const t = new Date(); const day = t.getDay();
+    const lastThu = new Date(t); lastThu.setDate(t.getDate() - ((day - 4 + 7) % 7 || 7));
+    const prevThu = new Date(lastThu); prevThu.setDate(lastThu.getDate() - 7);
+    lsSet(LS.meetings, [
+      {
+        id: genId(), date: prevThu.toISOString().slice(0,10),
+        partecipanti: 'Area62 (Marco), Referente Deloitte (Facility)',
+        argomenti: 'Rilevate necessità Arena per evento del 20. Richiesta nuova sezione webapp per gestione scenari. Segnalato ritardo audio Cave.',
+        tasks: [
+          { id: genId(), desc: 'Nuova sezione "Scenari" nella webapp', tipo:'nuova', area:'Marketing', assegnato:'Area62 dev', stato:'in-corso' },
+          { id: genId(), desc: 'Fix latenza audio Cave', tipo:'fix', area:'Facility', assegnato:'STS', stato:'aperto' },
+        ],
+      },
+      {
+        id: genId(), date: lastThu.toISOString().slice(0,10),
+        partecipanti: 'Area62 (Marco), Referente Deloitte, IT Deloitte',
+        argomenti: 'Verifica avanzamento task. Nuova richiesta HR per configurazione sala riunioni ibride.',
+        tasks: [
+          { id: genId(), desc: 'Configurazione preset "Riunione ibrida" per HR', tipo:'nuova', area:'HR', assegnato:'Area62 dev', stato:'aperto' },
+        ],
+      },
+    ]);
+  }
+  if (!ls(LS.reqspec)) {
+    lsSet(LS.reqspec, [
+      { id: genId(), num:'REQ-001', tipo:'software', title:'Dashboard analytics utilizzo sale', richiedente:'Consulting', priorita:'media', assegnatario:'Area62 dev', desc:'Report di utilizzo mensile delle sale con grafici.', stato:'in-corso', createdAt:new Date(Date.now()-6*864e5).toISOString() },
+      { id: genId(), num:'REQ-002', tipo:'hardware', title:'Riconfigurazione matrice HDMI Arena', richiedente:'Facility', priorita:'alta', assegnatario:'STS', desc:'Riprogrammazione switch Atlona per nuova disposizione sorgenti.', stato:'nuova', createdAt:new Date(Date.now()-2*864e5).toISOString() },
+    ]);
+  }
+}
+</script>
+</body>
+</html>

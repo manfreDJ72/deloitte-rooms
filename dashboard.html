@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Dashboard – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=3">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
 
@@ -21,6 +21,7 @@
     <a href="booking.html"   class="nav-link"><span class="nav-icon">📅</span> Prenotazioni</a>
     <a href="checks.html"    class="nav-link"><span class="nav-icon">✓</span> Check Mattutini</a>
     <a href="tickets.html"   class="nav-link"><span class="nav-icon">⚠</span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon">📨</span> Richieste</a>
     <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon">⚙</span> Settings</a>
   </nav>
   <div class="header-right">
@@ -39,29 +40,16 @@
     <p class="page-sub" id="date-sub">Gestione sale Solaria &amp; Armonia · Deloitte</p>
   </div>
 
-  <!-- Alert banner -->
-  <div id="alerts-section" style="margin-bottom:24px;display:none;">
-    <div class="card">
-      <div class="card-head">
-        <div class="card-title"><span class="card-icon">⚠</span> Anomalie aperte</div>
-        <a href="tickets.html" class="btn btn-ghost btn-sm">Vedi tutte →</a>
-      </div>
-      <div class="alert-strip" id="alerts-list"></div>
-    </div>
-  </div>
-
-  <!-- Main cards -->
+  <!-- Main cards (prima riga) -->
   <div class="dash-cards">
 
     <a href="booking.html" class="dash-card solaria">
       <div class="dc-icon">📅</div>
-      <div class="dc-title">Prenotazioni Sale</div>
+      <div class="dc-title">Prenotazioni Sala</div>
       <div class="dc-desc">Calendario settimanale, prenota le sale, gestisci allestimenti e partecipanti.</div>
       <div class="dc-foot">
         <span class="room-tag tag-solaria">Solaria</span>
         <span class="room-tag tag-armonia">Armonia</span>
-        <span class="tag-roma">Roma</span>
-        <span class="tag-milano">Milano</span>
       </div>
     </a>
 
@@ -85,6 +73,27 @@
       </div>
     </a>
 
+    <a href="richieste.html" class="dash-card" style="--accent:#b57edc;--accent-glow:rgba(181,126,220,.08)">
+      <div class="dc-icon">📨</div>
+      <div class="dc-title">Richieste da Cliente</div>
+      <div class="dc-desc">Call del giovedì con meeting report e task, richieste speciali software e hardware.</div>
+      <div class="dc-foot">
+        <span id="rich-tasks" class="badge badge-p2" style="display:none"></span>
+        <span id="rich-open" class="badge badge-open" style="display:none"></span>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- Alert banner (secondo livello) -->
+  <div id="alerts-section" style="margin-bottom:24px;display:none;">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="card-icon">⚠</span> Anomalie aperte</div>
+        <a href="tickets.html" class="btn btn-ghost btn-sm">Vedi tutte →</a>
+      </div>
+      <div class="alert-strip" id="alerts-list"></div>
+    </div>
   </div>
 
   <!-- Stats row -->
@@ -136,9 +145,9 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=3"></script>
-<script src="js/app.js?v=3"></script>
-<script src="js/db.js?v=3"></script>
+<script src="js/config.js?v=4"></script>
+<script src="js/app.js?v=4"></script>
+<script src="js/db.js?v=4"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   if (!requireAuth()) return;
@@ -201,6 +210,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (inprogress.length) {
     const b = document.getElementById('tickets-inprogress');
     b.textContent = `${inprogress.length} in corso`;
+    b.style.display = '';
+  }
+
+  // Richieste badges (task giovedì aperti + richieste speciali aperte)
+  const meetings = ls(LS.meetings) || [];
+  const reqspec  = ls(LS.reqspec)  || [];
+  const openTasks = meetings.flatMap(m => m.tasks || []).filter(t => t.stato !== 'risolto').length;
+  const openReqs  = reqspec.filter(r => r.stato !== 'completata').length;
+  if (openTasks) {
+    const b = document.getElementById('rich-tasks');
+    b.textContent = `${openTasks} task`;
+    b.style.display = '';
+  }
+  if (openReqs) {
+    const b = document.getElementById('rich-open');
+    b.textContent = `${openReqs} richieste`;
     b.style.display = '';
   }
 
