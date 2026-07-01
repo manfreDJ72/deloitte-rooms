@@ -449,4 +449,67 @@ const LS = {
   bookings: 'dlt_bookings',
   tickets:  'dlt_tickets',
   maint:    'dlt_maintenance',
+  users:    'dlt_users',
+  settings: 'dlt_settings',
 };
+
+// ── CAPABILITIES (chi può fare cosa) ──
+const CAPABILITIES = [
+  { key: 'prenotazioni', label: 'Prenotazioni', actions: [
+    { key: 'crea', label: 'Crea/Modifica' }, { key: 'elimina', label: 'Elimina' } ] },
+  { key: 'check', label: 'Check mattutini', actions: [
+    { key: 'esegui', label: 'Esegui e salva' }, { key: 'storico', label: 'Vedi storico' } ] },
+  { key: 'anomalie', label: 'Anomalie', actions: [
+    { key: 'apri', label: 'Apri ticket' }, { key: 'chiudi', label: 'Chiudi/Risolvi' }, { key: 'sla', label: 'Gestisci SLA' } ] },
+  { key: 'rapporti', label: 'Rapporti intervento', actions: [
+    { key: 'crea', label: 'Compila' }, { key: 'invia', label: 'Invia' } ] },
+  { key: 'repository', label: 'Repository documenti', actions: [
+    { key: 'vedi', label: 'Consulta' }, { key: 'gestisci', label: 'Gestisci/Chiudi' } ] },
+  { key: 'settings', label: 'Impostazioni', actions: [
+    { key: 'accesso', label: 'Accesso settings' } ] },
+];
+
+// ── EVENTI EMAIL (a chi mandare cosa) ──
+const EMAIL_EVENTS = [
+  { key: 'ticket-p1', label: 'Anomalia critica (P1)' },
+  { key: 'ticket-p2', label: 'Anomalia alta (P2)' },
+  { key: 'ticket-any', label: 'Ogni nuova anomalia' },
+  { key: 'rapporto', label: 'Rapporto di intervento' },
+  { key: 'prenotazione', label: 'Nuova prenotazione' },
+  { key: 'check-ko', label: 'Check con anomalia' },
+];
+
+// ── DEFAULT SETTINGS ──
+function defaultSettings() {
+  return {
+    roles: {
+      admin:    { prenotazioni:{crea:1,elimina:1}, check:{esegui:1,storico:1}, anomalie:{apri:1,chiudi:1,sla:1}, rapporti:{crea:1,invia:1}, repository:{vedi:1,gestisci:1}, settings:{accesso:1} },
+      operator: { prenotazioni:{crea:1,elimina:0}, check:{esegui:1,storico:1}, anomalie:{apri:1,chiudi:1,sla:0}, rapporti:{crea:1,invia:1}, repository:{vedi:1,gestisci:0}, settings:{accesso:0} },
+      viewer:   { prenotazioni:{crea:0,elimina:0}, check:{esegui:0,storico:1}, anomalie:{apri:0,chiudi:0,sla:0}, rapporti:{crea:0,invia:0}, repository:{vedi:1,gestisci:0}, settings:{accesso:0} },
+    },
+    emailRecipients: [
+      { id: 'r1', name: 'Presidio Roma',   email: 'presidio.roma@area62.it', events: ['ticket-p1','ticket-p2','check-ko'] },
+      { id: 'r2', name: 'Referente Deloitte', email: 'facility@deloitte.it',   events: ['ticket-p1','rapporto'] },
+    ],
+    numbering: { ticketPrefix:'TCK-', ticketPad:3, ticketNext:4, rapportoPrefix:'RAP-', rapportoPad:3, rapportoNext:1 },
+    inboundEmail: { address:'prenotazioni@rooms.area62.it', enabled:false },
+  };
+}
+function getSettings() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS.settings)); } catch {}
+  return s || defaultSettings();
+}
+function saveSettings(s) { localStorage.setItem(LS.settings, JSON.stringify(s)); }
+
+// ── UTENTI (roster, seed da DEMO_USERS) ──
+function getUsers() {
+  let u = null;
+  try { u = JSON.parse(localStorage.getItem(LS.users)); } catch {}
+  if (!u) {
+    u = DEMO_USERS.map(({ password, ...rest }, i) => ({ id: 'u'+(i+1), ...rest }));
+    localStorage.setItem(LS.users, JSON.stringify(u));
+  }
+  return u;
+}
+function saveUsers(u) { localStorage.setItem(LS.users, JSON.stringify(u)); }

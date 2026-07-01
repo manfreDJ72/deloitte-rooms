@@ -69,6 +69,10 @@ function renderUser() {
   const av = document.getElementById('user-avatar');
   if (el) el.textContent = u.name;
   if (av) av.textContent = u.avatar;
+  // Voce Settings visibile solo agli amministratori
+  if (u.role !== 'admin') {
+    document.querySelectorAll('.nav-settings').forEach(a => a.style.display = 'none');
+  }
 }
 
 // ── LOGOUT ──
