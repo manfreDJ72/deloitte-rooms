@@ -5,6 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Prenotazioni – Deloitte Room Management</title>
   <link rel="stylesheet" href="css/style.css?v=2">
+  <style>
+    /* ── Supporto creativo + allegati ── */
+    .creative-flag {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border: 1.5px solid var(--border);
+      border-radius: 10px; cursor: pointer; transition: all .15s; user-select: none;
+    }
+    .creative-flag:hover { border-color: var(--text-muted); }
+    .creative-flag.on { border-color: var(--green); background: rgba(134,188,37,.06); }
+    .cf-icon  { font-size: 20px; flex-shrink: 0; }
+    .cf-title { font-weight: 700; font-size: 13px; display: block; }
+    .cf-sub   { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
+    .creative-flag input { width: 18px; height: 18px; accent-color: var(--green); margin-left: auto; flex-shrink: 0; cursor: pointer; }
+
+    .attach-drop {
+      border: 1.5px dashed var(--border); border-radius: 10px;
+      padding: 16px; cursor: pointer; transition: all .15s;
+    }
+    .attach-drop:hover, .attach-drop.drag { border-color: var(--green); background: rgba(134,188,37,.04); }
+    .attach-drop-inner { display: flex; align-items: center; gap: 12px; }
+
+    .attach-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .attach-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 8px; background: var(--bg-card2);
+    }
+    .attach-thumb {
+      width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0;
+      background: var(--bg-card); display: flex; align-items: center;
+      justify-content: center; font-size: 18px; overflow: hidden;
+    }
+    .attach-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .attach-meta { flex: 1; min-width: 0; }
+    .attach-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .attach-sub  { font-size: 11px; color: var(--text-muted); }
+    .attach-x {
+      cursor: pointer; color: var(--text-muted); font-size: 15px;
+      padding: 6px 9px; border-radius: 6px; flex-shrink: 0; min-height: 32px;
+    }
+    .attach-x:hover { color: var(--red); background: rgba(255,77,77,.1); }
+  </style>
 </head>
 <body>
 
@@ -197,6 +239,38 @@
         <label class="form-label">Note aggiuntive</label>
         <textarea class="form-control" id="bk-note" placeholder="Informazioni aggiuntive per il presidio..."></textarea>
       </div>
+
+      <!-- Supporto creativo -->
+      <div class="form-group">
+        <label class="form-label">Supporto creativo</label>
+        <label class="creative-flag" id="creative-flag">
+          <span class="cf-icon">🎨</span>
+          <span>
+            <span class="cf-title">Richiesta supporto creativo Area62</span>
+            <span class="cf-sub">Immagini per fondi, video presentazione, scenari personalizzati, grafiche…</span>
+          </span>
+          <input type="checkbox" id="bk-creative">
+        </label>
+        <textarea class="form-control" id="bk-creative-desc" style="display:none;margin-top:8px;"
+          placeholder="Descrivi cosa serve dalla parte creativa (es. sfondo con logo cliente, video intro 30s, scenario Armonia personalizzato…)"></textarea>
+      </div>
+
+      <!-- Allegati -->
+      <div class="form-group">
+        <label class="form-label">Allegati &amp; materiali</label>
+        <div class="attach-drop" id="attach-drop">
+          <input type="file" id="bk-files" multiple
+            accept="image/*,video/*,.pdf,.ppt,.pptx,.key,.doc,.docx,.zip" style="display:none;">
+          <div class="attach-drop-inner">
+            <span style="font-size:22px;">📎</span>
+            <div>
+              <div style="font-weight:600;font-size:13px;">Trascina i file qui o <span style="color:var(--green);">sfoglia</span></div>
+              <div style="font-size:11px;color:var(--text-muted);">Immagini, video, PDF, PPTX — fondi, presentazioni, materiali creativi</div>
+            </div>
+          </div>
+        </div>
+        <div class="attach-list" id="attach-list"></div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-danger btn-sm" id="btn-elimina-bk" style="display:none;margin-right:auto;">Elimina</button>
@@ -284,6 +358,71 @@ let listView   = false;
 let editId     = null;
 let viewEventId = null;
 let participants = [];
+let bookingAttachments = [];
+const MAX_INLINE = 1.6 * 1024 * 1024; // 1.6 MB per file: oltre → solo metadati (in produzione va su cloud storage)
+
+// ── SUPPORTO CREATIVO ──
+document.getElementById('bk-creative').addEventListener('change', e => {
+  document.getElementById('creative-flag').classList.toggle('on', e.target.checked);
+  document.getElementById('bk-creative-desc').style.display = e.target.checked ? '' : 'none';
+});
+
+// ── ALLEGATI ──
+function humanSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(0) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function fileIcon(type = '') {
+  if (type.startsWith('image/')) return '🖼️';
+  if (type.startsWith('video/')) return '🎬';
+  if (type.includes('pdf')) return '📄';
+  if (type.includes('presentation') || type.includes('powerpoint')) return '📊';
+  if (type.includes('word') || type.includes('document')) return '📝';
+  if (type.includes('zip')) return '🗜️';
+  return '📎';
+}
+function handleFiles(fileList) {
+  Array.from(fileList).forEach(file => {
+    const att = { id: genId(), name: file.name, type: file.type || '', size: file.size };
+    const inlineOk = file.size <= MAX_INLINE && !(file.type || '').startsWith('video/');
+    if (inlineOk) {
+      const reader = new FileReader();
+      reader.onload = () => { att.dataUrl = reader.result; renderAttachments(); };
+      reader.readAsDataURL(file);
+    } else {
+      att.tooLarge = true; // solo metadati in demo
+    }
+    bookingAttachments.push(att);
+  });
+  renderAttachments();
+  document.getElementById('bk-files').value = '';
+}
+function renderAttachments() {
+  const el = document.getElementById('attach-list');
+  el.innerHTML = bookingAttachments.map(a => `
+    <div class="attach-item">
+      <div class="attach-thumb">${a.dataUrl && a.type.startsWith('image/') ? `<img src="${a.dataUrl}">` : fileIcon(a.type)}</div>
+      <div class="attach-meta">
+        <div class="attach-name">${a.name}</div>
+        <div class="attach-sub">${humanSize(a.size)}${a.tooLarge ? ' · caricamento su cloud in produzione' : ''}</div>
+      </div>
+      <span class="attach-x" data-id="${a.id}">✕</span>
+    </div>`).join('');
+  el.querySelectorAll('.attach-x').forEach(x => x.addEventListener('click', () => {
+    bookingAttachments = bookingAttachments.filter(a => a.id !== x.dataset.id);
+    renderAttachments();
+  }));
+}
+(() => {
+  const drop = document.getElementById('attach-drop');
+  const input = document.getElementById('bk-files');
+  drop.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => handleFiles(e.target.files));
+  ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+  ['dragleave','dragend'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+})();
 
 // ── PARTICIPANTS TAG INPUT ──
 document.getElementById('partecipanti-input').addEventListener('keydown', e => {
@@ -503,7 +642,25 @@ function showEvent(id) {
         <div style="display:flex;flex-wrap:wrap;gap:5px;">${ev.allestimento.map(a=>`<span class="badge badge-ok">${a}</span>`).join('')}</div></div>`;
     }
     if (ev.note) {
-      body += `<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">NOTE</div><div style="font-size:13px;">${ev.note}</div></div>`;
+      body += `<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">NOTE</div><div style="font-size:13px;">${ev.note}</div></div>`;
+    }
+    if (ev.creativeSupport) {
+      body += `<div style="margin-bottom:12px;">
+        <span class="badge" style="background:rgba(134,188,37,.15);color:var(--green);">🎨 Supporto creativo richiesto</span>
+        ${ev.creativeDesc ? `<div style="font-size:13px;margin-top:6px;">${ev.creativeDesc}</div>` : ''}
+      </div>`;
+    }
+    if (ev.attachments?.length) {
+      body += `<div style="margin-bottom:4px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">ALLEGATI (${ev.attachments.length})</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">${ev.attachments.map(a => `
+          <a ${a.dataUrl ? `href="${a.dataUrl}" download="${a.name}"` : ''} style="display:flex;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);">
+            <span class="attach-thumb" style="width:34px;height:34px;">${a.dataUrl && a.type.startsWith('image/') ? `<img src="${a.dataUrl}">` : fileIcon(a.type)}</span>
+            <span style="flex:1;min-width:0;">
+              <span style="font-size:13px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</span>
+              <span style="font-size:11px;color:var(--text-muted);">${humanSize(a.size)}</span>
+            </span>
+            <span style="font-size:12px;color:${a.dataUrl ? 'var(--green)' : 'var(--text-muted)'};">${a.dataUrl ? '↓' : 'cloud'}</span>
+          </a>`).join('')}</div></div>`;
     }
   } else {
     if (ev.desc) body += `<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">DESCRIZIONE</div><div style="font-size:13px;">${ev.desc}</div></div>`;
@@ -542,6 +699,12 @@ function openNewBooking(start, end) {
   document.getElementById('bk-note').value = '';
   document.getElementById('bk-allest-extra').value = '';
   document.querySelectorAll('#allestimento-options input').forEach(c => c.checked = false);
+  bookingAttachments = [];
+  document.getElementById('bk-creative').checked = false;
+  document.getElementById('creative-flag').classList.remove('on');
+  document.getElementById('bk-creative-desc').style.display = 'none';
+  document.getElementById('bk-creative-desc').value = '';
+  renderAttachments();
   renderParticipants();
 
   if (start) {
@@ -567,6 +730,13 @@ function openEditBooking(ev) {
   document.querySelectorAll('#allestimento-options input').forEach(c => {
     c.checked = (ev.allestimento||[]).includes(c.value);
   });
+  bookingAttachments = [...(ev.attachments||[])];
+  const cs = !!ev.creativeSupport;
+  document.getElementById('bk-creative').checked = cs;
+  document.getElementById('creative-flag').classList.toggle('on', cs);
+  document.getElementById('bk-creative-desc').style.display = cs ? '' : 'none';
+  document.getElementById('bk-creative-desc').value = ev.creativeDesc || '';
+  renderAttachments();
   renderParticipants();
   openModal('modal-booking');
 }
@@ -599,14 +769,25 @@ document.getElementById('btn-salva-bk').addEventListener('click', () => {
     start: new Date(start).toISOString(),
     end:   new Date(end).toISOString(),
     note: document.getElementById('bk-note').value,
+    creativeSupport: document.getElementById('bk-creative').checked,
+    creativeDesc: document.getElementById('bk-creative-desc').value.trim(),
+    attachments: bookingAttachments,
   };
 
+  const prev = bookings.slice();
   if (editId) {
     bookings = bookings.map(b => b.id === editId ? booking : b);
   } else {
     bookings.push(booking);
   }
-  lsSet(LS.bookings, bookings);
+  try {
+    lsSet(LS.bookings, bookings);
+  } catch (err) {
+    // Quota localStorage superata dagli allegati inline (demo)
+    lsSet(LS.bookings, prev);
+    toast('Allegati troppo pesanti per la memoria demo. In produzione useremo lo storage cloud.', 'error');
+    return;
+  }
   closeModal('modal-booking');
   refresh();
   toast(editId ? 'Prenotazione aggiornata ✓' : 'Prenotazione salvata ✓', 'success');
