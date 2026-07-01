@@ -1,3 +1,20 @@
+/* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
+const APP_BUILD = 5;
+(function checkForUpdate() {
+  fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
+    .then(r => r.ok ? r.text() : null)
+    .then(v => {
+      if (!v) return;
+      const remote = parseInt(v.trim(), 10);
+      if (!remote || remote === APP_BUILD) return;
+      const params = new URLSearchParams(location.search);
+      if (params.get('b') === String(remote)) return; // già ricaricato per questa build
+      params.set('b', remote);
+      location.replace(location.pathname + '?' + params.toString());
+    })
+    .catch(() => {});
+})();
+
 /* ── GLOBAL UTILS ── */
 
 function ls(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
