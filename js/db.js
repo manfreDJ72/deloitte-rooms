@@ -240,6 +240,33 @@ const db = {
     if (error) throw error;
   },
 
+  /* ── EMAIL (Edge Function send-email via Resend) ── */
+  async sendEmail(to, subject, html) {
+    _initSb();
+    const { data, error } = await _sb.functions.invoke('send-email', { body: { to, subject, html } });
+    if (error) {
+      let msg = error.message || 'Errore invio email';
+      try { const ctx = await error.context.json(); if (ctx.error) msg = ctx.error; } catch {}
+      throw new Error(msg);
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  },
+
+  // invia una notifica ai destinatari configurati per un dato evento (best-effort)
+  async notify(eventKey, subject, html) {
+    if (DEMO_MODE) return;
+    try {
+      const s = (typeof getSettings === 'function') ? getSettings() : null;
+      const recips = (s?.emailRecipients || [])
+        .filter(r => r.email && (r.events || []).includes(eventKey))
+        .map(r => r.email);
+      const to = [...new Set(recips)];
+      if (!to.length) return;
+      await this.sendEmail(to, subject, html);
+    } catch (e) { console.error('notify', eventKey, e); }
+  },
+
   /* ── GESTIONE UTENTI (Edge Function, solo admin) ── */
   async adminUsers(action, payload = {}) {
     _initSb();

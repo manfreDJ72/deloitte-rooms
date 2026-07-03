@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impostazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=10">
+  <link rel="stylesheet" href="css/style.css?v=11">
   <style>
     .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
     .set-card {
@@ -164,10 +164,13 @@
       </div>
       <div class="set-card-body">
         <div id="recip-list"></div>
-        <button class="btn btn-outline btn-sm" id="btn-add-recip" style="width:100%;margin-top:6px;">+ Aggiungi destinatario</button>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" id="btn-add-recip" style="flex:1;min-width:180px;">+ Aggiungi destinatario</button>
+          <button class="btn btn-ghost btn-sm" id="btn-test-email">✉️ Invia email di prova</button>
+        </div>
         <div class="backend-note">
-          ℹ️ La configurazione dei destinatari si salva subito. L'<strong>invio automatico</strong> delle email
-          verrà attivato con la funzione serverless su Supabase (Edge Function + provider tipo Resend).
+          ℹ️ L'email di prova viene inviata alla <strong>tua email</strong> (${''}). Per inviare a indirizzi esterni
+          (es. Deloitte) serve verificare un dominio su Resend — lo facciamo dopo.
         </div>
       </div>
     </div>
@@ -331,9 +334,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
-<script src="js/db.js?v=10"></script>
+<script src="js/config.js?v=11"></script>
+<script src="js/app.js?v=11"></script>
+<script src="js/db.js?v=11"></script>
 <script>
 let S = null;         // settings correnti
 let users = [];       // roster utenti
@@ -371,6 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-save-settings').addEventListener('click', saveAll);
   document.getElementById('btn-add-user').addEventListener('click', () => openUserModal());
   document.getElementById('btn-add-recip').addEventListener('click', addRecipient);
+  document.getElementById('btn-test-email').addEventListener('click', sendTestEmail);
   document.getElementById('btn-save-user').addEventListener('click', saveUser);
   document.getElementById('btn-del-user').addEventListener('click', deleteUser);
   document.getElementById('btn-gen-pw').addEventListener('click', () => {
@@ -559,6 +563,27 @@ function renderRecipients() {
 function addRecipient() {
   S.emailRecipients.push({ id: 'r' + Date.now().toString(36), name: '', email: '', events: [] });
   renderRecipients();
+}
+
+async function sendTestEmail() {
+  if (DEMO_MODE) { toast('Disponibile solo nella versione online', 'error'); return; }
+  const me = currentUser();
+  const btn = document.getElementById('btn-test-email');
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Invio…';
+  try {
+    await db.sendEmail(me.email,
+      'Email di prova — Deloitte Room Management',
+      `<div style="font-family:sans-serif;">
+        <h2 style="color:#86BC25;">✓ Email configurata correttamente</h2>
+        <p>Ciao ${me.name}, questa è un'email di prova inviata dal sistema di gestione sale Solaria &amp; Armonia.</p>
+        <p>Se la stai leggendo, l'invio automatico di notifiche e rapporti è attivo.</p>
+        <p style="color:#888;font-size:12px;">Area62 · Deloitte Room Management</p>
+      </div>`);
+    toast('Email di prova inviata a ' + me.email + ' ✓', 'success');
+  } catch (e) {
+    toast('Errore invio: ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = old;
 }
 
 /* ── NUMERAZIONE ── */
