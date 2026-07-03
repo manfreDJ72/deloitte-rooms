@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Prenotazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=21">
+  <link rel="stylesheet" href="css/style.css?v=22">
   <style>
     /* ── Supporto creativo + allegati ── */
     .creative-flag {
@@ -84,7 +84,6 @@
       <p class="page-sub">Calendario settimanale · Solaria Roma &amp; Milano · Armonia Roma</p>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
-      <button class="btn btn-outline btn-sm" id="btn-lista">📋 Vista lista</button>
       <button class="btn btn-primary" id="btn-nuova">+ Nuova prenotazione</button>
     </div>
   </div>
@@ -110,7 +109,14 @@
 
       <!-- Calendar toolbar -->
       <div class="cal-toolbar">
-        <div class="cal-period" id="cal-period">–</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="tabs" id="view-tabs" style="margin:0;">
+            <div class="tab active" data-view="week">Settimana</div>
+            <div class="tab" data-view="month">Mese</div>
+            <div class="tab" data-view="list">Lista</div>
+          </div>
+          <div class="cal-period" id="cal-period">–</div>
+        </div>
         <div style="display:flex;gap:8px;align-items:center;">
           <div class="cal-nav-btns">
             <button class="btn btn-ghost btn-sm btn-icon" id="cal-prev">‹</button>
@@ -118,10 +124,11 @@
             <button class="btn btn-ghost btn-sm btn-icon" id="cal-next">›</button>
           </div>
           <!-- Legend -->
-          <div style="display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text-muted);margin-left:8px;">
+          <div style="display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text-muted);margin-left:8px;flex-wrap:wrap;">
             <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:#4da6ff;border-radius:2px;display:inline-block;"></span>Prenotazione</span>
             <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:var(--orange);border-radius:2px;display:inline-block;"></span>Manutenzione</span>
-            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:var(--green);border-radius:2px;display:inline-block;"></span>Mant. programmata</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:var(--green);border-radius:2px;display:inline-block;"></span>Mant. prog.</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:#b57edc;border-radius:2px;display:inline-block;"></span>Intervento</span>
           </div>
         </div>
       </div>
@@ -351,13 +358,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=21"></script>
-<script src="js/app.js?v=21"></script>
-<script src="js/db.js?v=21"></script>
+<script src="js/config.js?v=22"></script>
+<script src="js/app.js?v=22"></script>
+<script src="js/db.js?v=22"></script>
 <script>
 let weekOffset = 0;
+let monthOffset = 0;
 let filterRoom = 'all';
-let listView   = false;
+let viewMode   = 'week';   // 'week' | 'month' | 'list'
 let editId     = null;
 let viewEventId = null;
 let participants = [];
@@ -479,6 +487,45 @@ function getWeekDates() {
 
 const HOURS = [8,9,10,11,12,13,14,15,16,17,18,19];
 const DAY_NAMES = ['Lun','Mar','Mer','Gio','Ven'];
+const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+function evClass(ev) {
+  return ev.type === 'booking' ? 'ev-booking'
+    : ev.type === 'maint_prog' ? 'ev-maint-prog'
+    : ev.type === 'intervento' ? 'ev-intervento' : 'ev-maint';
+}
+
+// ── VISTA MESE ──
+function renderMonth() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  document.getElementById('cal-period').textContent = `${MONTHS_IT[first.getMonth()]} ${first.getFullYear()}`;
+  const startDay = first.getDay(); // 0=dom
+  const offset = startDay === 0 ? -6 : 1 - startDay;
+  const start = new Date(first); start.setDate(first.getDate() + offset); start.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const allEvents = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const events    = filterRoom === 'all' ? allEvents : allEvents.filter(e => e.room === filterRoom);
+
+  const dow = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  let html = `<div class="cm-head">${dow.map(d => `<div>${d}</div>`).join('')}</div><div class="cm-grid">`;
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const inMonth = d.getMonth() === first.getMonth();
+    const isToday = d.getTime() === today.getTime();
+    const dayEvents = events.filter(ev => new Date(ev.start).toDateString() === d.toDateString())
+      .sort((a,b) => new Date(a.start) - new Date(b.start));
+    const cellISO = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9).toISOString();
+    html += `<div class="cm-cell${inMonth?'':' out'}" onclick="cellClick(event,'${cellISO}','9')">
+      <div class="cm-day${isToday?' today':''}">${d.getDate()}</div>
+      ${dayEvents.slice(0,4).map(ev => `<div class="cm-ev ${evClass(ev)}" onclick="event.stopPropagation();showEvent('${ev.id}')">${ev.title}</div>`).join('')}
+      ${dayEvents.length > 4 ? `<div class="cm-more">+${dayEvents.length - 4} altri</div>` : ''}
+    </div>`;
+  }
+  html += `</div>`;
+  document.getElementById('cal-grid').innerHTML = html;
+}
 
 function renderCalendar() {
   const days   = getWeekDates();
@@ -520,7 +567,7 @@ function renderCalendar() {
         if (eStart.getHours() !== h) return;
         const dur = (eEnd - eStart) / 3600000;
         const heightPx = Math.max(20, dur * 52 - 4);
-        const cls = ev.type === 'booking' ? 'ev-booking' : ev.type === 'maint_prog' ? 'ev-maint-prog' : 'ev-maint';
+        const cls = evClass(ev);
         const room = ROOMS.find(r => r.id === ev.room);
         evHtml += `<div class="cal-event ${cls}" style="height:${heightPx}px;" data-id="${ev.id}" onclick="showEvent('${ev.id}')">
           <div class="ev-name">${ev.title}</div>
@@ -564,7 +611,7 @@ function renderListView() {
         <span class="tag-${ev.room.includes('milano')?'milano':'roma'}">${room?.city}</span>
       </td>
       <td>${isBook ? (ev.referente||'–') : '–'}</td>
-      <td><span class="badge ${isBook?'badge-ok':'badge-p2'}">${isBook?'Prenotazione':ev.type==='maint_prog'?'Mant. prog.':'Manutenzione'}</span></td>
+      <td><span class="badge ${isBook?'badge-ok':'badge-p2'}">${isBook?'Prenotazione':ev.type==='maint_prog'?'Mant. prog.':ev.type==='intervento'?'Intervento':'Manutenzione'}</span></td>
       <td><button class="btn btn-ghost btn-xs">→</button></td>
     </tr>`;
   }).join('');
@@ -626,7 +673,7 @@ function showEvent(id) {
 
   let body = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
     <span class="room-tag ${ev.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span>
-    <span class="badge ${ev.type==='booking'?'badge-ok':'badge-p2'}">${ev.type==='booking'?'Prenotazione':ev.type==='maint_prog'?'Mant. prog.':'Manutenzione'}</span>
+    <span class="badge ${ev.type==='booking'?'badge-ok':'badge-p2'}">${ev.type==='booking'?'Prenotazione':ev.type==='maint_prog'?'Mant. prog.':ev.type==='intervento'?'Intervento':'Manutenzione'}</span>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
     <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">INIZIO</div><div style="font-weight:600;">${formatDateTime(ev.start)}</div></div>
@@ -828,26 +875,31 @@ document.getElementById('btn-salva-maint').addEventListener('click', () => {
 
 // ── CONTROLS ──
 function refresh() {
-  if (listView) renderListView(); else renderCalendar();
+  const grid = document.getElementById('cal-grid');
+  const listV = document.getElementById('list-view');
+  if (viewMode === 'list') {
+    grid.style.display = 'none'; listV.style.display = '';
+    renderListView();
+  } else {
+    grid.style.display = ''; listV.style.display = 'none';
+    if (viewMode === 'month') renderMonth(); else renderCalendar();
+  }
   renderMaintSidebar();
 }
 
-document.getElementById('cal-prev').addEventListener('click', () => { weekOffset--; refresh(); });
-document.getElementById('cal-next').addEventListener('click', () => { weekOffset++; refresh(); });
-document.getElementById('cal-today').addEventListener('click', () => { weekOffset = 0; refresh(); });
+document.getElementById('cal-prev').addEventListener('click', () => { if (viewMode==='month') monthOffset--; else weekOffset--; refresh(); });
+document.getElementById('cal-next').addEventListener('click', () => { if (viewMode==='month') monthOffset++; else weekOffset++; refresh(); });
+document.getElementById('cal-today').addEventListener('click', () => { weekOffset = 0; monthOffset = 0; refresh(); });
+
+document.querySelectorAll('#view-tabs .tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('#view-tabs .tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active'); viewMode = t.dataset.view; refresh();
+}));
 
 document.getElementById('btn-nuova').addEventListener('click', () => {
   const now = new Date(); now.setMinutes(0,0,0);
   const end = new Date(now); end.setHours(now.getHours()+1);
   openNewBooking(now, end);
-});
-
-document.getElementById('btn-lista').addEventListener('click', () => {
-  listView = !listView;
-  document.getElementById('cal-grid').style.display = listView ? 'none' : '';
-  document.getElementById('list-view').style.display = listView ? '' : 'none';
-  document.getElementById('btn-lista').textContent = listView ? '📅 Vista calendario' : '📋 Vista lista';
-  refresh();
 });
 
 document.querySelectorAll('#room-filter .tab').forEach(tab => {

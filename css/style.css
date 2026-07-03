@@ -435,6 +435,20 @@ textarea.form-control { min-height: 90px; resize: vertical; }
 .ev-booking    { background: rgba(77,166,255,.2); color: #4da6ff; border-left: 2px solid #4da6ff; }
 .ev-maint      { background: rgba(240,160,48,.15); color: var(--orange); border-left: 2px solid var(--orange); }
 .ev-maint-prog { background: rgba(134,188,37,.15); color: var(--green); border-left: 2px solid var(--green); }
+.ev-intervento { background: rgba(181,126,220,.2); color: #c9a0e8; border-left: 2px solid #b57edc; }
+
+/* ── VISTA MESE ── */
+.cm-head { display: grid; grid-template-columns: repeat(7,1fr); background: var(--bg-card2); border-bottom: 1px solid var(--border); }
+.cm-head > div { padding: 9px 6px; text-align: center; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.cm-grid { display: grid; grid-template-columns: repeat(7,1fr); }
+.cm-cell { min-height: 98px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px; cursor: pointer; overflow: hidden; }
+.cm-cell:nth-child(7n) { border-right: none; }
+.cm-cell:hover { background: rgba(255,255,255,.02); }
+.cm-cell.out { opacity: .35; }
+.cm-day { font-size: 12px; font-weight: 700; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin-bottom: 4px; }
+.cm-day.today { background: var(--green); color: #000; }
+.cm-ev { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.cm-more { font-size: 10px; color: var(--text-muted); padding-left: 2px; }
 
 /* ══════════════════════════════════════
    CHECK LIST  (Armonia uses Inter Tight)
