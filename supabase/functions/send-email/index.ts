@@ -1,9 +1,11 @@
 // ================================================================
 // Edge Function: send-email
-// Invia email tramite Resend. La RESEND_API_KEY è un secret Supabase
-// (mai nel codice). Chiamabile solo da utenti autenticati.
+// Invia email dalla casella Area62 via SMTP Aruba (denomailer).
+// Credenziali SMTP nei secrets Supabase (mai nel codice).
+// Chiamabile solo da utenti autenticati.
 // ================================================================
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -28,24 +30,28 @@ Deno.serve(async (req) => {
     const { to, subject, html, text } = await req.json();
     if (!to || !subject) return json({ error: 'Destinatario e oggetto obbligatori' }, 400);
 
-    const apiKey = Deno.env.get('RESEND_API_KEY');
-    if (!apiKey) return json({ error: 'RESEND_API_KEY non configurata nei secrets' }, 500);
-    const from = Deno.env.get('EMAIL_FROM') || 'Area62 Rooms <onboarding@resend.dev>';
+    const SMTP_USER = Deno.env.get('SMTP_USER');
+    const SMTP_PASS = Deno.env.get('SMTP_PASS');
+    if (!SMTP_USER || !SMTP_PASS) return json({ error: 'SMTP_USER / SMTP_PASS non configurati nei secrets' }, 500);
+    const host = Deno.env.get('SMTP_HOST') || 'smtps.aruba.it';
+    const port = Number(Deno.env.get('SMTP_PORT') || '465');
+    const from = Deno.env.get('EMAIL_FROM') || `Deloitte Room Management <${SMTP_USER}>`;
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const client = new SMTPClient({
+      connection: { hostname: host, port, tls: true, auth: { username: SMTP_USER, password: SMTP_PASS } },
+    });
+    try {
+      await client.send({
         from,
         to: Array.isArray(to) ? to : [to],
         subject,
+        content: text || 'text',
         html: html || undefined,
-        text: text || (html ? undefined : subject),
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) return json({ error: data.message || 'Errore invio email', detail: data }, 400);
-    return json({ ok: true, id: data.id });
+      });
+    } finally {
+      try { await client.close(); } catch (_) { /* ignore */ }
+    }
+    return json({ ok: true });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
