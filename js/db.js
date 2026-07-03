@@ -243,7 +243,7 @@ const db = {
   /* ── GESTIONE UTENTI (Edge Function, solo admin) ── */
   async adminUsers(action, payload = {}) {
     _initSb();
-    const { data, error } = await _sb.functions.invoke('manage-users', { body: { action, ...payload } });
+    const { data, error } = await _sb.functions.invoke('manage-user', { body: { action, ...payload } });
     if (error) {
       let msg = error.message || 'Errore funzione';
       try { const ctx = await error.context.json(); if (ctx.error) msg = ctx.error; } catch {}
