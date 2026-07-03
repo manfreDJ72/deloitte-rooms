@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Documenti – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=22">
+  <link rel="stylesheet" href="css/style.css?v=23">
   <style>
     .doc-drop {
       border: 1.5px dashed var(--border); border-radius: 12px;
@@ -75,8 +75,17 @@
         <option value="materiali">Materiali</option>
         <option value="altro">Altro</option>
       </select>
-      <button class="btn btn-primary" id="btn-upload">⬆ Carica documento</button>
-      <input type="file" id="file-input" style="display:none;">
+      <button class="btn btn-primary" id="btn-upload">⬆ Carica file</button>
+      <input type="file" id="file-input" multiple style="display:none;">
+    </div>
+  </div>
+
+  <!-- Drop zone caricamento multiplo -->
+  <div class="doc-drop" id="doc-drop" style="display:none;">
+    <span style="font-size:26px;">📁</span>
+    <div>
+      <div style="font-weight:700;font-size:14px;">Trascina qui file o una cartella intera</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Caricamento multiplo in <b id="drop-target" style="color:var(--green);">Rapporti</b> · oppure <span id="drop-browse" style="color:var(--green);cursor:pointer;text-decoration:underline;">sfoglia</span></div>
     </div>
   </div>
 
@@ -97,9 +106,9 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=22"></script>
-<script src="js/app.js?v=22"></script>
-<script src="js/db.js?v=22"></script>
+<script src="js/config.js?v=23"></script>
+<script src="js/app.js?v=23"></script>
+<script src="js/db.js?v=23"></script>
 <script>
 const CATS = ['rapporti','contratti','materiali','altro'];
 let allDocs = [];      // {name, path, cat, size, created_at}
@@ -123,15 +132,82 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('#cat-tabs .tab').forEach(t => t.addEventListener('click', () => {
     document.querySelectorAll('#cat-tabs .tab').forEach(x => x.classList.remove('active'));
     t.classList.add('active'); filterCat = t.dataset.cat; renderDocs();
+    // sincronizza la categoria di destinazione col tab attivo
+    if (t.dataset.cat !== 'all') { document.getElementById('up-cat').value = t.dataset.cat; updateDropTarget(); }
   }));
 
-  document.getElementById('btn-upload').addEventListener('click', () => document.getElementById('file-input').click());
-  document.getElementById('file-input').addEventListener('change', e => {
-    if (e.target.files[0]) uploadFile(e.target.files[0]);
-  });
+  if (isAdmin) {
+    document.getElementById('doc-drop').style.display = 'flex';
+    document.getElementById('up-cat').addEventListener('change', updateDropTarget);
+    updateDropTarget();
+    const openPicker = () => document.getElementById('file-input').click();
+    document.getElementById('btn-upload').addEventListener('click', openPicker);
+    document.getElementById('drop-browse').addEventListener('click', openPicker);
+    document.getElementById('file-input').addEventListener('change', e => {
+      uploadMany(Array.from(e.target.files), targetCat());
+      e.target.value = '';
+    });
+    const dz = document.getElementById('doc-drop');
+    ['dragover','dragenter'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+    ['dragleave','dragend'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+    dz.addEventListener('drop', async e => {
+      e.preventDefault(); dz.classList.remove('drag');
+      const files = await filesFromDrop(e.dataTransfer);
+      uploadMany(files, targetCat());
+    });
+  }
 
   loadDocs();
 });
+
+const CAT_LABELS = { rapporti:'Rapporti', contratti:'Contratti', materiali:'Materiali', altro:'Altro' };
+function targetCat() { return document.getElementById('up-cat').value; }
+function updateDropTarget() { document.getElementById('drop-target').textContent = CAT_LABELS[targetCat()] || targetCat(); }
+
+// estrae tutti i file da un drop, ricorsivo nelle cartelle
+async function filesFromDrop(dt) {
+  const out = [];
+  const items = dt.items ? Array.from(dt.items) : [];
+  const roots = items.map(it => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+  if (roots.length) {
+    for (const entry of roots) await walkEntry(entry, out);
+  } else {
+    for (const f of Array.from(dt.files || [])) out.push(f);
+  }
+  return out;
+}
+async function walkEntry(entry, out) {
+  if (entry.isFile) {
+    await new Promise(res => entry.file(f => { out.push(f); res(); }, () => res()));
+  } else if (entry.isDirectory) {
+    const reader = entry.createReader();
+    let batch;
+    do {
+      batch = await new Promise(res => reader.readEntries(res, () => res([])));
+      for (const e of batch) await walkEntry(e, out);
+    } while (batch.length);
+  }
+}
+
+async function uploadMany(files, cat) {
+  files = (files || []).filter(f => f && f.size !== undefined && !f.name.startsWith('.'));
+  if (!files.length) { toast('Nessun file da caricare', 'info'); return; }
+  const btn = document.getElementById('btn-upload');
+  const old = btn.textContent; btn.disabled = true;
+  let done = 0, fail = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    btn.textContent = `Carico ${i+1}/${files.length}…`;
+    try {
+      const safe = file.name.replace(/[^\w.\-]+/g, '_');
+      await db.uploadDoc(`${cat}/${Date.now()}_${i}_${safe}`, file);
+      done++;
+    } catch (e) { fail++; console.error('upload', file.name, e); }
+  }
+  btn.disabled = false; btn.textContent = old;
+  toast(`Caricati ${done} file in ${CAT_LABELS[cat]}${fail ? ' · ' + fail + ' errori' : ''} ✓`, fail ? 'error' : 'success');
+  loadDocs();
+}
 
 async function loadDocs() {
   try {
@@ -222,22 +298,6 @@ async function removeDoc(i) {
   } catch (e) { toast('Errore eliminazione: ' + e.message, 'error'); }
 }
 
-async function uploadFile(file) {
-  const cat = document.getElementById('up-cat').value;
-  const btn = document.getElementById('btn-upload');
-  const old = btn.textContent; btn.textContent = 'Caricamento…'; btn.disabled = true;
-  try {
-    const safe = file.name.replace(/[^\w.\-]+/g, '_');
-    const path = `${cat}/${Date.now()}_${safe}`;
-    await db.uploadDoc(path, file);
-    toast('Documento caricato ✓', 'success');
-    document.getElementById('file-input').value = '';
-    loadDocs();
-  } catch (e) {
-    toast('Errore caricamento: ' + e.message, 'error');
-  }
-  btn.textContent = old; btn.disabled = false;
-}
 </script>
 </body>
 </html>
