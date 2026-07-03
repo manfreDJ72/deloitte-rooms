@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Documenti – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=8">
+  <style>
+    .doc-drop {
+      border: 1.5px dashed var(--border); border-radius: 12px;
+      padding: 20px; cursor: pointer; transition: all .15s; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .doc-drop:hover, .doc-drop.drag { border-color: var(--green); background: rgba(134,188,37,.04); }
+    .doc-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 12px 16px; border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 8px; background: var(--bg-card);
+    }
+    .doc-icon { font-size: 24px; flex-shrink: 0; width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-card2); border-radius: 8px; }
+    .doc-info { flex: 1; min-width: 0; }
+    .doc-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+    .cat-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 2px 8px; border-radius: 20px; }
+    .cat-rapporti  { background: rgba(255,77,77,.15); color: var(--red); }
+    .cat-contratti { background: rgba(77,166,255,.15); color: var(--blue); }
+    .cat-materiali { background: rgba(134,188,37,.15); color: var(--green); }
+    .cat-altro     { background: rgba(139,148,158,.15); color: var(--text-muted); }
+    .doc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .admin-note { font-size: 12px; color: var(--text-muted); background: var(--bg-card2);
+      border: 1px dashed var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span style="font-family:'Inter Tight',sans-serif;font-size:16px;font-weight:800;color:#86BC25;letter-spacing:1px;">AREA62</span>
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon">⊞</span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon">📅</span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon">✓</span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon">⚠</span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon">📨</span> Richieste</a>
+    <a href="documenti.html" class="nav-link active"><span class="nav-icon">🗄</span> Documenti</a>
+    <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon">⚙</span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <button class="notif-btn" title="Notifiche">🔔</button>
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title">Repository Documenti</h1>
+      <p class="page-sub">Rapporti, contratti e materiali · consultabili da tutti, gestiti dagli admin</p>
+    </div>
+    <div id="upload-controls" style="display:none;gap:8px;align-items:center;">
+      <select class="form-control" id="up-cat" style="width:auto;">
+        <option value="rapporti">Rapporti</option>
+        <option value="contratti">Contratti</option>
+        <option value="materiali">Materiali</option>
+        <option value="altro">Altro</option>
+      </select>
+      <button class="btn btn-primary" id="btn-upload">⬆ Carica documento</button>
+      <input type="file" id="file-input" style="display:none;">
+    </div>
+  </div>
+
+  <div id="admin-hint" class="admin-note" style="display:none;">
+    ℹ️ Come visualizzatore puoi consultare e scaricare i documenti. Il caricamento e l'eliminazione sono riservati agli amministratori.
+  </div>
+
+  <!-- Category tabs -->
+  <div class="tabs" id="cat-tabs" style="margin-bottom:18px;">
+    <div class="tab active" data-cat="all">Tutti</div>
+    <div class="tab" data-cat="rapporti">Rapporti</div>
+    <div class="tab" data-cat="contratti">Contratti</div>
+    <div class="tab" data-cat="materiali">Materiali</div>
+    <div class="tab" data-cat="altro">Altro</div>
+  </div>
+
+  <div id="doc-list"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Caricamento…</div></div></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=8"></script>
+<script src="js/app.js?v=8"></script>
+<script src="js/db.js?v=8"></script>
+<script>
+const CATS = ['rapporti','contratti','materiali','altro'];
+let allDocs = [];      // {name, path, cat, size, created_at}
+let filterCat = 'all';
+let isAdmin = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireAuth()) return;
+  const u = currentUser();
+  isAdmin = u.role === 'admin';
+
+  if (DEMO_MODE) {
+    document.getElementById('doc-list').innerHTML =
+      '<div class="empty"><div class="empty-icon">🗄</div><div class="empty-title">Repository disponibile solo online</div><div class="empty-sub">Accedi alla versione pubblicata (Supabase) per usare l\'archivio documenti.</div></div>';
+    return;
+  }
+
+  document.getElementById('upload-controls').style.display = isAdmin ? 'flex' : 'none';
+  document.getElementById('admin-hint').style.display = isAdmin ? 'none' : 'block';
+
+  document.querySelectorAll('#cat-tabs .tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('#cat-tabs .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); filterCat = t.dataset.cat; renderDocs();
+  }));
+
+  document.getElementById('btn-upload').addEventListener('click', () => document.getElementById('file-input').click());
+  document.getElementById('file-input').addEventListener('change', e => {
+    if (e.target.files[0]) uploadFile(e.target.files[0]);
+  });
+
+  loadDocs();
+});
+
+async function loadDocs() {
+  try {
+    allDocs = [];
+    for (const cat of CATS) {
+      const files = await db.listDocs(cat);
+      files.forEach(f => allDocs.push({
+        name: f.name.replace(/^\d+_/, ''),   // rimuove il prefisso timestamp
+        rawName: f.name,
+        path: `${cat}/${f.name}`,
+        cat,
+        size: f.metadata?.size || 0,
+        created_at: f.created_at,
+      }));
+    }
+    allDocs.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    renderDocs();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('doc-list').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Errore nel caricamento</div><div class="empty-sub">${e.message||''}</div></div>`;
+  }
+}
+
+function humanSize(b) {
+  if (!b) return '';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(0) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function fileIcon(name='') {
+  const e = name.split('.').pop().toLowerCase();
+  if (['pdf'].includes(e)) return '📄';
+  if (['doc','docx'].includes(e)) return '📝';
+  if (['xls','xlsx','csv'].includes(e)) return '📊';
+  if (['ppt','pptx','key'].includes(e)) return '📽️';
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(e)) return '🖼️';
+  if (['mp4','mov','avi'].includes(e)) return '🎬';
+  if (['zip','rar','7z'].includes(e)) return '🗜️';
+  return '📎';
+}
+
+function renderDocs() {
+  const list = filterCat === 'all' ? allDocs : allDocs.filter(d => d.cat === filterCat);
+  const el = document.getElementById('doc-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">🗄</div><div class="empty-title">Nessun documento</div>' +
+      (isAdmin ? '<div class="empty-sub">Carica il primo documento con il pulsante in alto.</div>' : '') + '</div>';
+    return;
+  }
+  el.innerHTML = list.map((d,i) => `
+    <div class="doc-item">
+      <div class="doc-icon">${fileIcon(d.name)}</div>
+      <div class="doc-info">
+        <div class="doc-name">${d.name}</div>
+        <div class="doc-meta">
+          <span class="cat-tag cat-${d.cat}">${d.cat}</span>
+          <span>${humanSize(d.size)}</span>
+          <span>${d.created_at ? new Date(d.created_at).toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'numeric'}) : ''}</span>
+        </div>
+      </div>
+      <div class="doc-actions">
+        <button class="btn btn-outline btn-sm" onclick="downloadDoc(${i}, this)">⬇ Scarica</button>
+        ${isAdmin ? `<button class="btn btn-ghost btn-sm" onclick="removeDoc(${i})" title="Elimina">🗑</button>` : ''}
+      </div>
+    </div>`).join('');
+  // salva riferimento indice→doc per gli onclick
+  window.__docs = list;
+}
+
+async function downloadDoc(i, btn) {
+  const d = window.__docs[i];
+  const old = btn.textContent; btn.textContent = '…'; btn.disabled = true;
+  try {
+    const url = await db.signedUrl(d.path, 120);
+    window.open(url, '_blank');
+  } catch (e) { toast('Errore download: ' + e.message, 'error'); }
+  btn.textContent = old; btn.disabled = false;
+}
+
+async function removeDoc(i) {
+  const d = window.__docs[i];
+  if (!confirm(`Eliminare "${d.name}"? L'operazione non è reversibile.`)) return;
+  try {
+    await db.deleteDoc(d.path);
+    toast('Documento eliminato', 'info');
+    loadDocs();
+  } catch (e) { toast('Errore eliminazione: ' + e.message, 'error'); }
+}
+
+async function uploadFile(file) {
+  const cat = document.getElementById('up-cat').value;
+  const btn = document.getElementById('btn-upload');
+  const old = btn.textContent; btn.textContent = 'Caricamento…'; btn.disabled = true;
+  try {
+    const safe = file.name.replace(/[^\w.\-]+/g, '_');
+    const path = `${cat}/${Date.now()}_${safe}`;
+    await db.uploadDoc(path, file);
+    toast('Documento caricato ✓', 'success');
+    document.getElementById('file-input').value = '';
+    loadDocs();
+  } catch (e) {
+    toast('Errore caricamento: ' + e.message, 'error');
+  }
+  btn.textContent = old; btn.disabled = false;
+}
+</script>
+</body>
+</html>

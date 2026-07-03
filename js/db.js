@@ -214,4 +214,29 @@ const db = {
       }, { onConflict: 'room,date,check_id' });
     } catch (e) { console.error(e); toast('Errore salvataggio check', 'error'); }
   },
+
+  /* ── REPOSITORY DOCUMENTI (Supabase Storage) ── */
+  async listDocs(folder) {
+    _initSb();
+    const { data, error } = await _sb.storage.from('documenti')
+      .list(folder, { limit: 200, sortBy: { column: 'created_at', order: 'desc' } });
+    if (error) throw error;
+    return (data || []).filter(f => f.id); // esclude i placeholder cartella
+  },
+  async uploadDoc(path, file) {
+    _initSb();
+    const { error } = await _sb.storage.from('documenti').upload(path, file, { upsert: false });
+    if (error) throw error;
+  },
+  async signedUrl(path, expires = 300) {
+    _initSb();
+    const { data, error } = await _sb.storage.from('documenti').createSignedUrl(path, expires);
+    if (error) throw error;
+    return data.signedUrl;
+  },
+  async deleteDoc(path) {
+    _initSb();
+    const { error } = await _sb.storage.from('documenti').remove([path]);
+    if (error) throw error;
+  },
 };
