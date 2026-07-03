@@ -49,13 +49,28 @@ def sb(method, path, token, payload=None, prefer=None):
         return e.code, e.read().decode()
 
 # ── SMTP ──
-def send_mail(to_addrs, subject, html):
+def send_mail(to_addrs, subject, html, attachments=None):
     if isinstance(to_addrs, str): to_addrs = [to_addrs]
-    msg = MIMEMultipart('alternative')
+    msg = MIMEMultipart('mixed')
     msg['Subject'] = subject
     msg['From'] = f'Deloitte Room Management <{MAIL_USER}>'
     msg['To'] = ', '.join(to_addrs)
-    msg.attach(MIMEText(html, 'html'))
+    alt = MIMEMultipart('alternative')
+    alt.attach(MIMEText(html, 'html'))
+    msg.attach(alt)
+    # allegati: [{filename, content (base64), mimetype}]
+    for a in (attachments or []):
+        try:
+            import base64
+            from email.mime.base import MIMEBase
+            from email import encoders
+            part = MIMEBase(*(a.get('mimetype', 'application/octet-stream').split('/', 1)))
+            part.set_payload(base64.b64decode(a['content']))
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', 'attachment', filename=a.get('filename', 'allegato'))
+            msg.attach(part)
+        except Exception as e:
+            print('allegato saltato:', e)
     ctx = ssl.create_default_context()
     with smtplib.SMTP_SSL(SMTP_HOST, 465, context=ctx, timeout=40) as s:
         s.login(MAIL_USER, MAIL_PASS)
@@ -186,8 +201,12 @@ def process_outbound(token):
         if isinstance(to, str):
             try: to = json.loads(to)
             except Exception: to = [to]
+        atts = row.get('attachments')
+        if isinstance(atts, str):
+            try: atts = json.loads(atts)
+            except Exception: atts = None
         try:
-            send_mail(to, row['subject'], row.get('html') or row.get('subject'))
+            send_mail(to, row['subject'], row.get('html') or row.get('subject'), atts)
             sb('PATCH', f"email_queue?id=eq.{row['id']}", token,
                {'status': 'sent', 'sent_at': 'now()'}, prefer='return=minimal')
             sent += 1

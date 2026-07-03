@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=14">
+  <link rel="stylesheet" href="css/style.css?v=15">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -278,10 +278,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=14"></script>
-<script src="js/app.js?v=14"></script>
-<script src="js/db.js?v=14"></script>
-<script src="js/storico-solaria.js?v=14"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/app.js?v=15"></script>
+<script src="js/db.js?v=15"></script>
+<script src="js/storico-solaria.js?v=15"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -331,6 +331,85 @@ async function saveSession() {
   await Promise.all(saves);
   document.getElementById('btn-salva').disabled = true;
   toast('Sessione check salvata ✓', 'success');
+  sendCheckReport();  // invia il report dell'esito ai destinatari configurati
+}
+
+// ── Documento rapporto di intervento (allegato) per una singola anomalia ──
+function buildInterventoDoc(item, s, roomLabel, dateStr) {
+  return `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Rapporto di Intervento</title></head>
+  <body style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:700px;margin:20px auto;border:1px solid #e5e5e5;">
+    <div style="background:#0d0d0d;padding:16px 24px;">
+      <span style="color:#86BC25;font-weight:800;font-size:20px;letter-spacing:1px;">AREA62</span>
+      <span style="color:#bbb;font-size:12px;"> · Deloitte Room Management</span>
+    </div>
+    <div style="height:4px;background:#ff4d4d;"></div>
+    <div style="padding:24px;">
+      <h2 style="margin:0 0 14px;">Rapporto di Intervento — Anomalia rilevata al check</h2>
+      <table style="font-size:14px;border-collapse:collapse;">
+        <tr><td style="color:#666;padding:4px 16px 4px 0;">Sala</td><td><b>${roomLabel}</b></td></tr>
+        <tr><td style="color:#666;padding:4px 16px 4px 0;">Data check</td><td>${dateStr}</td></tr>
+        <tr><td style="color:#666;padding:4px 16px 4px 0;">Componente / Voce</td><td><b>${item.name}</b></td></tr>
+        <tr><td style="color:#666;padding:4px 16px 4px 0;">Rilevata alle</td><td>${s.failTs ? new Date(s.failTs).toLocaleString('it-IT') : '—'}</td></tr>
+        <tr><td style="color:#666;padding:4px 16px 4px 0;">Soluzione rapida tentata</td><td>${s.fixApplied || '—'}</td></tr>
+      </table>
+      <p style="margin-top:16px;"><b>Cosa verificare:</b><br>${item.desc || ''}</p>
+      <p><b>Note del presidio:</b><br>${s.note || '—'}</p>
+      <hr style="border:none;border-top:1px solid #e5e5e5;margin:20px 0;">
+      <p style="font-size:13px;color:#666;">Da compilare a cura del tecnico intervenuto: attività svolte, esito
+      (Risolto / Parzialmente risolto / Non risolto), note residue e firma.</p>
+    </div>
+  </body></html>`;
+}
+
+async function sendCheckReport() {
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) return;
+  try {
+    const sections = CHECK_ITEMS[currentRoom] || [];
+    const allItems = sections.flatMap(s => s.items);
+    const room = ROOMS.find(r => r.id === currentRoom);
+    const roomLabel = room ? `${room.name} – ${room.city}` : currentRoom;
+    const dateStr = new Date().toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+    const done  = allItems.filter(i => checkState[i.id]?.state);
+    const ok    = allItems.filter(i => ['ok','fixed'].includes(checkState[i.id]?.state));
+    const kos   = allItems.filter(i => checkState[i.id]?.state === 'ko');
+    const fixed = allItems.filter(i => checkState[i.id]?.state === 'fixed');
+
+    const recips = (getSettings().emailRecipients || [])
+      .filter(r => r.email && (r.events || []).includes('check-report')).map(r => r.email);
+    const to = [...new Set(recips)];
+    if (!to.length) return; // nessun destinatario configurato per il report
+
+    const u = currentUser();
+    const accent = kos.length ? '#ff4d4d' : '#86BC25';
+    const anomHtml = kos.length
+      ? `<h3 style="color:#c00;margin:16px 0 6px;">⚠ Anomalie da gestire (${kos.length})</h3>
+         <ul style="margin:0 0 8px;padding-left:18px;">${kos.map(i => `<li><b>${i.name}</b>${checkState[i.id]?.note ? ' — ' + checkState[i.id].note : ''}</li>`).join('')}</ul>
+         <p style="font-size:13px;color:#666;">In allegato il rapporto di intervento per ciascuna anomalia.</p>`
+      : `<p style="color:#5a8a00;"><b>Nessuna anomalia da gestire ✓</b></p>`;
+    const fixedHtml = fixed.length ? `<p style="font-size:13px;color:#666;">Risolte durante il check: ${fixed.map(i => i.name).join(', ')}</p>` : '';
+
+    const html = emailTemplate(`Check mattutino — ${roomLabel}`,
+      `<p style="color:#666;text-transform:capitalize;">${dateStr}</p>
+       <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
+         <tr><td style="color:#666;padding:3px 18px 3px 0;">Eseguiti</td><td>${done.length}/${allItems.length}</td></tr>
+         <tr><td style="color:#666;padding:3px 18px 3px 0;">OK</td><td style="color:#5a8a00;"><b>${ok.length}</b></td></tr>
+         <tr><td style="color:#666;padding:3px 18px 3px 0;">Anomalie</td><td style="color:#c00;"><b>${kos.length}</b></td></tr>
+         <tr><td style="color:#666;padding:3px 18px 3px 0;">Presidio</td><td>${u?.name || '—'}</td></tr>
+       </table>
+       ${anomHtml}${fixedHtml}`, accent);
+
+    const attachments = kos.map(i => ({
+      filename: `rapporto-intervento-${i.id}.html`,
+      content: btoa(unescape(encodeURIComponent(buildInterventoDoc(i, checkState[i.id] || {}, roomLabel, dateStr)))),
+      mimetype: 'text/html',
+    }));
+
+    await db.sendEmail(to,
+      `Check mattutino ${roomLabel} — ${kos.length ? kos.length + ' anomalie ⚠' : 'tutto ok ✓'}`,
+      html, attachments);
+    toast(`Report check inviato a ${to.length} destinatari ✓`, 'info');
+  } catch (e) { console.error('report check', e); }
 }
 
 /* ─────────────────────────────────────

@@ -479,6 +479,7 @@ const EMAIL_EVENTS = [
   { key: 'rapporto', label: 'Rapporto di intervento' },
   { key: 'prenotazione', label: 'Nuova prenotazione' },
   { key: 'check-ko', label: 'Check con anomalia' },
+  { key: 'check-report', label: 'Esito check mattutino (report giornaliero)' },
 ];
 
 // ── DEFAULT SETTINGS ──

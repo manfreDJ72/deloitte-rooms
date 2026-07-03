@@ -241,11 +241,12 @@ const db = {
   },
 
   /* ── EMAIL — accoda su email_queue (il worker GitHub Actions la spedisce via SMTP Aruba) ── */
-  async sendEmail(to, subject, html) {
+  async sendEmail(to, subject, html, attachments) {
     if (DEMO_MODE) return { ok: true };
     _initSb();
-    const toArr = Array.isArray(to) ? to : [to];
-    const { error } = await _sb.from('email_queue').insert({ to_addr: toArr, subject, html });
+    const row = { to_addr: Array.isArray(to) ? to : [to], subject, html };
+    if (attachments && attachments.length) row.attachments = attachments;
+    const { error } = await _sb.from('email_queue').insert(row);
     if (error) throw new Error(error.message);
     return { ok: true, queued: true };
   },
