@@ -240,17 +240,25 @@ const db = {
     if (error) throw error;
   },
 
-  /* ── EMAIL (Edge Function send-email via Resend) ── */
+  /* ── EMAIL (Edge Function send-email via SMTP Aruba) ── */
   async sendEmail(to, subject, html) {
     _initSb();
-    const { data, error } = await _sb.functions.invoke('send-email', { body: { to, subject, html } });
-    if (error) {
-      let msg = error.message || 'Errore invio email';
-      try { const ctx = await error.context.json(); if (ctx.error) msg = ctx.error; } catch {}
-      throw new Error(msg);
+    const attempt = async () => {
+      const { data, error } = await _sb.functions.invoke('send-email', { body: { to, subject, html } });
+      if (error) {
+        let msg = error.message || 'Errore invio email';
+        try { const ctx = await error.context.json(); if (ctx.error) msg = ctx.error; } catch {}
+        throw new Error(msg);
+      }
+      if (data && data.error) throw new Error(data.error);
+      return data;
+    };
+    try { return await attempt(); }
+    catch (e) {
+      // il primo invio dopo inattività può fallire (cold start): riprova una volta
+      await new Promise(r => setTimeout(r, 1800));
+      return await attempt();
     }
-    if (data && data.error) throw new Error(data.error);
-    return data;
   },
 
   // invia una notifica ai destinatari configurati per un dato evento (best-effort)
