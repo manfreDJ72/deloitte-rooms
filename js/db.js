@@ -239,4 +239,17 @@ const db = {
     const { error } = await _sb.storage.from('documenti').remove([path]);
     if (error) throw error;
   },
+
+  /* ── GESTIONE UTENTI (Edge Function, solo admin) ── */
+  async adminUsers(action, payload = {}) {
+    _initSb();
+    const { data, error } = await _sb.functions.invoke('manage-users', { body: { action, ...payload } });
+    if (error) {
+      let msg = error.message || 'Errore funzione';
+      try { const ctx = await error.context.json(); if (ctx.error) msg = ctx.error; } catch {}
+      throw new Error(msg);
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  },
 };

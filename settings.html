@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impostazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=8">
+  <link rel="stylesheet" href="css/style.css?v=9">
   <style>
     .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
     .set-card {
@@ -331,9 +331,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=8"></script>
-<script src="js/app.js?v=8"></script>
-<script src="js/db.js?v=8"></script>
+<script src="js/config.js?v=9"></script>
+<script src="js/app.js?v=9"></script>
+<script src="js/db.js?v=9"></script>
 <script>
 let S = null;         // settings correnti
 let users = [];       // roster utenti
@@ -356,6 +356,7 @@ document.addEventListener('DOMContentLoaded', () => {
   users = getUsers();
 
   renderUsers();
+  if (!DEMO_MODE) loadUsersFromServer();  // online: elenco reale dagli utenti Supabase
   renderPermTable();
   renderRecipients();
   loadNumbering();
@@ -396,6 +397,16 @@ function renderUsers() {
     </div>`).join('');
 }
 
+async function loadUsersFromServer() {
+  try {
+    const res = await db.adminUsers('list');
+    if (res?.users) { users = res.users; renderUsers(); }
+  } catch (e) {
+    console.error(e);
+    toast('Utenti: ' + e.message, 'error');
+  }
+}
+
 function openUserModal(id) {
   editUserId = id || null;
   const u = id ? users.find(x => x.id === id) : null;
@@ -403,22 +414,51 @@ function openUserModal(id) {
   document.getElementById('u-name').value  = u?.name  || '';
   document.getElementById('u-email').value = u?.email || '';
   document.getElementById('u-role').value  = u?.role  || 'operator';
-  // Password: in modifica mostra quella attuale; in creazione ne genera una nuova
   const pw = document.getElementById('u-password');
-  pw.value = u ? (u.password || '') : generatePassword();
+  if (!DEMO_MODE) {
+    // online: in modifica lascia vuoto (= password invariata); in creazione ne genera una
+    pw.value = u ? '' : generatePassword();
+    pw.placeholder = u ? 'Lascia vuoto per non cambiarla' : 'Password';
+  } else {
+    pw.value = u ? (u.password || '') : generatePassword();
+  }
   pw.type = 'text';
   document.getElementById('btn-del-user').style.display = u ? '' : 'none';
   openModal('modal-user');
 }
 
-function saveUser() {
+async function saveUser() {
   const name  = document.getElementById('u-name').value.trim();
   const email = document.getElementById('u-email').value.trim().toLowerCase();
   const role  = document.getElementById('u-role').value;
   const password = document.getElementById('u-password').value.trim();
   if (!name || !email) { toast('Compila nome ed email', 'error'); return; }
-  if (!password) { toast('Imposta una password (o generala)', 'error'); return; }
   const avatar = name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+
+  if (!DEMO_MODE) {
+    // ── ONLINE: via Edge Function ──
+    if (!editUserId && !password) { toast('Imposta una password (o generala)', 'error'); return; }
+    const btn = document.getElementById('btn-save-user');
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Salvataggio…';
+    try {
+      if (editUserId) {
+        await db.adminUsers('update', { id: editUserId, name, email, role, avatar, password: password || undefined });
+        toast('Utente aggiornato ✓', 'success');
+      } else {
+        await db.adminUsers('create', { name, email, role, avatar, password });
+        toast(`Utente creato ✓ — password: ${password}`, 'success');
+      }
+      closeModal('modal-user');
+      await loadUsersFromServer();
+    } catch (e) {
+      toast('Errore: ' + e.message, 'error');
+    }
+    btn.disabled = false; btn.textContent = old;
+    return;
+  }
+
+  // ── DEMO: localStorage ──
+  if (!password) { toast('Imposta una password (o generala)', 'error'); return; }
   if (editUserId) {
     users = users.map(u => u.id === editUserId ? { ...u, name, email, role, avatar, password } : u);
   } else {
@@ -430,8 +470,18 @@ function saveUser() {
   toast(`Utente salvato ✓ — password: ${password}`, 'success');
 }
 
-function deleteUser() {
+async function deleteUser() {
   if (!editUserId) return;
+  if (!DEMO_MODE) {
+    if (!confirm('Eliminare questo utente? Perderà l\'accesso.')) return;
+    try {
+      await db.adminUsers('delete', { id: editUserId });
+      toast('Utente rimosso', 'info');
+      closeModal('modal-user');
+      await loadUsersFromServer();
+    } catch (e) { toast('Errore: ' + e.message, 'error'); }
+    return;
+  }
   users = users.filter(u => u.id !== editUserId);
   saveUsers(users);
   renderUsers();
