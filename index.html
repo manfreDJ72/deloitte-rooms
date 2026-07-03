@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Accesso – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=6">
+  <link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 <div class="login-wrap">
@@ -45,13 +45,15 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
-<script src="js/db.js?v=6"></script>
+<script src="js/config.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
+<script src="js/db.js?v=7"></script>
 <script>
-  if (localStorage.getItem('dlt_user')) {
-    window.location.href = 'dashboard.html';
-  }
+  (function(){
+    const _u = ls(LS.user);
+    if (_u && (DEMO_MODE || _u.sb)) window.location.href = 'dashboard.html';
+    else if (_u && !_u.sb) localStorage.removeItem(LS.user); // pulisci vecchia sessione demo
+  })();
 
   document.getElementById('login-form').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -66,6 +68,8 @@
 
     try {
       await db.signIn(email, pw);
+      btn.textContent = 'Caricamento dati...';
+      try { await db.hydrateAll(); } catch (h) { console.error('hydrate', h); }
       window.location.href = 'dashboard.html';
     } catch (ex) {
       err.textContent = ex.message || 'Email o password non corretti.';

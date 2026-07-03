@@ -4,8 +4,8 @@ const SUPABASE_ANON_KEY = 'sb_publishable_ptO60rE97Qv7IpWCEY1bww_FGnd8wG9';
 
 // ── DEMO MODE ──
 // true = tutto su localStorage (sviluppo locale)
-// false = usa Supabase
-const DEMO_MODE = true;
+// false = usa Supabase (produzione, dati condivisi)
+const DEMO_MODE = false;
 
 // ── ROOMS ──
 const ROOMS = [

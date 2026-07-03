@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 6;
+const APP_BUILD = 7;
 (function checkForUpdate() {
   fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
     .then(r => r.ok ? r.text() : null)
@@ -15,10 +15,27 @@ const APP_BUILD = 6;
     .catch(() => {});
 })();
 
+/* ── GUARDIA TRANSIZIONE: in produzione serve una sessione Supabase vera ── */
+(function enforceSupabaseSession() {
+  if (typeof DEMO_MODE === 'undefined' || DEMO_MODE) return;
+  try {
+    const u = JSON.parse(localStorage.getItem(LS.user));
+    const onLogin = location.pathname.endsWith('index.html') || location.pathname.endsWith('/');
+    if (u && !u.sb && !onLogin) {
+      localStorage.removeItem(LS.user);
+      location.replace('index.html');
+    }
+  } catch {}
+})();
+
 /* ── GLOBAL UTILS ── */
 
 function ls(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
-function lsSet(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function lsSet(key, val) {
+  localStorage.setItem(key, JSON.stringify(val));
+  // write-through su Supabase quando non siamo in demo (definito in db.js)
+  if (typeof _syncKey === 'function') _syncKey(key);
+}
 
 function toast(msg, type = 'info') {
   let t = document.getElementById('toast');
@@ -186,7 +203,7 @@ function seedDemoData() {
 document.addEventListener('DOMContentLoaded', () => {
   renderUser();
   markActiveNav();
-  seedDemoData();
+  if (DEMO_MODE) seedDemoData();  // in produzione i dati arrivano da Supabase
 
   // Close modals on overlay click
   document.querySelectorAll('.overlay').forEach(ov => {
