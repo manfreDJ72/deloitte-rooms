@@ -248,8 +248,10 @@ const db = {
   /* ── EMAIL — accoda su email_queue (il worker GitHub Actions la spedisce via SMTP Aruba) ── */
   async sendEmail(to, subject, html, attachments) {
     if (DEMO_MODE) return { ok: true };
+    const toArr = (Array.isArray(to) ? to : [to]).filter(Boolean);
+    if (!toArr.length) return { ok: true, skipped: true };  // nessun destinatario → non accodare
     _initSb();
-    const row = { to_addr: Array.isArray(to) ? to : [to], subject, html };
+    const row = { to_addr: toArr, subject, html };
     if (attachments && attachments.length) row.attachments = attachments;
     const { error } = await _sb.from('email_queue').insert(row);
     if (error) throw new Error(error.message);
