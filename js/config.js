@@ -493,6 +493,8 @@ function defaultSettings() {
     emailRecipients: [],  // nessun destinatario di default: si aggiungono solo quelli voluti
     numbering: { ticketPrefix:'TCK-', ticketPad:3, ticketNext:4, rapportoPrefix:'RAP-', rapportoPad:3, rapportoNext:1 },
     inboundEmail: { address:'deloitte.room@area62.it', enabled:false },
+    reminders: { enabled:true, offsets_h:[24,2], recipients_extra:[] },  // reminder pre-evento (soglie in ore)
+    ai: { model:'claude-haiku-4-5' },  // modello per la "stanza di Claude"
   };
 }
 function getSettings() {

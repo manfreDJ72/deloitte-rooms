@@ -331,4 +331,40 @@ const db = {
     if (error) throw new Error(error.message);
     return r;
   },
+
+  /* ── INBOX (email archiviate dal worker) ── */
+  async getInbox(limit = 50) {
+    if (DEMO_MODE) return ls('dlt_inbox') || [];
+    _initSb();
+    const { data, error } = await _sb.from('inbox')
+      .select('*').order('received_at', { ascending: false }).limit(limit);
+    if (error) { console.error('getInbox', error); return []; }
+    return data || [];
+  },
+  async setInboxStatus(id, status) {
+    if (DEMO_MODE) return;
+    _initSb();
+    const { error } = await _sb.from('inbox').update({ status }).eq('id', id);
+    if (error) throw new Error(error.message);
+  },
+  async getChecksKO(date) {
+    if (DEMO_MODE) return [];
+    _initSb();
+    const { data, error } = await _sb.from('checks').select('*').eq('date', date).eq('state', 'ko');
+    if (error) { console.error('getChecksKO', error); return []; }
+    return data || [];
+  },
+
+  /* ── ASSISTENTE AI (Edge Function ai-assistant → API Claude) ── */
+  async aiChat(messages, context) {
+    _initSb();
+    const { data, error } = await _sb.functions.invoke('ai-assistant', { body: { messages, context } });
+    if (error) {
+      let msg = error.message || 'Errore assistente';
+      try { const ctx = await error.context.json(); if (ctx.error) msg = ctx.error; } catch {}
+      throw new Error(msg);
+    }
+    if (data && data.error) throw new Error(data.error);
+    return data;  // { reply }
+  },
 };

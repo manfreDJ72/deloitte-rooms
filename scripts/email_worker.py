@@ -147,7 +147,23 @@ def sender_addr(m):
 def gen_id():
     return 'em' + hex(int(time.time()*1000))[2:] + os.urandom(2).hex()
 
-# ── INBOUND: leggi casella, crea prenotazioni, conferma ──
+def parse_date_header(raw):
+    try:
+        from email.utils import parsedate_to_datetime
+        dt = parsedate_to_datetime(raw)
+        return dt.isoformat() if dt else None
+    except Exception:
+        return None
+
+def classify_intent(text):
+    low = (text or '').lower()
+    if 'prenot' in low:
+        return 'booking'
+    if any(k in low for k in ('richiesta', 'software', 'hardware', 'guasto', 'anomalia', 'intervento')):
+        return 'richiesta'
+    return 'altro'
+
+# ── INBOUND: leggi casella, ARCHIVIA tutto, crea prenotazioni, conferma ──
 def process_inbound(token):
     M = imaplib.IMAP4_SSL(IMAP_HOST, 993)
     M.login(MAIL_USER, MAIL_PASS)
@@ -155,46 +171,64 @@ def process_inbound(token):
     typ, data = M.search(None, 'UNSEEN')
     ids = data[0].split()
     created = 0
+    archived = 0
     for i in ids:
         typ, d = M.fetch(i, '(RFC822)')
         m = email.message_from_bytes(d[0][1])
         subj = email.header.make_header(email.header.decode_header(m.get('Subject') or '')).__str__()
         frm = sender_addr(m)
         bodytxt = email_text(m)
+        msg_id = (m.get('Message-ID') or '').strip() or f'noid-{gen_id()}'
+        recv_at = parse_date_header(m.get('Date'))
+        intent = classify_intent(subj + ' ' + bodytxt)
         p = parse_booking(subj, bodytxt)
         M.store(i, '+FLAGS', '\\Seen')  # segna letto in ogni caso
-        # crea la prenotazione SOLO se: c'è intenzione ("prenot..."), una sala e una data valida
-        intent = 'prenot' in (subj + ' ' + bodytxt).lower()
-        if not (intent and p['room'] and p['date']):
-            continue
-        start_iso = f"{p['date']}T{p['start'] or '09:00'}:00"
-        end_iso   = f"{p['date']}T{p['end'] or '10:00'}:00"
-        booking = {
-            'id': gen_id(), 'room': p['room'], 'title': p['title'],
-            'referente': p['referente'], 'organizzatore': frm,
-            'partecipanti': [], 'allestimento': [],
-            'start_at': start_iso, 'end_at': end_iso,
-            'note': f'Prenotazione ricevuta via email da {frm}', 'type': 'booking',
+
+        # 1) crea la prenotazione SOLO se: intenzione ("prenot..."), una sala e una data valida
+        linked = None
+        if intent == 'booking' and p['room'] and p['date']:
+            start_iso = f"{p['date']}T{p['start'] or '09:00'}:00"
+            end_iso   = f"{p['date']}T{p['end'] or '10:00'}:00"
+            bid = gen_id()
+            booking = {
+                'id': bid, 'room': p['room'], 'title': p['title'],
+                'referente': p['referente'], 'organizzatore': frm,
+                'partecipanti': [], 'allestimento': [],
+                'start_at': start_iso, 'end_at': end_iso,
+                'note': f'Prenotazione ricevuta via email da {frm}', 'type': 'booking',
+            }
+            st, res = sb('POST', 'bookings', token, booking, prefer='return=minimal')
+            if st in (200, 201):
+                created += 1
+                linked = bid
+                label = ROOM_LABELS.get(p['room'], p['room'])
+                inner = f"""<p>Abbiamo registrato la tua richiesta di prenotazione:</p>
+                  <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
+                    <tr><td style="padding:3px 14px 3px 0;color:#666;">Sala</td><td><b>{label}</b></td></tr>
+                    <tr><td style="padding:3px 14px 3px 0;color:#666;">Data</td><td>{p['date']}</td></tr>
+                    <tr><td style="padding:3px 14px 3px 0;color:#666;">Orario</td><td>{p['start'] or '09:00'} – {p['end'] or '10:00'}</td></tr>
+                    <tr><td style="padding:3px 14px 3px 0;color:#666;">Referente</td><td>{p['referente'] or '—'}</td></tr>
+                    <tr><td style="padding:3px 14px 3px 0;color:#666;">Evento</td><td>{p['title']}</td></tr>
+                  </table>"""
+                conf = email_template('✓ Prenotazione registrata', inner)
+                try: send_mail(frm, f"Conferma prenotazione — {label} {p['date']}", conf)
+                except Exception as e: print('conferma non inviata:', e)
+                print(f'  ✓ prenotazione creata da {frm}: {label} {p["date"]} {p["start"]}-{p["end"]}')
+            else:
+                print(f'  ✗ errore creazione prenotazione: {st} {res}')
+
+        # 2) ARCHIVIA SEMPRE la mail in inbox (dedup su message_id)
+        inbox_row = {
+            'id': gen_id(), 'message_id': msg_id, 'from_addr': frm,
+            'subject': subj, 'body': (bodytxt or '')[:8000], 'received_at': recv_at,
+            'direction': 'in', 'intent': ('booking' if linked else intent),
+            'linked_booking_id': linked, 'status': ('handled' if linked else 'new'),
         }
-        st, res = sb('POST', 'bookings', token, booking, prefer='return=minimal')
-        if st in (200, 201):
-            created += 1
-            label = ROOM_LABELS.get(p['room'], p['room'])
-            inner = f"""<p>Abbiamo registrato la tua richiesta di prenotazione:</p>
-              <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
-                <tr><td style="padding:3px 14px 3px 0;color:#666;">Sala</td><td><b>{label}</b></td></tr>
-                <tr><td style="padding:3px 14px 3px 0;color:#666;">Data</td><td>{p['date']}</td></tr>
-                <tr><td style="padding:3px 14px 3px 0;color:#666;">Orario</td><td>{p['start'] or '09:00'} – {p['end'] or '10:00'}</td></tr>
-                <tr><td style="padding:3px 14px 3px 0;color:#666;">Referente</td><td>{p['referente'] or '—'}</td></tr>
-                <tr><td style="padding:3px 14px 3px 0;color:#666;">Evento</td><td>{p['title']}</td></tr>
-              </table>"""
-            conf = email_template('✓ Prenotazione registrata', inner)
-            try: send_mail(frm, f"Conferma prenotazione — {label} {p['date']}", conf)
-            except Exception as e: print('conferma non inviata:', e)
-            print(f'  ✓ prenotazione creata da {frm}: {label} {p["date"]} {p["start"]}-{p["end"]}')
-        else:
-            print(f'  ✗ errore creazione prenotazione: {st} {res}')
+        st, _ = sb('POST', 'inbox?on_conflict=message_id', token, inbox_row,
+                   prefer='return=minimal,resolution=ignore-duplicates')
+        if st in (200, 201): archived += 1
     M.logout()
+    print(f'  · email archiviate in inbox: {archived}')
     return created
 
 # ── OUTBOUND: svuota la coda email ──
@@ -222,11 +256,97 @@ def process_outbound(token):
                {'status': 'error', 'error': str(e)[:300]}, prefer='return=minimal')
     return sent
 
+# ── REMINDER: promemoria pre-evento (verifica materiale pronto) ──
+INFO_MAIL = 'marco.manfredini@area62.it'
+
+def get_reminder_config(token):
+    cfg = {'enabled': True, 'offsets_h': [24, 2], 'recipients_extra': []}
+    st, rows = sb('GET', "app_settings?id=eq.global&select=data", token)
+    try:
+        if isinstance(rows, list) and rows:
+            r = (rows[0].get('data') or {}).get('reminders') or {}
+            if 'enabled' in r: cfg['enabled'] = bool(r['enabled'])
+            if r.get('offsets_h'): cfg['offsets_h'] = [int(x) for x in r['offsets_h']]
+            if r.get('recipients_extra'): cfg['recipients_extra'] = r['recipients_extra']
+    except Exception as e:
+        print('reminder config fallback:', e)
+    return cfg
+
+def _looks_email(s):
+    return bool(s) and re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', str(s).strip()) is not None
+
+def process_reminders(token):
+    import datetime
+    cfg = get_reminder_config(token)
+    if not cfg['enabled'] or not cfg['offsets_h']:
+        return 0
+    now = datetime.datetime.now(datetime.timezone.utc)
+    st, bookings = sb('GET', f"bookings?start_at=gte.{now.isoformat()}&order=start_at.asc&limit=200", token)
+    if not isinstance(bookings, list):
+        return 0
+    st, logs = sb('GET', "reminders_log?select=booking_id,offset_h", token)
+    sent = set((l['booking_id'], int(l['offset_h'])) for l in logs) if isinstance(logs, list) else set()
+    test_to = os.environ.get('REMINDER_TEST_TO')  # override sicuro per i test (non tocca i destinatari reali)
+    n = 0
+    for b in bookings:
+        try:
+            start = datetime.datetime.fromisoformat(b['start_at'].replace('Z', '+00:00'))
+        except Exception:
+            continue
+        due = [o for o in cfg['offsets_h']
+               if now >= start - datetime.timedelta(hours=o) and (b['id'], o) not in sent]
+        if not due:
+            continue
+        o_send = min(due)  # manda il reminder più imminente e consuma tutti gli offset già scaduti
+        if test_to:
+            recips = [test_to]
+        else:
+            recips = [INFO_MAIL]
+            for x in (b.get('organizzatore'), b.get('referente')):
+                if _looks_email(x): recips.append(str(x).strip())
+            recips += [r for r in cfg['recipients_extra'] if _looks_email(r)]
+            recips = list(dict.fromkeys(recips))
+        label = ROOM_LABELS.get(b.get('room'), b.get('room'))
+        start_local = start.strftime('%d/%m/%Y %H:%M')
+        allest = b.get('allestimento') or []
+        if isinstance(allest, str):
+            try: allest = json.loads(allest)
+            except Exception: allest = [allest]
+        items = ''.join(f'<li>{a}</li>' for a in allest) or '<li style="color:#999;">Nessun allestimento specificato</li>'
+        creative = ''
+        if b.get('creative_support'):
+            creative = (f'<div style="margin:12px 0;padding:12px 14px;background:#fff8e1;border-left:3px solid #f0a030;border-radius:6px;">'
+                        f'<b>🎨 Materiale creativo richiesto</b><br>{b.get("creative_desc") or "—"}<br>'
+                        f'<span style="color:#666;">Verificare che sia pronto e inviato prima dell\'evento.</span></div>')
+        inner = f"""<p>Promemoria: manca poco a questo evento. <b>Verifica che tutto il materiale sia pronto e disponibile.</b></p>
+          <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
+            <tr><td style="padding:3px 14px 3px 0;color:#666;">Sala</td><td><b>{label}</b></td></tr>
+            <tr><td style="padding:3px 14px 3px 0;color:#666;">Quando</td><td>{start_local}</td></tr>
+            <tr><td style="padding:3px 14px 3px 0;color:#666;">Evento</td><td>{b.get('title') or '—'}</td></tr>
+            <tr><td style="padding:3px 14px 3px 0;color:#666;">Referente</td><td>{b.get('referente') or '—'}</td></tr>
+          </table>
+          <h3 style="font-size:14px;margin:16px 0 6px;">Checklist materiale / allestimento</h3>
+          <ul style="margin:0 0 8px;padding-left:20px;">{items}</ul>
+          {creative}"""
+        html = email_template(f'⏰ Reminder evento — {label}', inner, accent='#f0a030')
+        try:
+            send_mail(recips, f'Reminder: {label} — {start_local}', html)
+            for o in due:
+                sb('POST', 'reminders_log?on_conflict=booking_id,offset_h', token,
+                   {'booking_id': b['id'], 'offset_h': o},
+                   prefer='return=minimal,resolution=ignore-duplicates')
+            n += 1
+            print(f'  ⏰ reminder inviato ({o_send}h) per {label} {start_local} → {recips}')
+        except Exception as e:
+            print(f'  ✗ reminder non inviato: {e}')
+    return n
+
 def main():
     token = sb_login()
     out = process_outbound(token)
     inb = process_inbound(token)
-    print(f'== worker done == email inviate dalla coda: {out} · prenotazioni create: {inb}')
+    rem = process_reminders(token)
+    print(f'== worker done == coda email: {out} · prenotazioni create: {inb} · reminder inviati: {rem}')
 
 if __name__ == '__main__':
     main()

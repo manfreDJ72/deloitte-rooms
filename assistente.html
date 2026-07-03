@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Assistente AI – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=24">
+  <style>
+    .ai-layout { display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start; }
+    @media (max-width: 900px) { .ai-layout { grid-template-columns: 1fr; } }
+
+    /* ── Monitoraggio ── */
+    .mon-head { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin:0 0 12px; }
+    .mon-card {
+      display:flex; gap:12px; align-items:flex-start; background:var(--bg-card); border:1.5px solid var(--border);
+      border-left:3px solid var(--border); border-radius:10px; padding:13px 15px; margin-bottom:10px;
+      cursor:pointer; transition:border-color .15s, transform .1s; text-decoration:none; color:inherit;
+    }
+    .mon-card:hover { border-color:var(--text-muted); transform:translateY(-1px); }
+    .mon-card.sev-red  { border-left-color:var(--red); }
+    .mon-card.sev-org  { border-left-color:var(--orange); }
+    .mon-card.sev-blue { border-left-color:var(--blue); }
+    .mon-card.sev-ok   { border-left-color:var(--green); }
+    .mon-ico { font-size:20px; line-height:1; flex-shrink:0; }
+    .mon-body { min-width:0; }
+    .mon-title { font-weight:700; font-size:13.5px; }
+    .mon-desc { font-size:12px; color:var(--text-muted); margin-top:3px; }
+    .mon-count { margin-left:auto; font-weight:800; font-size:16px; color:var(--text); flex-shrink:0; }
+
+    /* ── Chat ── */
+    .ai-chat { display:flex; flex-direction:column; min-height:560px; height:calc(100vh - 220px); }
+    .chat-head { display:flex; align-items:center; gap:10px; padding:2px 2px 14px; border-bottom:1px solid var(--border); }
+    .chat-avatar { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,#86BC25,#4da6ff); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .chat-h-title { font-weight:800; font-size:15px; }
+    .chat-h-sub { font-size:11.5px; color:var(--text-muted); }
+    .chat-log { flex:1; overflow-y:auto; padding:16px 2px; display:flex; flex-direction:column; gap:14px; }
+    .msg { max-width:86%; font-size:14px; line-height:1.55; }
+    .msg-user { align-self:flex-end; background:var(--green); color:#0b0b0b; padding:10px 14px; border-radius:14px 14px 4px 14px; font-weight:500; }
+    .msg-ai { align-self:flex-start; }
+    .msg-ai .bubble { background:var(--bg-card2, #1a1a1a); border:1px solid var(--border); padding:12px 15px; border-radius:14px 14px 14px 4px; }
+    .msg-ai .who { font-size:11px; color:var(--text-muted); margin:0 0 4px 3px; font-weight:700; }
+    .msg-ai .bubble ul { margin:6px 0; padding-left:18px; }
+    .msg-ai .bubble p { margin:6px 0; }
+    .typing { display:inline-flex; gap:4px; }
+    .typing span { width:7px; height:7px; border-radius:50%; background:var(--text-muted); animation:blink 1.2s infinite both; }
+    .typing span:nth-child(2){animation-delay:.2s} .typing span:nth-child(3){animation-delay:.4s}
+    @keyframes blink { 0%,80%,100%{opacity:.2} 40%{opacity:1} }
+
+    .chat-hint { font-size:12px; background:rgba(240,160,48,.12); border:1px solid rgba(240,160,48,.35); color:var(--orange); padding:10px 13px; border-radius:9px; margin:8px 0; display:none; }
+    .chat-suggest { display:flex; gap:8px; flex-wrap:wrap; padding:10px 0 6px; }
+    .sug { font-size:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:20px; padding:6px 12px; cursor:pointer; color:var(--text-muted); transition:all .15s; }
+    .sug:hover { border-color:var(--green); color:var(--text); }
+    .chat-input { display:flex; gap:10px; padding-top:8px; border-top:1px solid var(--border); }
+    .chat-input textarea { flex:1; resize:none; background:var(--bg-card); border:1.5px solid var(--border); border-radius:10px; padding:11px 13px; color:var(--text); font-family:inherit; font-size:14px; max-height:120px; }
+    .chat-input textarea:focus { outline:none; border-color:var(--green); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
+    <div class="header-sep"></div>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon">⊞</span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon">📅</span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon">✓</span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon">⚠</span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon">📨</span> Richieste</a>
+    <a href="documenti.html" class="nav-link"><span class="nav-icon">🗄</span> Documenti</a>
+    <a href="assistente.html" class="nav-link nav-settings active"><span class="nav-icon">🤖</span> Assistente</a>
+    <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon">⚙</span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <button class="notif-btn" title="Notifiche">🔔</button>
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page" id="main-content">
+  <div class="page-head">
+    <h1 class="page-title">🤖 Assistente AI</h1>
+    <p class="page-sub">La tua "stanza di Claude": tiene sotto controllo prenotazioni, check, anomalie e mail — e ti dice cosa manca prima di ogni evento.</p>
+  </div>
+
+  <div class="ai-layout">
+
+    <!-- MONITORAGGIO -->
+    <section>
+      <div class="mon-head">📡 Monitoraggio</div>
+      <div id="monitor-list"><div class="mon-desc">Carico lo stato…</div></div>
+    </section>
+
+    <!-- CHAT -->
+    <section class="ai-chat card">
+      <div class="chat-head">
+        <div class="chat-avatar">🤖</div>
+        <div>
+          <div class="chat-h-title">Claude · Assistente sale</div>
+          <div class="chat-h-sub" id="chat-model">Pronto</div>
+        </div>
+      </div>
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-hint" id="chat-hint"></div>
+      <div class="chat-suggest" id="chat-suggest">
+        <span class="sug" data-q="Cosa non funziona oggi? Fammi un riepilogo delle priorità.">Cosa non funziona oggi?</span>
+        <span class="sug" data-q="Quali eventi ci sono questa settimana e cosa manca da preparare?">Eventi della settimana</span>
+        <span class="sug" data-q="Ci sono mail da gestire? Riepilogamele.">Mail da gestire</span>
+      </div>
+      <div class="chat-input">
+        <textarea id="chat-in" rows="1" placeholder="Scrivi all'assistente…"></textarea>
+        <button class="btn btn-primary" id="chat-send">Invia</button>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- No access -->
+<div id="no-access" style="display:none;">
+  <div class="no-access">
+    <div style="font-size:40px;margin-bottom:16px;">🔒</div>
+    <h2 style="font-size:18px;margin-bottom:8px;">Accesso riservato</h2>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">L'Assistente AI è accessibile solo agli amministratori.</p>
+    <a href="dashboard.html" class="btn btn-primary">← Torna alla Dashboard</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=24"></script>
+<script src="js/app.js?v=24"></script>
+<script src="js/db.js?v=24"></script>
+<script>
+let messages = [];   // storico chat {role, content}
+let AN = [];         // anomalie rilevate
+let CTX = {};        // snapshot contesto per l'AI
+
+function roomLabel(id) {
+  const r = (typeof ROOMS !== 'undefined' ? ROOMS : []).find(x => x.id === id);
+  return r ? `${r.name} – ${r.city}` : (id || '—');
+}
+// target risoluzione semplificato per priorità (ore)
+const SLA_RESOLVE_H = { P1: 24, P2: 48, P3: 120, P4: null };
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!requireAuth()) return;
+  const u = currentUser();
+  if (u.role !== 'admin') {
+    document.getElementById('main-content').style.display = 'none';
+    document.getElementById('no-access').style.display = '';
+    return;
+  }
+  renderUser();
+
+  // messaggio di benvenuto
+  addAI("Ciao! Sono l'assistente delle sale Solaria e Armonia. Tengo d'occhio prenotazioni, check, anomalie e mail. Chiedimi *\"cosa non funziona oggi?\"* oppure guarda il pannello Monitoraggio qui a fianco.");
+
+  // eventi
+  document.getElementById('chat-send').addEventListener('click', sendMessage);
+  document.getElementById('chat-in').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  });
+  document.querySelectorAll('.sug').forEach(s => s.addEventListener('click', () => {
+    document.getElementById('chat-in').value = s.dataset.q; sendMessage();
+  }));
+
+  await refreshData();
+});
+
+// ── DATI + ANOMALIE ──────────────────────────────────────────
+async function refreshData() {
+  try { await db.hydrateAll(); } catch (e) { console.warn('hydrate', e); }
+  const today = new Date().toISOString().slice(0, 10);
+  const bookings = ls(LS.bookings) || [];
+  const tickets  = ls(LS.tickets)  || [];
+  let inbox = [], checksKO = [];
+  try { inbox = await db.getInbox(60); } catch (e) { console.warn('inbox', e); }
+  try { checksKO = await db.getChecksKO(today); } catch (e) { console.warn('checks', e); }
+
+  const now = Date.now();
+  const in7 = now + 7 * 864e5, in14 = now + 14 * 864e5;
+
+  // eventi imminenti senza materiale / creative non pronto
+  const upcoming = bookings
+    .filter(b => { const t = new Date(b.start).getTime(); return t >= now && t <= in7; })
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
+  const missingMat = upcoming.filter(b => !(b.allestimento && b.allestimento.length) || b.creativeSupport);
+
+  // ticket fuori SLA
+  const openTk = tickets.filter(t => t.status === 'open' || t.status === 'in-progress');
+  const overSla = openTk.filter(t => {
+    const lim = SLA_RESOLVE_H[t.priority];
+    if (!lim || !t.createdAt) return false;
+    return (now - new Date(t.createdAt).getTime()) > lim * 3600e3;
+  });
+
+  const inboxNew = inbox.filter(m => (m.status || 'new') === 'new');
+
+  // costruisci le card di monitoraggio
+  AN = [];
+  if (overSla.length)   AN.push({ ico:'⏱️', sev:'red',  title:`${overSla.length} anomalie fuori SLA`, desc: overSla.map(t=>`${t.priority} · ${t.title}`).slice(0,3).join(' · '), count: overSla.length, link:'tickets.html' });
+  if (checksKO.length)  AN.push({ ico:'🔴', sev:'red',  title:`${checksKO.length} check KO oggi`, desc: checksKO.map(c=>`${roomLabel(c.room)}`).filter((v,i,a)=>a.indexOf(v)===i).join(' · '), count: checksKO.length, link:'checks.html' });
+  if (missingMat.length) AN.push({ ico:'📦', sev:'org', title:`${missingMat.length} eventi da preparare (7 gg)`, desc:'Allestimento mancante o materiale creativo da confermare', count: missingMat.length, link:'booking.html' });
+  if (openTk.length)    AN.push({ ico:'🎫', sev:'org',  title:`${openTk.length} anomalie aperte`, desc:'In lavorazione o da prendere in carico', count: openTk.length, link:'tickets.html' });
+  if (inboxNew.length)  AN.push({ ico:'📨', sev:'blue', title:`${inboxNew.length} mail da gestire`, desc: inboxNew.slice(0,3).map(m=>m.subject||'(senza oggetto)').join(' · '), count: inboxNew.length, link:'#' });
+  if (upcoming.length)  AN.push({ ico:'📅', sev:'blue', title:`${upcoming.length} eventi nei prossimi 7 gg`, desc: upcoming.slice(0,3).map(b=>`${roomLabel(b.room)} ${new Date(b.start).toLocaleDateString('it-IT',{day:'numeric',month:'short'})}`).join(' · '), count: upcoming.length, link:'booking.html' });
+  if (!AN.length) AN.push({ ico:'✅', sev:'ok', title:'Tutto sotto controllo', desc:'Nessuna anomalia rilevata al momento', count:'', link:'#' });
+
+  renderMonitor();
+
+  // contesto per l'AI (compatto)
+  const compactB = b => ({ sala: roomLabel(b.room), quando: b.start, titolo: b.title, referente: b.referente || null,
+    allestimento: b.allestimento || [], materiale_creativo: b.creativeSupport ? (b.creativeDesc || 'richiesto') : null });
+  CTX = {
+    oggi: today,
+    prenotazioni_prossime: bookings.filter(b => { const t=new Date(b.start).getTime(); return t>=now && t<=in14; })
+      .sort((a,b)=>new Date(a.start)-new Date(b.start)).slice(0,25).map(compactB),
+    anomalie_aperte: openTk.slice(0,25).map(t => ({ id:t.id, sala:roomLabel(t.room), priorita:t.priority, titolo:t.title, stato:t.status, aperto:t.createdAt, fuori_sla: overSla.includes(t) })),
+    check_ko_oggi: checksKO.map(c => ({ sala: roomLabel(c.room), check: c.check_id, nota: c.note || null })),
+    mail_da_gestire: inboxNew.slice(0,25).map(m => ({ da:m.from_addr, oggetto:m.subject, tipo:m.intent, ricevuta:m.received_at })),
+    riepilogo_anomalie: AN.filter(a=>a.sev!=='ok').map(a => `${a.title} — ${a.desc}`),
+  };
+}
+
+function renderMonitor() {
+  document.getElementById('monitor-list').innerHTML = AN.map(a => `
+    <a class="mon-card sev-${a.sev}" href="${a.link}">
+      <span class="mon-ico">${a.ico}</span>
+      <span class="mon-body">
+        <span class="mon-title">${a.title}</span>
+        <span class="mon-desc">${a.desc || ''}</span>
+      </span>
+      ${a.count !== '' ? `<span class="mon-count">${a.count}</span>` : ''}
+    </a>`).join('');
+}
+
+// ── CHAT ──────────────────────────────────────────────────────
+function esc(s){ return (s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function mdToHtml(t) {
+  const lines = esc(t).split('\n'); let out = '', inUl = false;
+  for (let ln of lines) {
+    ln = ln.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\*(.+?)\*/g,'<i>$1</i>');
+    const m = ln.match(/^\s*[-*•]\s+(.*)/);
+    if (m) { if (!inUl){ out+='<ul>'; inUl=true; } out += `<li>${m[1]}</li>`; }
+    else { if (inUl){ out+='</ul>'; inUl=false; } if (ln.trim()) out += `<p>${ln}</p>`; }
+  }
+  if (inUl) out += '</ul>';
+  return out;
+}
+function addUser(text) {
+  const log = document.getElementById('chat-log');
+  const d = document.createElement('div'); d.className = 'msg msg-user'; d.textContent = text;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+}
+function addAI(text) {
+  const log = document.getElementById('chat-log');
+  const d = document.createElement('div'); d.className = 'msg msg-ai';
+  d.innerHTML = `<div class="who">🤖 Claude</div><div class="bubble">${mdToHtml(text)}</div>`;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+}
+function addTyping() {
+  const log = document.getElementById('chat-log');
+  const d = document.createElement('div'); d.className = 'msg msg-ai'; d.id = 'typing-row';
+  d.innerHTML = `<div class="who">🤖 Claude</div><div class="bubble"><span class="typing"><span></span><span></span><span></span></span></div>`;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+}
+function rmTyping() { const t = document.getElementById('typing-row'); if (t) t.remove(); }
+
+async function sendMessage() {
+  const inp = document.getElementById('chat-in');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  document.getElementById('chat-hint').style.display = 'none';
+  addUser(text);
+  messages.push({ role: 'user', content: text });
+  addTyping();
+  document.getElementById('chat-send').disabled = true;
+  try {
+    const res = await db.aiChat(messages.slice(-12), CTX);
+    rmTyping();
+    if (res && res.reply) {
+      addAI(res.reply);
+      messages.push({ role: 'assistant', content: res.reply });
+      if (res.model) document.getElementById('chat-model').textContent = 'Modello: ' + res.model;
+    } else if (res && res.code === 'no_key') {
+      showHint('Chat non ancora attiva: manca <b>ANTHROPIC_API_KEY</b> nei secret di Supabase. Il Monitoraggio qui a fianco funziona comunque.');
+    } else if (res && res.error) {
+      showHint(res.error);
+    }
+  } catch (e) {
+    rmTyping();
+    if (/Edge Function|Failed to send|not found|404/i.test(e.message || '')) {
+      showHint('Chat non ancora attiva: la funzione <b>ai-assistant</b> non è raggiungibile. Va fatto il deploy della Edge Function e impostata <b>ANTHROPIC_API_KEY</b> nei secret di Supabase. Il Monitoraggio qui a fianco funziona già.');
+    } else {
+      showHint('Errore assistente: ' + e.message);
+    }
+  } finally {
+    document.getElementById('chat-send').disabled = false;
+  }
+}
+function showHint(html) {
+  const h = document.getElementById('chat-hint');
+  h.innerHTML = html; h.style.display = 'block';
+}
+</script>
+</body>
+</html>
