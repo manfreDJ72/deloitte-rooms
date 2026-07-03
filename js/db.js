@@ -97,6 +97,11 @@ async function hydrateAll() {
         }
       } catch (e) { console.error('hydrate', key, e); }
     }
+    // impostazioni (destinatari, ruoli, numerazione) — riga singola condivisa
+    try {
+      const { data } = await _sb.from('app_settings').select('data').eq('id', 'global').maybeSingle();
+      if (data && data.data) localStorage.setItem(LS.settings, JSON.stringify(data.data));
+    } catch (e) { console.error('hydrate settings', e); }
   } finally { _hydrating = false; }
 }
 
@@ -276,5 +281,21 @@ const db = {
     }
     if (data && data.error) throw new Error(data.error);
     return data;
+  },
+
+  /* ── IMPOSTAZIONI (riga singola su app_settings) ── */
+  async getAppSettings() {
+    if (DEMO_MODE) return null;
+    _initSb();
+    const { data, error } = await _sb.from('app_settings').select('data').eq('id', 'global').maybeSingle();
+    if (error) { console.error('getAppSettings', error); return null; }
+    return data?.data || null;
+  },
+  async saveAppSettings(settings) {
+    if (DEMO_MODE) return;
+    _initSb();
+    const { error } = await _sb.from('app_settings')
+      .upsert({ id: 'global', data: settings, updated_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
   },
 };

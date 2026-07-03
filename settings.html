@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impostazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=16">
+  <link rel="stylesheet" href="css/style.css?v=17">
   <style>
     .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
     .set-card {
@@ -322,9 +322,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=16"></script>
-<script src="js/app.js?v=16"></script>
-<script src="js/db.js?v=16"></script>
+<script src="js/config.js?v=17"></script>
+<script src="js/app.js?v=17"></script>
+<script src="js/db.js?v=17"></script>
 <script>
 let S = null;         // settings correnti
 let users = [];       // roster utenti
@@ -351,6 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPermTable();
   renderRecipients();
   loadNumbering();
+  if (!DEMO_MODE) loadSettingsFromDb();   // online: destinatari/impostazioni dal database (condivisi)
 
   // Numerazione live preview
   ['num-tk-prefix','num-tk-pad','num-tk-next','num-rp-prefix','num-rp-pad','num-rp-next']
@@ -623,7 +624,33 @@ function saveAll() {
   };
   saveSettings(S);
   saveUsers(users);
-  toast('Impostazioni salvate ✓', 'success');
+  if (!DEMO_MODE) {
+    db.saveAppSettings(S)
+      .then(() => toast('Impostazioni salvate nel database ✓', 'success'))
+      .catch(e => toast('Salvato in locale, ma errore sul database: ' + e.message, 'error'));
+  } else {
+    toast('Impostazioni salvate ✓', 'success');
+  }
+}
+
+// carica le impostazioni condivise dal database (destinatari, ruoli, numerazione)
+async function loadSettingsFromDb() {
+  try {
+    const remote = await db.getAppSettings();
+    if (remote) {
+      S = remote;
+      saveSettings(S);
+      renderRecipients();
+      renderPermTable();
+      loadNumbering();
+      document.getElementById('inbound-enabled').checked = !!(S.inboundEmail && S.inboundEmail.enabled);
+      document.getElementById('inbound-address').value   = (S.inboundEmail && S.inboundEmail.address) || '';
+    } else {
+      // primo avvio: nel database non c'è ancora nulla → salvo le impostazioni attuali
+      // (inclusi i destinatari che hai inserito a mano)
+      await db.saveAppSettings(S);
+    }
+  } catch (e) { console.error('loadSettingsFromDb', e); }
 }
 </script>
 </body>

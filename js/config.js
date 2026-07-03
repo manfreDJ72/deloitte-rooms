@@ -490,18 +490,21 @@ function defaultSettings() {
       operator: { prenotazioni:{crea:1,elimina:0}, check:{esegui:1,storico:1}, anomalie:{apri:1,chiudi:1,sla:0}, rapporti:{crea:1,invia:1}, repository:{vedi:1,gestisci:0}, settings:{accesso:0} },
       viewer:   { prenotazioni:{crea:0,elimina:0}, check:{esegui:0,storico:1}, anomalie:{apri:0,chiudi:0,sla:0}, rapporti:{crea:0,invia:0}, repository:{vedi:1,gestisci:0}, settings:{accesso:0} },
     },
-    emailRecipients: [
-      { id: 'r1', name: 'Presidio Roma',   email: 'presidio.roma@area62.it', events: ['ticket-p1','ticket-p2','check-ko'] },
-      { id: 'r2', name: 'Referente Deloitte', email: 'facility@deloitte.it',   events: ['ticket-p1','rapporto'] },
-    ],
+    emailRecipients: [],  // nessun destinatario di default: si aggiungono solo quelli voluti
     numbering: { ticketPrefix:'TCK-', ticketPad:3, ticketNext:4, rapportoPrefix:'RAP-', rapportoPad:3, rapportoNext:1 },
-    inboundEmail: { address:'prenotazioni@rooms.area62.it', enabled:false },
+    inboundEmail: { address:'deloitte.room@area62.it', enabled:false },
   };
 }
 function getSettings() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(LS.settings)); } catch {}
-  return s || defaultSettings();
+  if (!s) return defaultSettings();
+  // pulizia una-tantum: rimuove i vecchi destinatari segnaposto demo
+  if (Array.isArray(s.emailRecipients)) {
+    const demo = ['presidio.roma@area62.it', 'facility@deloitte.it'];
+    s.emailRecipients = s.emailRecipients.filter(r => !demo.includes((r.email || '').toLowerCase()));
+  }
+  return s;
 }
 function saveSettings(s) { localStorage.setItem(LS.settings, JSON.stringify(s)); }
 
