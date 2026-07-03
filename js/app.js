@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 13;
+const APP_BUILD = 14;
 (function checkForUpdate() {
   fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
     .then(r => r.ok ? r.text() : null)
@@ -68,6 +68,26 @@ function formatTime(d) {
 function formatDateTime(d) { return `${formatDate(d)} ${formatTime(d)}`; }
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+// ── TEMPLATE EMAIL (coerente col portale: header nero + verde AREA62) ──
+function emailTemplate(heading, innerHtml, accent = '#86BC25') {
+  return `<div style="background:#f2f2f2;padding:24px 0;font-family:Arial,Helvetica,sans-serif;">
+    <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6e6e6;">
+      <div style="background:#0d0d0d;padding:18px 28px;">
+        <span style="color:#86BC25;font-weight:800;font-size:20px;letter-spacing:1px;">AREA62</span>
+        <span style="color:#bdbdbd;font-size:12px;"> &nbsp;·&nbsp; Deloitte Room Management</span>
+      </div>
+      <div style="height:4px;background:${accent};"></div>
+      <div style="padding:28px;color:#1a1a1a;font-size:14px;line-height:1.6;">
+        <h2 style="margin:0 0 16px;color:#111111;font-size:18px;">${heading}</h2>
+        ${innerHtml}
+      </div>
+      <div style="padding:16px 28px;background:#0d0d0d;color:#8a8a8a;font-size:11px;">
+        Area62 Srl · Gestione sale immersive Solaria &amp; Armonia · Deloitte
+      </div>
+    </div>
+  </div>`;
+}
 
 function currentUser() { return ls(LS.user); }
 

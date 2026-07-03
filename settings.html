@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impostazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/style.css?v=14">
   <style>
     .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
     .set-card {
@@ -87,9 +87,9 @@
 
 <header class="header">
   <div class="header-left">
-    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
     <div class="header-sep"></div>
-    <span style="font-family:'Inter Tight',sans-serif;font-size:16px;font-weight:800;color:#86BC25;letter-spacing:1px;">AREA62</span>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
     <div class="header-sep"></div>
     <span class="header-title">Room Management</span>
   </div>
@@ -334,9 +334,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=13"></script>
-<script src="js/app.js?v=13"></script>
-<script src="js/db.js?v=13"></script>
+<script src="js/config.js?v=14"></script>
+<script src="js/app.js?v=14"></script>
+<script src="js/db.js?v=14"></script>
 <script>
 let S = null;         // settings correnti
 let users = [];       // roster utenti
@@ -450,7 +450,20 @@ async function saveUser() {
         toast('Utente aggiornato ✓', 'success');
       } else {
         await db.adminUsers('create', { name, email, role, avatar, password });
-        toast(`Utente creato ✓ — password: ${password}`, 'success');
+        // email di benvenuto con le credenziali (best-effort)
+        const loginUrl = 'https://manfredj72.github.io/deloitte-rooms/';
+        db.sendEmail(email, 'Il tuo accesso — Deloitte Room Management',
+          emailTemplate('Benvenuto/a nel portale',
+            `<p>Ciao <strong>${name}</strong>, è stato creato il tuo accesso al sistema di gestione sale Solaria &amp; Armonia.</p>
+             <table style="font-size:14px;margin:14px 0;border-collapse:collapse;">
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Indirizzo</td><td><a href="${loginUrl}" style="color:#5a8a00;">${loginUrl}</a></td></tr>
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Email</td><td><strong>${email}</strong></td></tr>
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Password</td><td><strong>${password}</strong></td></tr>
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Ruolo</td><td>${ROLE_LABELS[role]}</td></tr>
+             </table>
+             <p style="font-size:13px;color:#666;">Conserva queste credenziali in un luogo sicuro.</p>`)
+        ).catch(e => console.error('welcome email', e));
+        toast(`Utente creato ✓ — email di benvenuto inviata a ${email}`, 'success');
       }
       closeModal('modal-user');
       await loadUsersFromServer();
@@ -573,12 +586,10 @@ async function sendTestEmail() {
   try {
     await db.sendEmail(me.email,
       'Email di prova — Deloitte Room Management',
-      `<div style="font-family:sans-serif;">
-        <h2 style="color:#86BC25;">✓ Email configurata correttamente</h2>
-        <p>Ciao ${me.name}, questa è un'email di prova inviata dal sistema di gestione sale Solaria &amp; Armonia.</p>
-        <p>Se la stai leggendo, l'invio automatico di notifiche e rapporti è attivo.</p>
-        <p style="color:#888;font-size:12px;">Area62 · Deloitte Room Management</p>
-      </div>`);
+      emailTemplate('✓ Email configurata correttamente',
+        `<p>Ciao <strong>${me.name}</strong>,</p>
+         <p>questa è un'email di prova del sistema di gestione sale Solaria &amp; Armonia.</p>
+         <p>Se la stai leggendo, l'invio automatico di notifiche e rapporti è <strong style="color:#86BC25;">attivo</strong>.</p>`));
     toast('Email di prova in coda → arriva a ' + me.email + ' entro pochi minuti ✓', 'success');
   } catch (e) {
     toast('Errore: ' + e.message, 'error');

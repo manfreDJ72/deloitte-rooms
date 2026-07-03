@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rapporto di Intervento – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/style.css?v=14">
   <style>
     .rapporto-wrap {
       max-width: 760px; margin: 0 auto;
@@ -96,9 +96,9 @@
 
 <header class="header">
   <div class="header-left">
-    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
     <div class="header-sep"></div>
-    <span style="font-family:'Inter Tight',sans-serif;font-size:16px;font-weight:800;color:#86BC25;letter-spacing:1px;">AREA62</span>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
     <div class="header-sep"></div>
     <span class="header-title">Room Management</span>
   </div>
@@ -303,9 +303,9 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=13"></script>
-<script src="js/app.js?v=13"></script>
-<script src="js/db.js?v=13"></script>
+<script src="js/config.js?v=14"></script>
+<script src="js/app.js?v=14"></script>
+<script src="js/db.js?v=14"></script>
 <script>
 let selectedPriority = 'P3';
 let selectedEsito    = null;
@@ -463,15 +463,13 @@ async function inviaRapporto() {
 
     // Notifica email ai destinatari configurati (best-effort)
     const evPri = selectedPriority === 'P1' ? 'ticket-p1' : selectedPriority === 'P2' ? 'ticket-p2' : 'ticket-any';
-    const emailHtml = `<div style="font-family:sans-serif;">
-      <h2 style="color:#ff4d4d;">⚠ Nuova anomalia — ${ticket.id} (${selectedPriority})</h2>
-      <p><strong>${ticket.title}</strong></p>
-      <p><strong>Area:</strong> ${area}<br><strong>Tecnico:</strong> ${tecnico||'—'}<br><strong>Categoria:</strong> ${cat}</p>
-      <p><strong>Descrizione:</strong><br>${(desc||'—').replace(/\n/g,'<br>')}</p>
-      ${attivita ? `<p><strong>Attività svolte:</strong><br>${attivita.replace(/\n/g,'<br>')}</p>` : ''}
-      <p><strong>Esito:</strong> ${selectedEsito}</p>
-      <p style="color:#888;font-size:12px;">Area62 · Deloitte Room Management</p>
-    </div>`;
+    const emailHtml = emailTemplate(`⚠ Nuova anomalia — ${ticket.id} (${selectedPriority})`,
+      `<p style="font-size:16px;"><strong>${ticket.title}</strong></p>
+       <p><strong>Area:</strong> ${area}<br><strong>Tecnico:</strong> ${tecnico||'—'}<br><strong>Categoria:</strong> ${cat}</p>
+       <p><strong>Descrizione:</strong><br>${(desc||'—').replace(/\n/g,'<br>')}</p>
+       ${attivita ? `<p><strong>Attività svolte:</strong><br>${attivita.replace(/\n/g,'<br>')}</p>` : ''}
+       <p><strong>Esito:</strong> ${selectedEsito}</p>`,
+      selectedPriority === 'P1' ? '#ff4d4d' : selectedPriority === 'P2' ? '#f0a030' : '#86BC25');
     db.notify(evPri, `[${selectedPriority}] ${ticket.title} — ${ticket.id}`, emailHtml);
     if (evPri !== 'ticket-any') db.notify('ticket-any', `[${selectedPriority}] ${ticket.title} — ${ticket.id}`, emailHtml);
     db.notify('rapporto', `Rapporto intervento — ${ticket.title}`, emailHtml);

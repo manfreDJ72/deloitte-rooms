@@ -61,6 +61,25 @@ def send_mail(to_addrs, subject, html):
         s.login(MAIL_USER, MAIL_PASS)
         s.sendmail(MAIL_USER, to_addrs, msg.as_string())
 
+# ── TEMPLATE EMAIL (coerente col portale) ──
+def email_template(heading, inner, accent='#86BC25'):
+    return f"""<div style="background:#f2f2f2;padding:24px 0;font-family:Arial,Helvetica,sans-serif;">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6e6e6;">
+        <div style="background:#0d0d0d;padding:18px 28px;">
+          <span style="color:#86BC25;font-weight:800;font-size:20px;letter-spacing:1px;">AREA62</span>
+          <span style="color:#bdbdbd;font-size:12px;"> &nbsp;·&nbsp; Deloitte Room Management</span>
+        </div>
+        <div style="height:4px;background:{accent};"></div>
+        <div style="padding:28px;color:#1a1a1a;font-size:14px;line-height:1.6;">
+          <h2 style="margin:0 0 16px;color:#111111;font-size:18px;">{heading}</h2>
+          {inner}
+        </div>
+        <div style="padding:16px 28px;background:#0d0d0d;color:#8a8a8a;font-size:11px;">
+          Area62 Srl · Gestione sale immersive Solaria &amp; Armonia · Deloitte
+        </div>
+      </div>
+    </div>"""
+
 # ── PARSER PRENOTAZIONE ──
 def parse_booking(subject, body):
     text = (subject or '') + '\n' + (body or '')
@@ -139,17 +158,15 @@ def process_inbound(token):
         if st in (200, 201):
             created += 1
             label = ROOM_LABELS.get(p['room'], p['room'])
-            conf = f"""<div style="font-family:sans-serif">
-              <h2 style="color:#86BC25">✓ Prenotazione registrata</h2>
-              <p>Abbiamo registrato la tua richiesta:</p>
-              <table style="font-size:14px">
-                <tr><td><b>Sala:</b></td><td>{label}</td></tr>
-                <tr><td><b>Data:</b></td><td>{p['date']}</td></tr>
-                <tr><td><b>Orario:</b></td><td>{p['start'] or '09:00'} – {p['end'] or '10:00'}</td></tr>
-                <tr><td><b>Referente:</b></td><td>{p['referente'] or '—'}</td></tr>
-                <tr><td><b>Evento:</b></td><td>{p['title']}</td></tr>
-              </table>
-              <p style="color:#888;font-size:12px">Area62 · Deloitte Room Management</p></div>"""
+            inner = f"""<p>Abbiamo registrato la tua richiesta di prenotazione:</p>
+              <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
+                <tr><td style="padding:3px 14px 3px 0;color:#666;">Sala</td><td><b>{label}</b></td></tr>
+                <tr><td style="padding:3px 14px 3px 0;color:#666;">Data</td><td>{p['date']}</td></tr>
+                <tr><td style="padding:3px 14px 3px 0;color:#666;">Orario</td><td>{p['start'] or '09:00'} – {p['end'] or '10:00'}</td></tr>
+                <tr><td style="padding:3px 14px 3px 0;color:#666;">Referente</td><td>{p['referente'] or '—'}</td></tr>
+                <tr><td style="padding:3px 14px 3px 0;color:#666;">Evento</td><td>{p['title']}</td></tr>
+              </table>"""
+            conf = email_template('✓ Prenotazione registrata', inner)
             try: send_mail(frm, f"Conferma prenotazione — {label} {p['date']}", conf)
             except Exception as e: print('conferma non inviata:', e)
             print(f'  ✓ prenotazione creata da {frm}: {label} {p["date"]} {p["start"]}-{p["end"]}')
