@@ -18,7 +18,10 @@ const db = {
 
   async signIn(email, password) {
     if (DEMO_MODE) {
-      const u = DEMO_USERS.find(u => u.email === email && u.password === password);
+      // Autentica prima sul roster gestito da Settings, poi sugli utenti demo di base
+      const roster = (typeof getUsers === 'function' ? getUsers() : []) || [];
+      let u = roster.find(x => x.email === email && x.password === password);
+      if (!u) u = DEMO_USERS.find(x => x.email === email && x.password === password);
       if (!u) throw new Error('Credenziali non valide');
       const sess = { id: u.id, email: u.email, name: u.name, role: u.role, avatar: u.avatar };
       lsSet(LS.user, sess);

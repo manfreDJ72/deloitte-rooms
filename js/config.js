@@ -509,9 +509,31 @@ function getUsers() {
   let u = null;
   try { u = JSON.parse(localStorage.getItem(LS.users)); } catch {}
   if (!u) {
-    u = DEMO_USERS.map(({ password, ...rest }, i) => ({ id: 'u'+(i+1), ...rest }));
+    // mantiene la password: l'admin la decide e la comunica all'utente
+    u = DEMO_USERS.map((usr, i) => ({ id: 'u'+(i+1), ...usr }));
     localStorage.setItem(LS.users, JSON.stringify(u));
   }
   return u;
 }
 function saveUsers(u) { localStorage.setItem(LS.users, JSON.stringify(u)); }
+
+// ── GENERATORE PASSWORD (l'admin la decide/genera, l'utente non la cambia) ──
+function generatePassword(len = 10) {
+  const consonanti = 'bcdfghjkmnpqrstvwxz';
+  const vocali = 'aeiou';
+  const numeri = '23456789';
+  const simboli = '!#$%&*';
+  let pw = '';
+  // due sillabe leggibili + numeri + simbolo → robusta ma comunicabile
+  for (let i = 0; i < 2; i++) {
+    const c = consonanti[Math.floor(Math.random()*consonanti.length)];
+    const v = vocali[Math.floor(Math.random()*vocali.length)];
+    pw += (i === 0 ? c.toUpperCase() : c) + v;
+  }
+  for (let i = 0; i < 3; i++) pw += numeri[Math.floor(Math.random()*numeri.length)];
+  pw += simboli[Math.floor(Math.random()*simboli.length)];
+  const c = consonanti[Math.floor(Math.random()*consonanti.length)];
+  const v = vocali[Math.floor(Math.random()*vocali.length)];
+  pw += c + v;
+  return pw;
+}

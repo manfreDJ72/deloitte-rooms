@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impostazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="css/style.css?v=6">
   <style>
     .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
     .set-card {
@@ -309,6 +309,17 @@
           <option value="viewer">Visualizzatore</option>
         </select>
       </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Password di accesso</label>
+        <div style="display:flex;gap:8px;">
+          <input class="form-control" id="u-password" placeholder="Password" autocomplete="new-password">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-toggle-pw" title="Mostra/nascondi" style="flex-shrink:0;">👁</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-gen-pw" style="flex-shrink:0;white-space:nowrap;">🎲 Genera</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+          La password la decidi tu e la comunichi all'utente. L'utente <strong>non può cambiarla</strong>.
+        </div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-danger btn-sm" id="btn-del-user" style="display:none;margin-right:auto;">Elimina</button>
@@ -319,9 +330,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=5"></script>
-<script src="js/app.js?v=5"></script>
-<script src="js/db.js?v=5"></script>
+<script src="js/config.js?v=6"></script>
+<script src="js/app.js?v=6"></script>
+<script src="js/db.js?v=6"></script>
 <script>
 let S = null;         // settings correnti
 let users = [];       // roster utenti
@@ -360,6 +371,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-add-recip').addEventListener('click', addRecipient);
   document.getElementById('btn-save-user').addEventListener('click', saveUser);
   document.getElementById('btn-del-user').addEventListener('click', deleteUser);
+  document.getElementById('btn-gen-pw').addEventListener('click', () => {
+    document.getElementById('u-password').value = generatePassword();
+    document.getElementById('u-password').type = 'text';
+  });
+  document.getElementById('btn-toggle-pw').addEventListener('click', () => {
+    const p = document.getElementById('u-password');
+    p.type = p.type === 'password' ? 'text' : 'password';
+  });
 });
 
 /* ── UTENTI ── */
@@ -383,6 +402,10 @@ function openUserModal(id) {
   document.getElementById('u-name').value  = u?.name  || '';
   document.getElementById('u-email').value = u?.email || '';
   document.getElementById('u-role').value  = u?.role  || 'operator';
+  // Password: in modifica mostra quella attuale; in creazione ne genera una nuova
+  const pw = document.getElementById('u-password');
+  pw.value = u ? (u.password || '') : generatePassword();
+  pw.type = 'text';
   document.getElementById('btn-del-user').style.display = u ? '' : 'none';
   openModal('modal-user');
 }
@@ -391,17 +414,19 @@ function saveUser() {
   const name  = document.getElementById('u-name').value.trim();
   const email = document.getElementById('u-email').value.trim().toLowerCase();
   const role  = document.getElementById('u-role').value;
+  const password = document.getElementById('u-password').value.trim();
   if (!name || !email) { toast('Compila nome ed email', 'error'); return; }
+  if (!password) { toast('Imposta una password (o generala)', 'error'); return; }
   const avatar = name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
   if (editUserId) {
-    users = users.map(u => u.id === editUserId ? { ...u, name, email, role, avatar } : u);
+    users = users.map(u => u.id === editUserId ? { ...u, name, email, role, avatar, password } : u);
   } else {
-    users.push({ id: 'u' + Date.now().toString(36), name, email, role, avatar });
+    users.push({ id: 'u' + Date.now().toString(36), name, email, role, avatar, password });
   }
   saveUsers(users);
   renderUsers();
   closeModal('modal-user');
-  toast('Utente salvato ✓', 'success');
+  toast(`Utente salvato ✓ — password: ${password}`, 'success');
 }
 
 function deleteUser() {
