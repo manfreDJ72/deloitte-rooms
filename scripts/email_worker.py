@@ -78,6 +78,11 @@ def parse_booking(subject, body):
     for m in re.finditer(r'(\d{1,2}\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+\d{4}|\d{1,2}\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})', low):
         d = dateparser.parse(m.group(1), languages=['it'], settings={'PREFER_DATES_FROM': 'future'})
         if d: break
+    # scarta date implausibili (anno fuori range → falso positivo)
+    if d:
+        yr = time.gmtime().tm_year
+        if d.year < yr or d.year > yr + 2:
+            d = None
     ref = None
     rm = re.search(r'referente[:\s]+([A-Za-zÀ-ÿ\'\. ]+)', text, re.I)
     if rm: ref = rm.group(1).strip().split('.')[0].strip()
@@ -114,10 +119,12 @@ def process_inbound(token):
         m = email.message_from_bytes(d[0][1])
         subj = email.header.make_header(email.header.decode_header(m.get('Subject') or '')).__str__()
         frm = sender_addr(m)
-        p = parse_booking(subj, email_text(m))
+        bodytxt = email_text(m)
+        p = parse_booking(subj, bodytxt)
         M.store(i, '+FLAGS', '\\Seen')  # segna letto in ogni caso
-        # è una prenotazione valida? servono almeno sala e data
-        if not (p['room'] and p['date']):
+        # crea la prenotazione SOLO se: c'è intenzione ("prenot..."), una sala e una data valida
+        intent = 'prenot' in (subj + ' ' + bodytxt).lower()
+        if not (intent and p['room'] and p['date']):
             continue
         start_iso = f"{p['date']}T{p['start'] or '09:00'}:00"
         end_iso   = f"{p['date']}T{p['end'] or '10:00'}:00"
