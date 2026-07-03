@@ -4,92 +4,56 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rapporto di Intervento – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=18">
+  <link rel="stylesheet" href="css/style.css?v=19">
   <style>
-    .rapporto-wrap {
-      max-width: 760px; margin: 0 auto;
-    }
-    .rapporto-card {
-      background: var(--bg-card); border: 1.5px solid var(--border);
-      border-radius: 14px; overflow: hidden;
-    }
-    .rapporto-header {
+    .rap-wrap { max-width: 780px; margin: 0 auto; }
+    .rap-card { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .rap-head {
       background: linear-gradient(135deg, rgba(255,77,77,.08) 0%, var(--bg-card2) 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 24px 28px;
-      display: flex; align-items: center; gap: 16px;
+      border-bottom: 1px solid var(--border); padding: 20px 26px;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
     }
-    .rapporto-icon { font-size: 32px; }
-    .rapporto-header-text .rh-title { font-size: 18px; font-weight: 800; }
-    .rapporto-header-text .rh-sub   { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
-
-    .rapporto-body { padding: 28px; }
-
-    .rp-section {
-      margin-bottom: 28px; padding-bottom: 24px;
-      border-bottom: 1px solid var(--border);
-    }
-    .rp-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-
-    .rp-section-title {
-      font-size: 11px; font-weight: 800; text-transform: uppercase;
-      letter-spacing: .8px; color: var(--text-muted);
-      margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
-    }
+    .rap-head .rh-title { font-size: 17px; font-weight: 800; }
+    .rap-head .rh-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .rap-status { margin-left: auto; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; padding: 5px 12px; border-radius: 20px; }
+    .st-open { background: rgba(240,160,48,.15); color: var(--orange); }
+    .st-closed { background: rgba(134,188,37,.15); color: var(--green); }
+    .rap-body { padding: 24px 26px; }
+    .rp-section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); margin: 22px 0 12px; display: flex; align-items: center; gap: 8px; }
+    .rp-section-title:first-child { margin-top: 0; }
     .rp-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
 
-    .form-3col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-
-    .esito-btns { display: flex; gap: 10px; flex-wrap: wrap; }
-    .esito-btn {
-      flex: 1; min-width: 130px; min-height: 48px;
-      border-radius: 8px; border: 1.5px solid var(--border);
-      background: var(--bg-card2); color: var(--text);
-      font-size: 13px; font-weight: 700; cursor: pointer;
-      font-family: var(--font-ui); transition: all .15s;
-    }
-    .esito-btn:hover { border-color: var(--text-muted); }
-    .esito-btn.sel-ok     { background: rgba(134,188,37,.15); border-color: var(--green); color: var(--green); }
-    .esito-btn.sel-parz   { background: rgba(240,160,48,.12);  border-color: var(--orange); color: var(--orange); }
-    .esito-btn.sel-no     { background: rgba(255,77,77,.12);   border-color: var(--red); color: var(--red); }
-
     .priority-btns { display: flex; gap: 8px; flex-wrap: wrap; }
-    .priority-btn {
-      min-height: 40px; padding: 0 16px;
-      border-radius: 8px; border: 1.5px solid var(--border);
-      background: var(--bg-card2); color: var(--text-muted);
-      font-size: 12px; font-weight: 700; cursor: pointer;
-      font-family: var(--font-ui); transition: all .15s;
-    }
+    .priority-btn { min-height: 40px; padding: 0 16px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--bg-card2); color: var(--text-muted); font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font-ui); }
     .priority-btn.sel { color: var(--text); }
-    .priority-btn[data-p="P1"].sel { background: rgba(255,77,77,.15);   border-color: var(--red);    color: var(--red); }
-    .priority-btn[data-p="P2"].sel { background: rgba(240,160,48,.15);  border-color: var(--orange); color: var(--orange); }
-    .priority-btn[data-p="P3"].sel { background: rgba(77,166,255,.15);  border-color: var(--blue);   color: var(--blue); }
+    .priority-btn[data-p="P1"].sel { background: rgba(255,77,77,.15); border-color: var(--red); color: var(--red); }
+    .priority-btn[data-p="P2"].sel { background: rgba(240,160,48,.15); border-color: var(--orange); color: var(--orange); }
+    .priority-btn[data-p="P3"].sel { background: rgba(77,166,255,.15); border-color: var(--blue); color: var(--blue); }
     .priority-btn[data-p="P4"].sel { background: rgba(139,148,158,.15); border-color: var(--text-muted); color: var(--text-muted); }
 
-    .sla-preview-box {
-      background: var(--bg-card2); border: 1px solid var(--border);
-      border-radius: 8px; padding: 14px 16px; margin-top: 12px;
-      font-size: 12px;
-    }
-    .sla-row { display: flex; gap: 10px; margin-bottom: 5px; align-items: baseline; }
-    .sla-row:last-child { margin-bottom: 0; }
-    .sla-key { color: var(--text-muted); min-width: 180px; }
-    .sla-val { font-weight: 700; }
-    .sla-pen { color: var(--orange); font-size: 11px; margin-left: auto; }
+    .stage { border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+    .stage.on { border-color: rgba(77,166,255,.4); }
+    .stage.done { border-color: rgba(134,188,37,.4); }
+    .stage-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-card2); }
+    .stage-num { width: 26px; height: 26px; border-radius: 50%; background: var(--border); color: var(--text); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; }
+    .stage.on .stage-num { background: var(--blue); color: #fff; }
+    .stage.done .stage-num { background: var(--green); color: #000; }
+    .stage-title { font-weight: 700; font-size: 14px; }
+    .stage-sla { margin-left: auto; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+    .sla-ok { background: rgba(134,188,37,.15); color: var(--green); }
+    .sla-warn { background: rgba(240,160,48,.15); color: var(--orange); }
+    .sla-ko { background: rgba(255,77,77,.15); color: var(--red); }
+    .stage-body { padding: 16px; }
+    .stage-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
+    .stage-collapsed { padding: 14px 16px; }
 
-    .rapporto-footer {
-      padding: 20px 28px; border-top: 1px solid var(--border);
-      display: flex; gap: 12px; justify-content: space-between; flex-wrap: wrap;
-      background: var(--bg-card2);
-    }
-    .ticket-created {
-      display: none; margin-top: 20px;
-      background: rgba(134,188,37,.08); border: 1.5px solid rgba(134,188,37,.3);
-      border-radius: 10px; padding: 16px 18px;
-      font-size: 14px;
-    }
-    .ticket-created .tc-id { font-size: 20px; font-weight: 800; color: var(--green); }
+    .esito-mini { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .esito-mini button { flex: 1; min-width: 130px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--bg-card2); color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font-ui); }
+    .esito-mini button.sel-ok { border-color: var(--green); color: var(--green); background: rgba(134,188,37,.12); }
+    .esito-mini button.sel-esc { border-color: var(--orange); color: var(--orange); background: rgba(240,160,48,.12); }
+
+    .rap-foot { padding: 18px 26px; border-top: 1px solid var(--border); display: flex; gap: 12px; justify-content: space-between; flex-wrap: wrap; background: var(--bg-card2); }
+    .archived-box { display:none; margin:16px 0 0; background: rgba(134,188,37,.08); border: 1.5px solid rgba(134,188,37,.3); border-radius: 10px; padding: 16px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -113,376 +77,324 @@
   </nav>
   <div class="header-right">
     <button class="notif-btn" title="Notifiche">🔔</button>
-    <div class="user-pill">
-      <div class="user-avatar" id="user-avatar">?</div>
-      <span class="user-name" id="user-name">Utente</span>
-    </div>
+    <div class="user-pill"><div class="user-avatar" id="user-avatar">?</div><span class="user-name" id="user-name">Utente</span></div>
     <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
   </div>
 </header>
 
 <main class="page">
-  <div class="page-head" style="display:flex;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
+  <div class="page-head" style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
     <a href="checks.html" class="btn btn-ghost btn-sm">← Torna ai check</a>
     <div>
       <h1 class="page-title">Rapporto di Intervento</h1>
-      <p class="page-sub">Segnalazione malfunzionamento – Area62 / Deloitte</p>
+      <p class="page-sub">Analisi → Intervento remoto → Intervento fisico · SLA da contratto</p>
     </div>
   </div>
 
-  <div class="rapporto-wrap">
-    <div class="rapporto-card">
+  <div class="rap-wrap">
+    <div class="rap-card">
+      <div class="rap-head">
+        <div style="font-size:28px;">📋</div>
+        <div>
+          <div class="rh-title" id="rap-num">Nuovo Rapporto di Intervento</div>
+          <div class="rh-sub" id="rap-date">—</div>
+        </div>
+        <span class="rap-status st-open" id="rap-status" style="display:none;">Aperto</span>
+      </div>
 
-      <div class="rapporto-header">
-        <div class="rapporto-icon">📋</div>
-        <div class="rapporto-header-text">
-          <div class="rh-title">Rapporto di Intervento per Malfunzionamento</div>
-          <div class="rh-sub" id="rp-id-label">N° – / <span id="rp-date-label">–</span></div>
+      <div class="rap-body">
+        <div class="rp-section-title">Dati anomalia</div>
+        <div class="form-group">
+          <label class="form-label">Componente / Voce check</label>
+          <input class="form-control" id="rp-componente" placeholder="Es. Arena – LED Wall">
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Area / Spazio</label>
+            <select class="form-control" id="rp-area">
+              <option value="Solaria – Roma">Solaria – Roma</option>
+              <option value="Solaria – Milano">Solaria – Milano</option>
+              <option value="Armonia – Roma">Armonia – Roma</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Tecnico / Presidio</label>
+            <input class="form-control" id="rp-tecnico" placeholder="Nome">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrizione del malfunzionamento</label>
+          <textarea class="form-control" id="rp-descrizione" rows="3" placeholder="Cosa è stato rilevato, sintomi, contesto…"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Priorità (definisce gli SLA)</label>
+          <div class="priority-btns" id="prio-btns">
+            <button class="priority-btn" data-p="P1">P1 – Critico</button>
+            <button class="priority-btn" data-p="P2">P2 – Alto</button>
+            <button class="priority-btn sel" data-p="P3">P3 – Medio</button>
+            <button class="priority-btn" data-p="P4">P4 – Basso</button>
+          </div>
+        </div>
+
+        <div id="stages-wrap" style="display:none;">
+          <div class="rp-section-title">Livelli di intervento</div>
+          <div id="stages"></div>
+        </div>
+
+        <div class="archived-box" id="archived-box">
+          <div style="font-weight:700;color:var(--green);">✓ Rapporto chiuso e archiviato</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">
+            Il PDF è stato salvato in <a href="documenti.html" style="color:var(--green);">Documenti → Rapporti</a>.
+          </div>
         </div>
       </div>
 
-      <div class="rapporto-body">
-
-        <!-- 1. ANAGRAFICA -->
-        <div class="rp-section">
-          <div class="rp-section-title">1. Dati Intervento</div>
-          <div class="form-3col" style="margin-bottom:14px;">
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Data intervento</label>
-              <input class="form-control" type="date" id="rp-data">
-            </div>
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Ora inizio</label>
-              <input class="form-control" type="time" id="rp-ora-ini">
-            </div>
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Ora fine</label>
-              <input class="form-control" type="time" id="rp-ora-fin">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Area / Spazio</label>
-              <select class="form-control" id="rp-area">
-                <option value="Solaria – Roma">Solaria – Roma</option>
-                <option value="Solaria – Milano">Solaria – Milano</option>
-                <option value="Armonia – Roma">Armonia – Roma</option>
-                <option value="Entrambe">Solaria & Armonia</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Tecnico intervenuto</label>
-              <input class="form-control" id="rp-tecnico" placeholder="Nome tecnico">
-            </div>
-          </div>
-          <div class="form-row" style="margin-top:14px;">
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Società</label>
-              <input class="form-control" id="rp-societa" value="Area62" readonly style="opacity:.7;">
-            </div>
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Presenti durante l'intervento</label>
-              <input class="form-control" id="rp-presenti" placeholder="Nomi presenti">
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. MALFUNZIONAMENTO -->
-        <div class="rp-section">
-          <div class="rp-section-title">2. Rilevazione Malfunzionamento</div>
-          <div class="form-group">
-            <label class="form-label">Componente / Voce check</label>
-            <input class="form-control" id="rp-componente" placeholder="Es. Arena – LED Wall, Armonia AI – Attivazione vocale...">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Descrizione del malfunzionamento</label>
-            <textarea class="form-control" id="rp-problema" rows="4"
-              placeholder="Descrizione dettagliata del problema riscontrato. Quando si è verificato, sintomi, contesto..."></textarea>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Soluzioni rapide tentate</label>
-            <textarea class="form-control" id="rp-tentativi" rows="2"
-              placeholder="Azioni già tentate prima di aprire il rapporto (riavvio, verifica cavi, ecc.)..."></textarea>
-          </div>
-        </div>
-
-        <!-- 3. PRIORITÀ + SLA -->
-        <div class="rp-section">
-          <div class="rp-section-title">3. Priorità e SLA Applicabili</div>
-          <div class="form-group">
-            <label class="form-label">Priorità intervento</label>
-            <div class="priority-btns">
-              <button class="priority-btn" data-p="P1">P1 – Critico</button>
-              <button class="priority-btn" data-p="P2">P2 – Alto</button>
-              <button class="priority-btn sel" data-p="P3">P3 – Medio</button>
-              <button class="priority-btn" data-p="P4">P4 – Basso</button>
-            </div>
-          </div>
-          <div class="sla-preview-box" id="sla-box"></div>
-        </div>
-
-        <!-- 4. INTERVENTO -->
-        <div class="rp-section">
-          <div class="rp-section-title">4. Descrizione Intervento</div>
-          <div class="form-group">
-            <label class="form-label">Attività svolte</label>
-            <textarea class="form-control" id="rp-attivita" rows="4"
-              placeholder="Descrizione delle attività di diagnosi e intervento eseguite..."></textarea>
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Categoria</label>
-              <select class="form-control" id="rp-categoria">
-                <option value="hardware">Hardware</option>
-                <option value="software">Software</option>
-                <option value="connettivita">Connettività</option>
-                <option value="presidio">Presidio</option>
-                <option value="contenuto">Contenuto</option>
-                <option value="mista">Mista</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Soggetti coinvolti</label>
-              <input class="form-control" id="rp-soggetti" placeholder="Es. STS hardware, Top Consulting SW...">
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. ESITO -->
-        <div class="rp-section">
-          <div class="rp-section-title">5. Esito Intervento</div>
-          <div class="form-group">
-            <label class="form-label">Risultato</label>
-            <div class="esito-btns">
-              <button class="esito-btn" data-esito="risolto">✓ Risolto</button>
-              <button class="esito-btn" data-esito="parziale">◐ Parzialmente risolto</button>
-              <button class="esito-btn" data-esito="non-risolto">✕ Non risolto</button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Note residue / Azioni aperte</label>
-            <textarea class="form-control" id="rp-note-res" rows="3"
-              placeholder="Eventuali azioni aperte, parti da ordinare, follow-up necessari..."></textarea>
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Referente Deloitte (firma)</label>
-              <input class="form-control" id="rp-ref-dlt" placeholder="Nome referente Deloitte">
-            </div>
-            <div class="form-group" style="margin:0;">
-              <label class="form-label">Tecnico Area62 (firma)</label>
-              <input class="form-control" id="rp-firma-tec" placeholder="Nome e firma tecnico">
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /rapporto-body -->
-
-      <!-- TICKET CREATED FEEDBACK -->
-      <div class="ticket-created" id="ticket-created">
-        <div>Ticket aperto con successo:</div>
-        <div class="tc-id" id="tc-id-val">–</div>
-        <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">
-          Tracciabile in <a href="tickets.html" style="color:var(--green);">Gestione Anomalie</a>
-        </div>
-      </div>
-
-      <div class="rapporto-footer">
+      <div class="rap-foot">
+        <button class="btn btn-outline" onclick="history.back()">Annulla</button>
         <div style="display:flex;gap:10px;">
-          <button class="btn btn-outline" onclick="history.back()">Annulla</button>
-          <button class="btn btn-ghost btn-sm" id="btn-stampa">🖨 Stampa PDF</button>
-        </div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-outline" id="btn-salva-draft">Salva bozza</button>
-          <button class="btn btn-danger" id="btn-invia">⚠ Invia rapporto &amp; Apri ticket</button>
+          <button class="btn btn-outline" id="btn-salva" style="display:none;">Salva</button>
+          <button class="btn btn-danger" id="btn-apri">⚠ Apri rapporto</button>
+          <button class="btn btn-primary" id="btn-chiudi" style="display:none;">🔒 Chiudi &amp; archivia PDF</button>
         </div>
       </div>
-
-    </div><!-- /rapporto-card -->
+    </div>
   </div>
 </main>
 
+<div id="pdf-holder" style="position:fixed;left:-9999px;top:0;width:800px;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=18"></script>
-<script src="js/app.js?v=18"></script>
-<script src="js/db.js?v=18"></script>
+<script src="js/config.js?v=19"></script>
+<script src="js/app.js?v=19"></script>
+<script src="js/db.js?v=19"></script>
 <script>
-let selectedPriority = 'P3';
-let selectedEsito    = null;
+const STAGES = [
+  { key:'analisi', num:1, label:'Analisi', desc:'Analisi per determinare la natura del problema e se è risolvibile da remoto o serve un intervento fisico.' },
+  { key:'remoto',  num:2, label:'Intervento da remoto', desc:'Tentativo di risoluzione a distanza.' },
+  { key:'fisico',  num:3, label:'Intervento fisico pianificato', desc:'Intervento on-site: richiede pianificazione e presenza del tecnico.' },
+];
+const STAGE_SLA = {
+  P1: { analisi:2,  remoto:12,  fisico:24 },
+  P2: { analisi:2,  remoto:24,  fisico:48 },
+  P3: { analisi:2,  remoto:72,  fisico:120 },
+  P4: { analisi:8,  remoto:120, fisico:240 },
+};
+const AREA_ROOM = { 'Solaria – Roma':'solaria-roma','Solaria – Milano':'solaria-milano','Armonia – Roma':'armonia-roma' };
 
-document.addEventListener('DOMContentLoaded', () => {
+let rap = null;
+let priority = 'P3';
+
+document.addEventListener('DOMContentLoaded', async () => {
   if (!requireAuth()) return;
+  const u = currentUser();
+  document.getElementById('rp-tecnico').value = u?.name || '';
 
-  const u   = currentUser();
-  const now = new Date();
-
-  // Prefill from sessionStorage (provenienza: check mattutini)
   const prefill = JSON.parse(sessionStorage.getItem('rapporto_prefill') || 'null');
   if (prefill) {
     document.getElementById('rp-componente').value = prefill.checkName || '';
-    document.getElementById('rp-tentativi').value  = prefill.fixApplied
-      ? `Soluzione rapida tentata: ${prefill.fixApplied}` : '';
-    document.getElementById('rp-problema').value   = prefill.note || '';
-    document.getElementById('rp-area').value       = prefill.roomLabel || '';
-    if (prefill.ts) {
-      const d = new Date(prefill.ts);
-      document.getElementById('rp-data').value    = d.toISOString().slice(0,10);
-      document.getElementById('rp-ora-ini').value = d.toTimeString().slice(0,5);
-    }
+    document.getElementById('rp-descrizione').value = [prefill.note, prefill.fixApplied ? 'Soluzione tentata: ' + prefill.fixApplied : ''].filter(Boolean).join('\n');
+    if (prefill.roomLabel) document.getElementById('rp-area').value = prefill.roomLabel;
     sessionStorage.removeItem('rapporto_prefill');
   }
 
-  // Defaults
-  const todayStr = now.toISOString().slice(0,10);
-  if (!document.getElementById('rp-data').value)    document.getElementById('rp-data').value    = todayStr;
-  if (!document.getElementById('rp-ora-ini').value) document.getElementById('rp-ora-ini').value = now.toTimeString().slice(0,5);
-  document.getElementById('rp-tecnico').value = u?.name || '';
+  document.getElementById('rap-date').textContent = new Date().toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-  // ID label (async)
-  db.getTickets().then(list => {
-    const nextId = 'RAP-' + String(list.length + 1).padStart(3,'0');
-    document.getElementById('rp-id-label').innerHTML = `N° <strong>${nextId}</strong> / ${now.toLocaleDateString('it-IT')}`;
-  });
+  document.querySelectorAll('#prio-btns .priority-btn').forEach(b => b.addEventListener('click', () => {
+    if (rap && rap.status) return;
+    document.querySelectorAll('#prio-btns .priority-btn').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel'); priority = b.dataset.p;
+  }));
 
-  // Priority buttons
-  document.querySelectorAll('.priority-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('sel'));
-      btn.classList.add('sel');
-      selectedPriority = btn.dataset.p;
-      renderSLABox();
-    });
-  });
-  renderSLABox();
-
-  // Esito buttons
-  document.querySelectorAll('.esito-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.esito-btn').forEach(b => b.className = 'esito-btn');
-      selectedEsito = btn.dataset.esito;
-      const cls = selectedEsito === 'risolto' ? 'sel-ok' : selectedEsito === 'parziale' ? 'sel-parz' : 'sel-no';
-      btn.classList.add(cls);
-    });
-  });
-
-  // Save draft
-  document.getElementById('btn-salva-draft').addEventListener('click', () => {
-    toast('Bozza salvata ✓', 'info');
-  });
-
-  // Stampa
-  document.getElementById('btn-stampa').addEventListener('click', () => window.print());
-
-  // Invia
-  document.getElementById('btn-invia').addEventListener('click', inviaRapporto);
+  document.getElementById('btn-apri').addEventListener('click', apriRapporto);
+  document.getElementById('btn-salva').addEventListener('click', () => persist(true));
+  document.getElementById('btn-chiudi').addEventListener('click', chiudiRapporto);
 });
 
-function renderSLABox() {
-  const s = SLA[selectedPriority];
-  if (!s) return;
-  const rows = [
-    { k: 'Primo contatto telefonico',    v: `Entro ${s.contact_h}h lavorativa`, pen: '1% canone' },
-    { k: 'Assistenza remota / diagnosi', v: `Entro ${s.remote_h}h dal contatto`, pen: '1% canone' },
-  ];
-  if (selectedPriority === 'P1') {
-    rows.push({ k: 'Ripristino prov. SW', v: 'Entro 12h dalla diagnosi', pen: '3% canone' });
-    rows.push({ k: 'Ripristino prov. HW', v: 'Entro 24h (materiali disponibili)', pen: '3% canone' });
-    rows.push({ k: 'Ripristino def. SW',  v: 'Entro 2 giorni lavorativi', pen: '' });
-  } else if (selectedPriority === 'P2') {
-    rows.push({ k: 'Ripristino prov. SW', v: 'Entro 1 giorno lavorativo', pen: '1% canone' });
-    rows.push({ k: 'Ripristino prov. HW', v: 'Entro 2 giorni lavorativi', pen: '1% canone' });
-    rows.push({ k: 'Ripristino def.',     v: 'Entro 5 giorni lavorativi', pen: '' });
-  } else if (selectedPriority === 'P3') {
-    rows.push({ k: 'Pianificazione ripristino', v: 'Entro 3 gg lav. (SW) / 5 gg lav. (HW)', pen: '' });
-    rows.push({ k: 'Ripristino definitivo',     v: 'Entro 10 giorni lavorativi', pen: '' });
-  }
-  document.getElementById('sla-box').innerHTML = `
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:.5px;margin-bottom:10px;">
-      SLA Contrattuali – ${SLA[selectedPriority]?.label || selectedPriority}
-    </div>
-    ${rows.map(r => `<div class="sla-row">
-      <span class="sla-key">${r.k}</span>
-      <span class="sla-val">${r.v}</span>
-      ${r.pen ? `<span class="sla-pen">penale: ${r.pen}</span>` : ''}
-    </div>`).join('')}
-    <div style="margin-top:10px;font-size:11px;color:var(--text-faint);">
-      Cap mensile penali: max 12% canone mensile · Fonte: Allegato E contratto manutenzione
-    </div>`;
+async function apriRapporto() {
+  const componente = document.getElementById('rp-componente').value.trim();
+  if (!componente) { toast('Inserisci il componente/voce', 'error'); return; }
+  const list = await db.getRapporti();
+  rap = {
+    id: genId(),
+    num: 'RAP-' + String(list.length + 1).padStart(3, '0'),
+    area: document.getElementById('rp-area').value,
+    room: AREA_ROOM[document.getElementById('rp-area').value] || 'solaria-roma',
+    componente,
+    descrizione: document.getElementById('rp-descrizione').value.trim(),
+    tecnico: document.getElementById('rp-tecnico').value.trim(),
+    priority,
+    status: 'open',
+    openedAt: new Date().toISOString(),
+    closedAt: null, pdfPath: null,
+    stages: {
+      analisi: { active: true, startedAt: new Date().toISOString(), note: '', esito: '', completedAt: null },
+      remoto:  { active: false, startedAt: null, note: '', esito: '', completedAt: null },
+      fisico:  { active: false, startedAt: null, pianificata: '', note: '', esito: '', completedAt: null },
+    },
+  };
+  await persist(false);
+  const html = emailTemplate(`Anomalia aperta — ${rap.num} (${rap.priority})`,
+    `<p style="font-size:16px;"><b>${rap.componente}</b></p>
+     <p><b>Area:</b> ${rap.area}<br><b>Priorità:</b> ${rap.priority}<br><b>Presidio:</b> ${rap.tecnico || '—'}</p>
+     <p><b>Rilevazione:</b><br>${(rap.descrizione || '—').replace(/\n/g,'<br>')}</p>
+     <p style="color:#666;font-size:13px;">È stata avviata la fase di <b>analisi</b> (SLA ${STAGE_SLA[rap.priority].analisi}h).</p>`,
+    rap.priority === 'P1' ? '#ff4d4d' : rap.priority === 'P2' ? '#f0a030' : '#86BC25');
+  db.notify(rap.priority === 'P1' ? 'ticket-p1' : rap.priority === 'P2' ? 'ticket-p2' : 'ticket-any', `[${rap.priority}] Anomalia aperta — ${rap.componente}`, html);
+  db.notify('rapporto', `Rapporto ${rap.num} aperto — ${rap.componente}`, html);
+  toast('Rapporto aperto ✓ — email di apertura inviata', 'success');
+  render();
 }
 
-async function inviaRapporto() {
-  const title = document.getElementById('rp-componente').value.trim();
-  if (!title) { toast('Inserisci il componente/voce check', 'error'); return; }
-  if (!selectedEsito) { toast('Seleziona l\'esito dell\'intervento', 'error'); return; }
+function render() {
+  if (!rap) return;
+  document.getElementById('rap-num').textContent = `Rapporto ${rap.num}`;
+  const st = document.getElementById('rap-status');
+  st.style.display = ''; st.textContent = rap.status === 'closed' ? 'Chiuso' : 'Aperto';
+  st.className = 'rap-status ' + (rap.status === 'closed' ? 'st-closed' : 'st-open');
+  ['rp-componente','rp-area','rp-tecnico','rp-descrizione'].forEach(id => document.getElementById(id).setAttribute('disabled','true'));
+  document.getElementById('btn-apri').style.display = 'none';
+  document.getElementById('btn-salva').style.display = rap.status === 'closed' ? 'none' : '';
+  document.getElementById('btn-chiudi').style.display = rap.status === 'closed' ? 'none' : '';
+  document.getElementById('archived-box').style.display = rap.status === 'closed' ? 'block' : 'none';
+  document.getElementById('stages-wrap').style.display = '';
+  renderStages();
+}
 
-  const btn = document.getElementById('btn-invia');
-  btn.disabled = true;
-  btn.textContent = 'Invio in corso...';
+function renderStages() {
+  const closed = rap.status === 'closed';
+  document.getElementById('stages').innerHTML = STAGES.map(sd => {
+    const s = rap.stages[sd.key];
+    const target = STAGE_SLA[rap.priority][sd.key];
+    const done = !!s.completedAt;
+    const cls = done ? 'done' : s.active ? 'on' : '';
+    let slaBadge = '';
+    if (s.active && !done && !closed) {
+      const l = slaHoursLeft(s.startedAt, target);
+      slaBadge = `<span class="stage-sla sla-${l.status}">${l.leftH > 0 ? 'SLA ' + Math.round(l.leftH) + 'h rimaste' : 'SLA SCADUTO'}</span>`;
+    } else if (done) {
+      slaBadge = `<span class="stage-sla sla-ok">✓ completato</span>`;
+    } else if (!s.active) {
+      slaBadge = `<span class="stage-sla" style="background:var(--bg-card2);color:var(--text-muted);">SLA ${target}h</span>`;
+    }
+    let body = '';
+    if (!s.active) {
+      body = closed ? `<div class="stage-collapsed" style="color:var(--text-muted);font-size:13px;">Livello non attivato.</div>`
+        : `<div class="stage-collapsed"><div class="stage-desc">${sd.desc}</div>
+             <button class="btn btn-outline btn-sm" onclick="attivaStage('${sd.key}')">+ Attiva questo livello</button></div>`;
+    } else {
+      const ro = (done || closed) ? 'disabled' : '';
+      body = `<div class="stage-body">
+        <div class="stage-desc">${sd.desc}</div>
+        ${sd.key === 'fisico' ? `<div class="form-group"><label class="form-label">Data intervento pianificata</label>
+          <input class="form-control" type="date" ${ro} value="${s.pianificata || ''}" onchange="setStage('${sd.key}','pianificata',this.value)"></div>` : ''}
+        <div class="form-group"><label class="form-label">Note / attività</label>
+          <textarea class="form-control" rows="2" ${ro} onchange="setStage('${sd.key}','note',this.value)" placeholder="Cosa è stato fatto in questo livello…">${s.note || ''}</textarea></div>
+        <div class="esito-mini">
+          <button class="${s.esito==='risolto'?'sel-ok':''}" ${ro} onclick="setEsito('${sd.key}','risolto')">✓ Risolto qui</button>
+          <button class="${s.esito==='escalato'?'sel-esc':''}" ${ro} onclick="setEsito('${sd.key}','escalato')">↑ Livello successivo</button>
+        </div>
+        ${done ? `<div style="font-size:12px;color:var(--green);">Completato il ${formatDateTime(s.completedAt)} — esito: ${s.esito || '—'}</div>`
+          : (closed ? '' : `<button class="btn btn-primary btn-sm" onclick="completaStage('${sd.key}')">Completa livello</button>`)}
+      </div>`;
+    }
+    return `<div class="stage ${cls}">
+      <div class="stage-head"><div class="stage-num">${sd.num}</div><div class="stage-title">${sd.label}</div>${slaBadge}</div>
+      ${body}</div>`;
+  }).join('');
+}
 
-  const area     = document.getElementById('rp-area').value;
-  const tecnico  = document.getElementById('rp-tecnico').value;
-  const desc     = document.getElementById('rp-problema').value;
-  const attivita = document.getElementById('rp-attivita').value;
-  const noteRes  = document.getElementById('rp-note-res').value;
-  const tentativi= document.getElementById('rp-tentativi').value;
-  const cat      = document.getElementById('rp-categoria').value;
+function attivaStage(key) {
+  rap.stages[key].active = true;
+  rap.stages[key].startedAt = new Date().toISOString();
+  persist(false); renderStages();
+}
+function setStage(key, field, val) { rap.stages[key][field] = val; }
+function setEsito(key, val) { rap.stages[key].esito = val; renderStages(); }
+function completaStage(key) {
+  const s = rap.stages[key];
+  if (!s.esito) { toast('Scegli l\'esito del livello', 'error'); return; }
+  s.completedAt = new Date().toISOString();
+  persist(true); renderStages();
+  toast('Livello completato ✓', 'success');
+}
 
-  const roomMap = {
-    'Solaria – Roma': 'solaria-roma',
-    'Solaria – Milano': 'solaria-milano',
-    'Armonia – Roma': 'armonia-roma',
-    'Entrambe': 'solaria-roma',
-  };
-  const roomId = roomMap[area] || 'solaria-roma';
-
-  const existing = await db.getTickets();
-  const ticket = {
-    id: 'TCK-' + String(existing.length + 1).padStart(3,'0'),
-    room: roomId,
-    priority: selectedPriority,
-    title: `${title} – ${area}`,
-    desc: [desc, tentativi ? `Tentativi: ${tentativi}` : ''].filter(Boolean).join('\n'),
-    category: cat,
-    status: selectedEsito === 'risolto' ? 'resolved' : 'open',
-    segnalatore: tecnico || currentUser()?.name || 'Presidio',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    resolvedAt: selectedEsito === 'risolto' ? new Date().toISOString() : null,
-    slaRespected: null,
-    actions: attivita ? [{ id: genId(), ts: new Date().toISOString(), user: tecnico, text: attivita }] : [],
-    fromRapporto: true,
-    noteResidue: noteRes,
-  };
-
+async function persist(showToast) {
+  if (!rap) return;
   try {
-    await db.saveTicket(ticket);
-    document.getElementById('ticket-created').style.display = 'block';
-    document.getElementById('tc-id-val').textContent = ticket.id;
-    btn.textContent = '✓ Rapporto inviato';
-    toast(`Ticket ${ticket.id} aperto (${selectedPriority})`, 'success');
+    await db.saveRapporto(rap);
+    if (showToast) toast('Salvato ✓', 'info');
+  } catch (e) { toast('Errore salvataggio: ' + e.message, 'error'); }
+}
 
-    // Notifica email ai destinatari configurati (best-effort)
-    const evPri = selectedPriority === 'P1' ? 'ticket-p1' : selectedPriority === 'P2' ? 'ticket-p2' : 'ticket-any';
-    const emailHtml = emailTemplate(`⚠ Nuova anomalia — ${ticket.id} (${selectedPriority})`,
-      `<p style="font-size:16px;"><strong>${ticket.title}</strong></p>
-       <p><strong>Area:</strong> ${area}<br><strong>Tecnico:</strong> ${tecnico||'—'}<br><strong>Categoria:</strong> ${cat}</p>
-       <p><strong>Descrizione:</strong><br>${(desc||'—').replace(/\n/g,'<br>')}</p>
-       ${attivita ? `<p><strong>Attività svolte:</strong><br>${attivita.replace(/\n/g,'<br>')}</p>` : ''}
-       <p><strong>Esito:</strong> ${selectedEsito}</p>`,
-      selectedPriority === 'P1' ? '#ff4d4d' : selectedPriority === 'P2' ? '#f0a030' : '#86BC25');
-    db.notify(evPri, `[${selectedPriority}] ${ticket.title} — ${ticket.id}`, emailHtml);
-    if (evPri !== 'ticket-any') db.notify('ticket-any', `[${selectedPriority}] ${ticket.title} — ${ticket.id}`, emailHtml);
-    db.notify('rapporto', `Rapporto intervento — ${ticket.title}`, emailHtml);
-  } catch(err) {
-    toast('Errore salvataggio: ' + err.message, 'error');
-    btn.disabled = false;
-    btn.textContent = '⚠ Invia rapporto & Apri ticket';
+async function chiudiRapporto() {
+  if (!rap) return;
+  const btn = document.getElementById('btn-chiudi');
+  btn.disabled = true; btn.textContent = 'Genero il PDF…';
+  try {
+    const holder = document.getElementById('pdf-holder');
+    holder.innerHTML = buildRapportoDoc(rap);
+    const fname = `${Date.now()}_${rap.num}_${(rap.componente||'rapporto').replace(/[^\w]+/g,'_')}.pdf`;
+    const blob = await html2pdf().set({
+      margin: 8, image: { type: 'jpeg', quality: .95 },
+      html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }).from(holder.firstElementChild).outputPdf('blob');
+    const path = `rapporti/${fname}`;
+    await db.uploadDoc(path, blob);
+    rap.status = 'closed'; rap.closedAt = new Date().toISOString(); rap.pdfPath = path;
+    await persist(false);
+    const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(blob); });
+    const html = emailTemplate(`Rapporto chiuso — ${rap.num}`,
+      `<p><b>${rap.componente}</b> — ${rap.area}</p>
+       <p>Il rapporto di intervento è stato <b style="color:#5a8a00;">chiuso e archiviato</b>. In allegato il PDF definitivo.</p>`, '#86BC25');
+    db.sendEmail(recipientsFor('rapporto'), `Rapporto ${rap.num} chiuso — ${rap.componente}`, html,
+      [{ filename: `${rap.num}.pdf`, content: b64, mimetype: 'application/pdf' }]);
+    holder.innerHTML = '';
+    toast('Rapporto chiuso, PDF archiviato ✓', 'success');
+    render();
+    document.getElementById('archived-box').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) {
+    toast('Errore chiusura: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = '🔒 Chiudi & archivia PDF';
   }
+}
 
-  // Scroll to confirmation
-  setTimeout(() => {
-    document.getElementById('ticket-created').scrollIntoView({ behavior:'smooth' });
-  }, 200);
+function recipientsFor(ev) {
+  return [...new Set((getSettings().emailRecipients || []).filter(r => r.email && (r.events || []).includes(ev)).map(r => r.email))];
+}
+
+function buildRapportoDoc(r) {
+  const stageRow = (sd) => {
+    const s = r.stages[sd.key];
+    if (!s.active) return `<tr><td class="k">${sd.num}. ${sd.label}</td><td style="color:#999;">non attivato</td></tr>`;
+    return `<tr><td class="k">${sd.num}. ${sd.label}</td><td>${s.note ? s.note.replace(/\n/g,'<br>') : '—'}${sd.key==='fisico'&&s.pianificata?`<br><i>Pianificato: ${s.pianificata}</i>`:''}<br>
+      <span style="color:#5a8a00;font-size:12px;">Esito: ${s.esito || '—'}${s.completedAt?' · completato '+new Date(s.completedAt).toLocaleString('it-IT'):''}</span></td></tr>`;
+  };
+  return `<div style="font-family:Arial,sans-serif;color:#1a1a1a;width:760px;background:#fff;">
+    <div style="background:#0d0d0d;padding:16px 26px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:#86BC25;font-weight:800;font-size:22px;letter-spacing:1px;">AREA62</span>
+      <span style="color:#e8e8e8;font-size:12px;">Deloitte · Room Management</span></div>
+    <div style="height:5px;background:#86BC25;"></div>
+    <div style="padding:26px;">
+      <h1 style="font-size:18px;margin:0 0 4px;text-transform:uppercase;">Rapporto di Intervento — ${r.num}</h1>
+      <div style="color:#888;font-size:13px;margin-bottom:18px;">${r.area} · Priorità ${r.priority} · Aperto ${new Date(r.openedAt).toLocaleString('it-IT')} · Chiuso ${new Date().toLocaleString('it-IT')}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <tr><td style="background:#f7f7f7;color:#555;font-weight:600;padding:8px 10px;border:1px solid #e2e2e2;width:200px;">Componente / Voce</td><td style="padding:8px 10px;border:1px solid #e2e2e2;"><b>${r.componente}</b></td></tr>
+        <tr><td style="background:#f7f7f7;color:#555;font-weight:600;padding:8px 10px;border:1px solid #e2e2e2;">Tecnico / Presidio</td><td style="padding:8px 10px;border:1px solid #e2e2e2;">${r.tecnico||'—'}</td></tr>
+        <tr><td style="background:#f7f7f7;color:#555;font-weight:600;padding:8px 10px;border:1px solid #e2e2e2;">Rilevazione</td><td style="padding:8px 10px;border:1px solid #e2e2e2;">${(r.descrizione||'—').replace(/\n/g,'<br>')}</td></tr>
+      </table>
+      <div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0d0d0d;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #86BC25;">Livelli di intervento</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <style>#pdf-holder td.k{background:#f7f7f7;color:#555;font-weight:600;padding:8px 10px;border:1px solid #e2e2e2;width:200px;vertical-align:top;} #pdf-holder td{padding:8px 10px;border:1px solid #e2e2e2;vertical-align:top;}</style>
+        ${STAGES.map(stageRow).join('')}
+      </table>
+      <div style="margin-top:26px;display:flex;gap:16px;">
+        <div style="flex:1;border:1px solid #e2e2e2;border-radius:6px;padding:12px;font-size:13px;color:#555;min-height:80px;">Firma referente area<br><br>Nome:<br>Firma:</div>
+        <div style="flex:1;border:1px solid #e2e2e2;border-radius:6px;padding:12px;font-size:13px;color:#555;min-height:80px;">Firma tecnico<br><br>Nome:<br>Società:<br>Firma:</div>
+      </div>
+    </div>
+    <div style="padding:14px 26px;background:#0d0d0d;color:#9a9a9a;font-size:11px;">Area62 Srl · Gestione sale immersive Solaria &amp; Armonia · Deloitte · https://rooms.area62.it</div>
+  </div>`;
 }
 </script>
 </body>

@@ -298,4 +298,35 @@ const db = {
       .upsert({ id: 'global', data: settings, updated_at: new Date().toISOString() });
     if (error) throw new Error(error.message);
   },
+
+  /* ── RAPPORTI DI INTERVENTO (workflow a 3 livelli) ── */
+  async getRapporti() {
+    if (DEMO_MODE) return ls('dlt_rapporti') || [];
+    _initSb();
+    const { data, error } = await _sb.from('rapporti').select('*').order('created_at', { ascending: false });
+    if (error) { console.error('getRapporti', error); return []; }
+    return (data || []).map(r => ({
+      id: r.id, num: r.num, room: r.room, area: r.area, componente: r.componente,
+      descrizione: r.descrizione, priority: r.priority, tecnico: r.tecnico,
+      status: r.status, stages: r.stages || {}, openedAt: r.opened_at, closedAt: r.closed_at, pdfPath: r.pdf_path,
+    }));
+  },
+  async saveRapporto(r) {
+    if (DEMO_MODE) {
+      const list = ls('dlt_rapporti') || [];
+      const i = list.findIndex(x => x.id === r.id);
+      if (i >= 0) list[i] = r; else list.unshift(r);
+      lsSet('dlt_rapporti', list);
+      return r;
+    }
+    _initSb();
+    const row = {
+      id: r.id, num: r.num, room: r.room, area: r.area, componente: r.componente,
+      descrizione: r.descrizione, priority: r.priority, tecnico: r.tecnico, status: r.status,
+      stages: r.stages, opened_at: r.openedAt, closed_at: r.closedAt, pdf_path: r.pdfPath,
+    };
+    const { error } = await _sb.from('rapporti').upsert(row);
+    if (error) throw new Error(error.message);
+    return r;
+  },
 };
