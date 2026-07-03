@@ -97,7 +97,11 @@ def email_template(heading, inner, accent='#86BC25'):
 
 # ── PARSER PRENOTAZIONE ──
 def parse_booking(subject, body):
-    text = (subject or '') + '\n' + (body or '')
+    body = body or ''
+    # taglia il contenuto citato/inoltrato (non leggere date/testi di altre email)
+    cut = re.search(r'(?im)(inizio messaggio inoltrato|-----\s*original message|^\s*da:\s.*<.*@|^\s*>)', body)
+    if cut: body = body[:cut.start()]
+    text = (subject or '') + '\n' + body
     low = text.lower()
     room = None
     city = 'milano' if 'milano' in low else 'roma'
@@ -109,8 +113,11 @@ def parse_booking(subject, body):
         start_h = f"{int(tmatch.group(1)):02d}:{tmatch.group(2) or '00'}"
         end_h   = f"{int(tmatch.group(3)):02d}:{tmatch.group(4) or '00'}"
     d = None
-    for m in re.finditer(r'(\d{1,2}\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\s+\d{4}|\d{1,2}\s+(?:gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})', low):
-        d = dateparser.parse(m.group(1), languages=['it'], settings={'PREFER_DATES_FROM': 'future'})
+    mesi = 'gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre'
+    # accetta: "17 luglio [2026]", "17/07[/2026]", "17-07", "17.07[.2026]" (punto/barra/trattino, anno opzionale)
+    for m in re.finditer(rf'(\d{{1,2}}\s+(?:{mesi})(?:\s+\d{{4}})?|\d{{1,2}}[/.\-]\d{{1,2}}(?:[/.\-]\d{{2,4}})?)', low):
+        cand = m.group(1).replace('.', '/')  # normalizza il punto (17.07 → 17/07)
+        d = dateparser.parse(cand, languages=['it'], settings={'PREFER_DATES_FROM': 'future', 'DATE_ORDER': 'DMY'})
         if d: break
     # scarta date implausibili (anno fuori range → falso positivo)
     if d:
@@ -118,10 +125,10 @@ def parse_booking(subject, body):
         if d.year < yr or d.year > yr + 2:
             d = None
     ref = None
-    rm = re.search(r'referente[:\s]+([A-Za-zÀ-ÿ\'\. ]+)', text, re.I)
+    rm = re.search(r'referente[:\-]\s*([A-Za-zÀ-ÿ\'\. ]+)', text, re.I)
     if rm: ref = rm.group(1).strip().split('.')[0].strip()
     ev = None
-    em = re.search(r'evento[:\s]+([A-Za-zÀ-ÿ0-9\'\. ]+)', text, re.I)
+    em = re.search(r'evento[:\-]\s*([A-Za-zÀ-ÿ0-9\'\. ]+)', text, re.I)
     if em: ev = em.group(1).strip().split('.')[0].strip()
     return {'room': room, 'date': d.strftime('%Y-%m-%d') if d else None,
             'start': start_h, 'end': end_h, 'referente': ref,
