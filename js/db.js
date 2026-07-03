@@ -240,25 +240,14 @@ const db = {
     if (error) throw error;
   },
 
-  /* ── EMAIL (Edge Function send-email via SMTP Aruba) ── */
+  /* ── EMAIL — accoda su email_queue (il worker GitHub Actions la spedisce via SMTP Aruba) ── */
   async sendEmail(to, subject, html) {
+    if (DEMO_MODE) return { ok: true };
     _initSb();
-    const attempt = async () => {
-      const { data, error } = await _sb.functions.invoke('send-email', { body: { to, subject, html } });
-      if (error) {
-        let msg = error.message || 'Errore invio email';
-        try { const ctx = await error.context.json(); if (ctx.error) msg = ctx.error; } catch {}
-        throw new Error(msg);
-      }
-      if (data && data.error) throw new Error(data.error);
-      return data;
-    };
-    try { return await attempt(); }
-    catch (e) {
-      // il primo invio dopo inattività può fallire (cold start): riprova una volta
-      await new Promise(r => setTimeout(r, 1800));
-      return await attempt();
-    }
+    const toArr = Array.isArray(to) ? to : [to];
+    const { error } = await _sb.from('email_queue').insert({ to_addr: toArr, subject, html });
+    if (error) throw new Error(error.message);
+    return { ok: true, queued: true };
   },
 
   // invia una notifica ai destinatari configurati per un dato evento (best-effort)

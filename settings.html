@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impostazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=12">
+  <link rel="stylesheet" href="css/style.css?v=13">
   <style>
     .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
     .set-card {
@@ -334,9 +334,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=12"></script>
-<script src="js/app.js?v=12"></script>
-<script src="js/db.js?v=12"></script>
+<script src="js/config.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
+<script src="js/db.js?v=13"></script>
 <script>
 let S = null;         // settings correnti
 let users = [];       // roster utenti
@@ -579,9 +579,9 @@ async function sendTestEmail() {
         <p>Se la stai leggendo, l'invio automatico di notifiche e rapporti è attivo.</p>
         <p style="color:#888;font-size:12px;">Area62 · Deloitte Room Management</p>
       </div>`);
-    toast('Email di prova inviata a ' + me.email + ' ✓', 'success');
+    toast('Email di prova in coda → arriva a ' + me.email + ' entro pochi minuti ✓', 'success');
   } catch (e) {
-    toast('Errore invio: ' + e.message, 'error');
+    toast('Errore: ' + e.message, 'error');
   }
   btn.disabled = false; btn.textContent = old;
 }
