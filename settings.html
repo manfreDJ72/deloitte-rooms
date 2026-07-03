@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impostazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=15">
+  <link rel="stylesheet" href="css/style.css?v=16">
   <style>
     .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
     .set-card {
@@ -160,17 +160,12 @@
           <div class="sc-title">Destinatari notifiche</div>
           <div class="sc-sub">A quali email inviare ogni tipo di evento</div>
         </div>
-        <span class="backend-badge">Invio via Supabase</span>
       </div>
       <div class="set-card-body">
         <div id="recip-list"></div>
         <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" id="btn-add-recip" style="flex:1;min-width:180px;">+ Aggiungi destinatario</button>
           <button class="btn btn-ghost btn-sm" id="btn-test-email">✉️ Invia email di prova</button>
-        </div>
-        <div class="backend-note">
-          ℹ️ L'email di prova viene inviata alla <strong>tua email</strong> (${''}). Per inviare a indirizzi esterni
-          (es. Deloitte) serve verificare un dominio su Resend — lo facciamo dopo.
         </div>
       </div>
     </div>
@@ -236,7 +231,6 @@
           <div class="sc-title">Prenotazione via email</div>
           <div class="sc-sub">Un indirizzo che riceve le richieste e crea la prenotazione automaticamente</div>
         </div>
-        <span class="backend-badge">Richiede Supabase</span>
       </div>
       <div class="set-card-body">
         <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:14px;">
@@ -245,12 +239,7 @@
         </label>
         <div class="form-group" style="margin:0;max-width:360px;">
           <label class="form-label">Indirizzo dedicato</label>
-          <input class="form-control" id="inbound-address" placeholder="prenotazioni@rooms.area62.it">
-        </div>
-        <div class="backend-note">
-          ℹ️ Come funzionerà: una richiesta inviata a questo indirizzo viene letta da una Edge Function Supabase,
-          interpretata (sala, data, ora, referente) e trasformata in prenotazione. Il sistema risponde con
-          una <strong>email di conferma</strong> (check di prenotazione). Da attivare dopo il collegamento a Supabase.
+          <input class="form-control" id="inbound-address" placeholder="deloitte.room@area62.it">
         </div>
       </div>
     </div>
@@ -263,13 +252,12 @@
           <div class="sc-title">Repository documenti</div>
           <div class="sc-sub">Archivio di rapporti, contratti e allegati — chiusura riservata agli admin</div>
         </div>
-        <span class="backend-badge">Richiede Supabase</span>
+        <a href="documenti.html" class="btn btn-outline btn-sm" style="margin-left:auto;">Apri Documenti →</a>
       </div>
       <div class="set-card-body">
-        <div class="backend-note" style="margin-top:0;">
-          ℹ️ Il repository userà <strong>Supabase Storage</strong> con permessi: tutti gli utenti autorizzati
-          possono consultare, solo gli <strong>amministratori</strong> possono caricare, archiviare o chiudere
-          i documenti (rapporti firmati, contratti SLA, materiali creativi delle prenotazioni). Si attiva dopo il setup del database.
+        <div style="font-size:13px;color:var(--text-muted);">
+          Tutti gli utenti autorizzati possono consultare e scaricare; solo gli <strong>amministratori</strong>
+          caricano ed eliminano. Gestisci l'archivio nella pagina <a href="documenti.html" style="color:var(--green);">Documenti</a>.
         </div>
       </div>
     </div>
@@ -334,9 +322,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=15"></script>
-<script src="js/app.js?v=15"></script>
-<script src="js/db.js?v=15"></script>
+<script src="js/config.js?v=16"></script>
+<script src="js/app.js?v=16"></script>
+<script src="js/db.js?v=16"></script>
 <script>
 let S = null;         // settings correnti
 let users = [];       // roster utenti
