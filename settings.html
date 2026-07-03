@@ -451,7 +451,7 @@ async function saveUser() {
       } else {
         await db.adminUsers('create', { name, email, role, avatar, password });
         // email di benvenuto con le credenziali (best-effort)
-        const loginUrl = 'https://manfredj72.github.io/deloitte-rooms/';
+        const loginUrl = 'https://rooms.area62.it/';
         db.sendEmail(email, 'Il tuo accesso — Deloitte Room Management',
           emailTemplate('Benvenuto/a nel portale',
             `<p>Ciao <strong>${name}</strong>, è stato creato il tuo accesso al sistema di gestione sale Solaria &amp; Armonia.</p>
