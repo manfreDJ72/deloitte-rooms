@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Assistente AI – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=25">
+  <link rel="stylesheet" href="css/style.css?v=26">
   <style>
     .ai-layout { display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start; }
     @media (max-width: 900px) { .ai-layout { grid-template-columns: 1fr; } }
@@ -50,9 +50,22 @@
     .chat-suggest { display:flex; gap:8px; flex-wrap:wrap; padding:10px 0 6px; }
     .sug { font-size:12px; background:var(--bg-card); border:1px solid var(--border); border-radius:20px; padding:6px 12px; cursor:pointer; color:var(--text-muted); transition:all .15s; }
     .sug:hover { border-color:var(--green); color:var(--text); }
-    .chat-input { display:flex; gap:10px; padding-top:8px; border-top:1px solid var(--border); }
+    .chat-input { display:flex; gap:10px; padding-top:8px; border-top:1px solid var(--border); align-items:flex-end; }
     .chat-input textarea { flex:1; resize:none; background:var(--bg-card); border:1.5px solid var(--border); border-radius:10px; padding:11px 13px; color:var(--text); font-family:inherit; font-size:14px; max-height:120px; }
     .chat-input textarea:focus { outline:none; border-color:var(--green); }
+
+    /* ── Voce ── */
+    .chat-tools { margin-left:auto; display:flex; gap:8px; }
+    .icon-toggle { width:36px; height:36px; border-radius:9px; border:1.5px solid var(--border); background:var(--bg-card); color:var(--text-muted); font-size:16px; cursor:pointer; transition:all .15s; }
+    .icon-toggle:hover { border-color:var(--text-muted); color:var(--text); }
+    .icon-toggle.on { border-color:var(--green); background:rgba(134,188,37,.15); color:var(--green); }
+    .mic-btn { width:44px; height:44px; flex-shrink:0; border-radius:10px; border:1.5px solid var(--border); background:var(--bg-card); font-size:20px; cursor:pointer; transition:all .15s; }
+    .mic-btn:hover { border-color:var(--green); }
+    .mic-btn.listening { border-color:var(--red); background:rgba(255,77,77,.15); animation:micpulse 1.2s infinite; }
+    @keyframes micpulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,77,77,.5)} 50%{box-shadow:0 0 0 6px rgba(255,77,77,0)} }
+    .voice-status { font-size:12px; color:var(--green); padding:4px 2px; min-height:18px; display:none; }
+    .voice-status.show { display:block; }
+    .voice-status.err { color:var(--orange); }
   </style>
 </head>
 <body>
@@ -107,16 +120,22 @@
           <div class="chat-h-title">Claude · Assistente sale</div>
           <div class="chat-h-sub" id="chat-model">Pronto</div>
         </div>
+        <div class="chat-tools">
+          <button class="icon-toggle" id="tts-toggle" title="Leggi le risposte ad alta voce">🔈</button>
+          <button class="icon-toggle" id="convo-toggle" title="Modalità conversazione (parla e ascolta a mani libere)">🗣️</button>
+        </div>
       </div>
       <div class="chat-log" id="chat-log"></div>
       <div class="chat-hint" id="chat-hint"></div>
+      <div class="voice-status" id="voice-status"></div>
       <div class="chat-suggest" id="chat-suggest">
         <span class="sug" data-q="Cosa non funziona oggi? Fammi un riepilogo delle priorità.">Cosa non funziona oggi?</span>
         <span class="sug" data-q="Quali eventi ci sono questa settimana e cosa manca da preparare?">Eventi della settimana</span>
         <span class="sug" data-q="Ci sono mail da gestire? Riepilogamele.">Mail da gestire</span>
       </div>
       <div class="chat-input">
-        <textarea id="chat-in" rows="1" placeholder="Scrivi all'assistente…"></textarea>
+        <button class="mic-btn" id="mic-btn" title="Detta la richiesta a voce">🎤</button>
+        <textarea id="chat-in" rows="1" placeholder="Scrivi o detta all'assistente…"></textarea>
         <button class="btn btn-primary" id="chat-send">Invia</button>
       </div>
     </section>
@@ -135,9 +154,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=25"></script>
-<script src="js/app.js?v=25"></script>
-<script src="js/db.js?v=25"></script>
+<script src="js/config.js?v=26"></script>
+<script src="js/app.js?v=26"></script>
+<script src="js/db.js?v=26"></script>
 <script>
 let messages = [];   // storico chat {role, content}
 let AN = [];         // anomalie rilevate
@@ -171,6 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.sug').forEach(s => s.addEventListener('click', () => {
     document.getElementById('chat-in').value = s.dataset.q; sendMessage();
   }));
+  initVoice();
 
   await refreshData();
 });
@@ -291,6 +311,7 @@ async function sendMessage() {
       addAI(res.reply);
       messages.push({ role: 'assistant', content: res.reply });
       if (res.model) document.getElementById('chat-model').textContent = 'Modello: ' + res.model;
+      maybeSpeak(res.reply);
     } else if (res && res.code === 'no_key') {
       showHint('Chat non ancora attiva: manca <b>ANTHROPIC_API_KEY</b> nei secret di Supabase. Il Monitoraggio qui a fianco funziona comunque.');
     } else if (res && res.error) {
@@ -310,6 +331,91 @@ async function sendMessage() {
 function showHint(html) {
   const h = document.getElementById('chat-hint');
   h.innerHTML = html; h.style.display = 'block';
+}
+
+// ── VOCE (Web Speech API: riconoscimento vocale + sintesi) ────
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null, listening = false, ttsOn = false, handsFree = false;
+
+function voiceStatus(msg, err) {
+  const el = document.getElementById('voice-status');
+  el.textContent = msg || '';
+  el.classList.toggle('show', !!msg);
+  el.classList.toggle('err', !!err);
+}
+
+function initVoice() {
+  const micBtn = document.getElementById('mic-btn');
+  const ttsBtn = document.getElementById('tts-toggle');
+  const convoBtn = document.getElementById('convo-toggle');
+
+  if (!('speechSynthesis' in window)) ttsBtn.style.display = 'none';
+  if (!SR) {
+    micBtn.style.display = 'none';
+    convoBtn.style.display = 'none';
+    if (!('speechSynthesis' in window)) return;
+  } else {
+    recog = new SR();
+    recog.lang = 'it-IT';
+    recog.interimResults = true;
+    recog.continuous = false;
+    recog.onresult = (e) => {
+      let txt = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) txt += e.results[i][0].transcript;
+      document.getElementById('chat-in').value = txt;
+      if (e.results[e.results.length - 1].isFinal) {
+        stopListening();
+        if (txt.trim()) sendMessage();
+      }
+    };
+    recog.onerror = (e) => { stopListening(); if (e.error !== 'no-speech' && e.error !== 'aborted') voiceStatus('Microfono: ' + e.error, true); };
+    recog.onend = () => { if (listening) stopListening(); };
+    micBtn.addEventListener('click', () => listening ? stopListening() : startListening());
+    convoBtn.addEventListener('click', () => {
+      handsFree = !handsFree; convoBtn.classList.toggle('on', handsFree);
+      if (handsFree) { ttsOn = true; ttsBtn.classList.add('on'); voiceStatus('🗣️ Conversazione attiva — parla pure'); startListening(); }
+      else { voiceStatus(''); window.speechSynthesis && window.speechSynthesis.cancel(); stopListening(); }
+    });
+  }
+  ttsBtn.addEventListener('click', () => {
+    ttsOn = !ttsOn; ttsBtn.classList.toggle('on', ttsOn);
+    ttsBtn.textContent = ttsOn ? '🔊' : '🔈';
+    if (!ttsOn) window.speechSynthesis.cancel();
+  });
+}
+
+function startListening() {
+  if (!recog || listening) return;
+  window.speechSynthesis && window.speechSynthesis.cancel();  // non ascoltare mentre parla
+  try { recog.start(); } catch (e) { return; }
+  listening = true;
+  document.getElementById('mic-btn').classList.add('listening');
+  voiceStatus('🎙️ Ti ascolto…');
+}
+function stopListening() {
+  if (!recog) return;
+  listening = false;
+  try { recog.stop(); } catch (e) {}
+  document.getElementById('mic-btn').classList.remove('listening');
+  if (!handsFree) voiceStatus('');
+}
+
+function cleanForSpeech(t) {
+  return (t || '')
+    .replace(/[#*_`>]/g, '')
+    .replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}←-⇿⬀-⯿]/gu, '')
+    .replace(/\s+/g, ' ').trim();
+}
+function maybeSpeak(text) {
+  if (!(ttsOn || handsFree) || !('speechSynthesis' in window)) { if (handsFree) startListening(); return; }
+  const u = new SpeechSynthesisUtterance(cleanForSpeech(text));
+  u.lang = 'it-IT';
+  const voices = window.speechSynthesis.getVoices();
+  const it = voices.find(v => /it[-_]IT/i.test(v.lang)) || voices.find(v => /^it/i.test(v.lang));
+  if (it) u.voice = it;
+  u.onend = () => { if (handsFree) startListening(); };
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
 }
 </script>
 </body>
