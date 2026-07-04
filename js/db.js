@@ -354,6 +354,16 @@ const db = {
     if (error) { console.error('getChecksKO', error); return []; }
     return data || [];
   },
+  async setDocApproval(path, approved) {
+    if (DEMO_MODE) return;
+    _initSb();
+    const { data } = await _sb.from('app_settings').select('data').eq('id', 'global').maybeSingle();
+    const d = (data && data.data) || {};
+    d.docApprovals = d.docApprovals || {};
+    d.docApprovals[path] = !!approved;
+    const { error } = await _sb.from('app_settings').upsert({ id: 'global', data: d, updated_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
+  },
 
   /* ── ASSISTENTE AI (Edge Function ai-assistant → API Claude) ── */
   async aiChat(messages, context) {

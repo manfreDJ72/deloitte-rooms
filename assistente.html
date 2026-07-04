@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Assistente AI – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=26">
+  <link rel="stylesheet" href="css/style.css?v=27">
   <style>
     .ai-layout { display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start; }
     @media (max-width: 900px) { .ai-layout { grid-template-columns: 1fr; } }
@@ -154,9 +154,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=26"></script>
-<script src="js/app.js?v=26"></script>
-<script src="js/db.js?v=26"></script>
+<script src="js/config.js?v=27"></script>
+<script src="js/app.js?v=27"></script>
+<script src="js/db.js?v=27"></script>
 <script>
 let messages = [];   // storico chat {role, content}
 let AN = [];         // anomalie rilevate
@@ -201,9 +201,10 @@ async function refreshData() {
   const today = new Date().toISOString().slice(0, 10);
   const bookings = ls(LS.bookings) || [];
   const tickets  = ls(LS.tickets)  || [];
-  let inbox = [], checksKO = [];
+  let inbox = [], checksKO = [], pendingPrev = 0;
   try { inbox = await db.getInbox(60); } catch (e) { console.warn('inbox', e); }
   try { checksKO = await db.getChecksKO(today); } catch (e) { console.warn('checks', e); }
+  try { const s = await db.getAppSettings(); const ap = (s && s.docApprovals) || {}; pendingPrev = Object.values(ap).filter(v => v === false).length; } catch (e) { console.warn('approvals', e); }
 
   const now = Date.now();
   const in7 = now + 7 * 864e5, in14 = now + 14 * 864e5;
@@ -230,6 +231,7 @@ async function refreshData() {
   if (checksKO.length)  AN.push({ ico:'🔴', sev:'red',  title:`${checksKO.length} check KO oggi`, desc: checksKO.map(c=>`${roomLabel(c.room)}`).filter((v,i,a)=>a.indexOf(v)===i).join(' · '), count: checksKO.length, link:'checks.html' });
   if (missingMat.length) AN.push({ ico:'📦', sev:'org', title:`${missingMat.length} eventi da preparare (7 gg)`, desc:'Allestimento mancante o materiale creativo da confermare', count: missingMat.length, link:'booking.html' });
   if (openTk.length)    AN.push({ ico:'🎫', sev:'org',  title:`${openTk.length} anomalie aperte`, desc:'In lavorazione o da prendere in carico', count: openTk.length, link:'tickets.html' });
+  if (pendingPrev)      AN.push({ ico:'🧾', sev:'org',  title:`${pendingPrev} preventivi da approvare`, desc:'Bozze fuori-contratto in attesa di revisione', count: pendingPrev, link:'documenti.html' });
   if (inboxNew.length)  AN.push({ ico:'📨', sev:'blue', title:`${inboxNew.length} mail da gestire`, desc: inboxNew.slice(0,3).map(m=>m.subject||'(senza oggetto)').join(' · '), count: inboxNew.length, link:'#' });
   if (upcoming.length)  AN.push({ ico:'📅', sev:'blue', title:`${upcoming.length} eventi nei prossimi 7 gg`, desc: upcoming.slice(0,3).map(b=>`${roomLabel(b.room)} ${new Date(b.start).toLocaleDateString('it-IT',{day:'numeric',month:'short'})}`).join(' · '), count: upcoming.length, link:'booking.html' });
   if (!AN.length) AN.push({ ico:'✅', sev:'ok', title:'Tutto sotto controllo', desc:'Nessuna anomalia rilevata al momento', count:'', link:'#' });
