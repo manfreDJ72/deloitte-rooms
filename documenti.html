@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Documenti – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=29">
+  <link rel="stylesheet" href="css/style.css?v=30">
   <style>
     .doc-drop {
       border: 1.5px dashed var(--border); border-radius: 12px;
@@ -68,7 +68,7 @@
     <a href="tickets.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.3 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Anomalie</a>
     <a href="richieste.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span> Richieste</a>
     <a href="documenti.html" class="nav-link active"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16"/><path d="M10 7.5h4"/><path d="M10 16.5h4"/></svg></span> Documenti</a>
-    <a href="assistente.html" class="nav-link nav-settings"><span class="nav-icon armonia-dot"></span> Assistente</a>
+    <a href="assistente.html" class="nav-link nav-assistente"><span class="nav-icon armonia-dot"></span> Assistente</a>
     <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings</a>
   </nav>
   <div class="header-right">
@@ -138,14 +138,27 @@
   </div>
 </div>
 
+<!-- Editor preventivi -->
+<div class="dv-overlay" id="ed-overlay">
+  <div class="dv-modal">
+    <div class="dv-head">
+      <span class="dv-title">✏️ Modifica preventivo</span>
+      <button class="btn btn-primary btn-sm" id="ed-save">💾 Salva</button>
+      <button class="dv-x" onclick="closeEditor()" title="Chiudi">✕</button>
+    </div>
+    <div class="dv-body"><div id="ed-content" contenteditable="true" class="dv-docx" style="outline:none;min-height:calc(90vh - 62px);"></div></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
-<script src="js/config.js?v=29"></script>
-<script src="js/app.js?v=29"></script>
-<script src="js/db.js?v=29"></script>
+<script src="js/config.js?v=30"></script>
+<script src="js/app.js?v=30"></script>
+<script src="js/db.js?v=30"></script>
 <script>
 const CATS = ['rapporti','contratti','preventivi','materiali','altro'];
+let VISIBLE_CATS = CATS.slice();   // cartelle visibili in base ai permessi del ruolo
 let allDocs = [];      // {name, path, cat, size, created_at}
 let filterCat = 'all';
 let isAdmin = false;
@@ -165,6 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('upload-controls').style.display = isAdmin ? 'flex' : 'none';
   document.getElementById('admin-hint').style.display = isAdmin ? 'none' : 'block';
+
+  // cartelle visibili in base ai permessi (l'admin le vede tutte)
+  VISIBLE_CATS = CATS.filter(c => can('cartelle', c));
+  document.querySelectorAll('#cat-tabs .tab').forEach(t => {
+    if (t.dataset.cat !== 'all' && !VISIBLE_CATS.includes(t.dataset.cat)) t.style.display = 'none';
+  });
+  [...document.querySelectorAll('#up-cat option')].forEach(o => { if (!VISIBLE_CATS.includes(o.value)) o.remove(); });
 
   document.querySelectorAll('#cat-tabs .tab').forEach(t => t.addEventListener('click', () => {
     document.querySelectorAll('#cat-tabs .tab').forEach(x => x.classList.remove('active'));
@@ -337,13 +357,45 @@ function closeViewer() {
   if (_dvBlobUrl) { URL.revokeObjectURL(_dvBlobUrl); _dvBlobUrl = null; }
 }
 document.getElementById('dv-overlay').addEventListener('click', e => { if (e.target.id === 'dv-overlay') closeViewer(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeViewer(); closeEditor(); } });
+
+// ── Editor preventivi (modifica in-portale, WYSIWYG) ──
+let _edPath = null;
+async function editDoc(i) {
+  const d = window.__docs[i];
+  _edPath = d.path;
+  const content = document.getElementById('ed-content');
+  content.innerHTML = '<div class="dv-msg">Carico…</div>';
+  document.getElementById('ed-overlay').classList.add('show');
+  try {
+    const url = await db.signedUrl(d.path, 300);
+    const html = await (await fetch(url)).text();
+    const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    content.innerHTML = m ? m[1] : html;
+  } catch (e) { content.innerHTML = `<div class="dv-msg">Errore: ${escHtml(e.message || '')}</div>`; }
+}
+function closeEditor() { document.getElementById('ed-overlay').classList.remove('show'); _edPath = null; }
+document.getElementById('ed-overlay').addEventListener('click', e => { if (e.target.id === 'ed-overlay') closeEditor(); });
+document.getElementById('ed-save').addEventListener('click', async () => {
+  if (!_edPath) return;
+  const btn = document.getElementById('ed-save');
+  const body = document.getElementById('ed-content').innerHTML;
+  const full = `<!doctype html><html lang="it"><head><meta charset="utf-8"></head><body style="margin:0;font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;background:#fff;">${body}</body></html>`;
+  btn.disabled = true; btn.textContent = 'Salvo…';
+  try {
+    await db.uploadDoc(_edPath, new Blob([full], { type: 'text/html' }), true);  // sovrascrive
+    toast('Preventivo aggiornato ✓', 'success');
+    closeEditor();
+    loadDocs();
+  } catch (e) { toast('Errore salvataggio: ' + e.message, 'error'); }
+  btn.disabled = false; btn.textContent = '💾 Salva';
+});
 
 async function loadDocs() {
   try {
     try { const s = await db.getAppSettings(); docApprovals = (s && s.docApprovals) || {}; } catch (e) { docApprovals = {}; }
     allDocs = [];
-    for (const cat of CATS) {
+    for (const cat of VISIBLE_CATS) {
       const files = await db.listDocs(cat);
       files.forEach(f => allDocs.push({
         name: f.name.replace(/^\d+_/, ''),   // rimuove il prefisso timestamp
@@ -403,6 +455,7 @@ function renderDocs() {
       </div>
       <div class="doc-actions">
         <button class="btn btn-outline btn-sm" onclick="viewDoc(${i})">👁 Visualizza</button>
+        ${d.cat === 'preventivi' && isAdmin && /\.html?$/i.test(d.name) ? `<button class="btn btn-outline btn-sm" onclick="editDoc(${i})">✏️ Modifica</button>` : ''}
         ${d.cat === 'preventivi' && isAdmin ? `<button class="btn ${docApprovals[d.path] ? 'btn-ghost' : 'btn-primary'} btn-sm" onclick="toggleApproval(${i})">${docApprovals[d.path] ? 'Revoca' : '✓ Approva'}</button>` : ''}
         <button class="btn btn-ghost btn-sm" onclick="downloadDoc(${i}, this)" title="Scarica">⬇</button>
         ${isAdmin ? `<button class="btn btn-ghost btn-sm" onclick="removeDoc(${i})" title="Elimina">🗑</button>` : ''}

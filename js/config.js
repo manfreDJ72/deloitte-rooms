@@ -460,16 +460,23 @@ const CAPABILITIES = [
   { key: 'prenotazioni', label: 'Prenotazioni', actions: [
     { key: 'crea', label: 'Crea/Modifica' }, { key: 'elimina', label: 'Elimina' } ] },
   { key: 'check', label: 'Check mattutini', actions: [
-    { key: 'esegui', label: 'Esegui e salva' }, { key: 'storico', label: 'Vedi storico' } ] },
+    { key: 'esegui', label: 'Esegui e salva' }, { key: 'storico', label: 'Vedi storico' }, { key: 'quotidiano', label: 'Visualizza quotidiano' } ] },
   { key: 'anomalie', label: 'Anomalie', actions: [
     { key: 'apri', label: 'Apri ticket' }, { key: 'chiudi', label: 'Chiudi/Risolvi' }, { key: 'sla', label: 'Gestisci SLA' } ] },
   { key: 'rapporti', label: 'Rapporti intervento', actions: [
-    { key: 'crea', label: 'Compila' }, { key: 'invia', label: 'Invia' } ] },
+    { key: 'crea', label: 'Compila' }, { key: 'invia', label: 'Invia' }, { key: 'creanuovo', label: 'Crea nuovo' } ] },
   { key: 'repository', label: 'Repository documenti', actions: [
     { key: 'vedi', label: 'Consulta' }, { key: 'gestisci', label: 'Gestisci/Chiudi' } ] },
+  { key: 'cartelle', label: 'Cartelle repository (visibilità)', actions: [
+    { key: 'rapporti', label: 'Rapporti' }, { key: 'contratti', label: 'Contratti' }, { key: 'preventivi', label: 'Preventivi' }, { key: 'materiali', label: 'Materiali' }, { key: 'altro', label: 'Altro' } ] },
+  { key: 'assistente', label: 'Assistente (Armonia)', actions: [
+    { key: 'vedi', label: 'Vedi pagina' } ] },
   { key: 'settings', label: 'Impostazioni', actions: [
     { key: 'accesso', label: 'Accesso settings' } ] },
 ];
+
+// mappa ruoli legacy → nuovi ruoli (utenti creati prima dello split cliente/agenzia)
+const ROLE_ALIAS = { operator: 'operatore_agenzia', viewer: 'visualizzatore_agenzia' };
 
 // ── EVENTI EMAIL (a chi mandare cosa) ──
 const EMAIL_EVENTS = [
@@ -486,9 +493,11 @@ const EMAIL_EVENTS = [
 function defaultSettings() {
   return {
     roles: {
-      admin:    { prenotazioni:{crea:1,elimina:1}, check:{esegui:1,storico:1}, anomalie:{apri:1,chiudi:1,sla:1}, rapporti:{crea:1,invia:1}, repository:{vedi:1,gestisci:1}, settings:{accesso:1} },
-      operator: { prenotazioni:{crea:1,elimina:0}, check:{esegui:1,storico:1}, anomalie:{apri:1,chiudi:1,sla:0}, rapporti:{crea:1,invia:1}, repository:{vedi:1,gestisci:0}, settings:{accesso:0} },
-      viewer:   { prenotazioni:{crea:0,elimina:0}, check:{esegui:0,storico:1}, anomalie:{apri:0,chiudi:0,sla:0}, rapporti:{crea:0,invia:0}, repository:{vedi:1,gestisci:0}, settings:{accesso:0} },
+      admin: { prenotazioni:{crea:1,elimina:1}, check:{esegui:1,storico:1,quotidiano:1}, anomalie:{apri:1,chiudi:1,sla:1}, rapporti:{crea:1,invia:1,creanuovo:1}, repository:{vedi:1,gestisci:1}, cartelle:{rapporti:1,contratti:1,preventivi:1,materiali:1,altro:1}, assistente:{vedi:1}, settings:{accesso:1} },
+      operatore_agenzia:      { prenotazioni:{crea:1,elimina:0}, check:{esegui:1,storico:1,quotidiano:1}, anomalie:{apri:1,chiudi:1,sla:0}, rapporti:{crea:1,invia:1,creanuovo:1}, repository:{vedi:1,gestisci:0}, cartelle:{rapporti:1,contratti:1,preventivi:1,materiali:1,altro:1}, assistente:{vedi:1}, settings:{accesso:0} },
+      operatore_cliente:      { prenotazioni:{crea:1,elimina:0}, check:{esegui:0,storico:1,quotidiano:1}, anomalie:{apri:1,chiudi:0,sla:0}, rapporti:{crea:0,invia:0,creanuovo:0}, repository:{vedi:1,gestisci:0}, cartelle:{rapporti:1,contratti:0,preventivi:0,materiali:1,altro:1}, assistente:{vedi:0}, settings:{accesso:0} },
+      visualizzatore_agenzia: { prenotazioni:{crea:0,elimina:0}, check:{esegui:0,storico:1,quotidiano:1}, anomalie:{apri:0,chiudi:0,sla:0}, rapporti:{crea:0,invia:0,creanuovo:0}, repository:{vedi:1,gestisci:0}, cartelle:{rapporti:1,contratti:1,preventivi:1,materiali:1,altro:1}, assistente:{vedi:1}, settings:{accesso:0} },
+      visualizzatore_cliente: { prenotazioni:{crea:0,elimina:0}, check:{esegui:0,storico:1,quotidiano:1}, anomalie:{apri:0,chiudi:0,sla:0}, rapporti:{crea:0,invia:0,creanuovo:0}, repository:{vedi:1,gestisci:0}, cartelle:{rapporti:1,contratti:0,preventivi:0,materiali:1,altro:0}, assistente:{vedi:0}, settings:{accesso:0} },
     },
     emailRecipients: [],  // nessun destinatario di default: si aggiungono solo quelli voluti
     numbering: { ticketPrefix:'TCK-', ticketPad:3, ticketNext:4, rapportoPrefix:'RAP-', rapportoPad:3, rapportoNext:1 },
@@ -497,6 +506,23 @@ function defaultSettings() {
     ai: { model:'claude-haiku-4-5' },  // modello per la "stanza di Claude"
     assistant: { autoReply:true, digest:true, digestHour:18, digestTo:'marco.manfredini@area62.it' },  // risposta AI via email + riepilogo giornaliero
   };
+}
+// ricostruisce la matrice ruoli dai default + valori salvati (garantisce i 5 ruoli e tutte le capability)
+function _mergeRoles(roles) {
+  const def = defaultSettings().roles;
+  const out = {};
+  for (const rk of Object.keys(def)) {
+    out[rk] = {};
+    for (const cap of CAPABILITIES) {
+      out[rk][cap.key] = {};
+      for (const act of cap.actions) {
+        const saved = roles && roles[rk] && roles[rk][cap.key] ? roles[rk][cap.key][act.key] : undefined;
+        const dflt  = def[rk][cap.key] ? def[rk][cap.key][act.key] : 0;
+        out[rk][cap.key][act.key] = (saved === 0 || saved === 1) ? saved : (dflt || 0);
+      }
+    }
+  }
+  return out;
 }
 function getSettings() {
   let s = null;
@@ -507,9 +533,22 @@ function getSettings() {
     const demo = ['presidio.roma@area62.it', 'facility@deloitte.it'];
     s.emailRecipients = s.emailRecipients.filter(r => !demo.includes((r.email || '').toLowerCase()));
   }
+  s.roles = _mergeRoles(s.roles);   // aggiorna ruoli/permessi anche su settings vecchi
   return s;
 }
 function saveSettings(s) { localStorage.setItem(LS.settings, JSON.stringify(s)); }
+
+// ── PERMESSI: can(capability, action) ──
+function can(capKey, actionKey) {
+  const u = (typeof currentUser === 'function') ? currentUser() : null;
+  if (!u) return false;
+  if (u.role === 'admin') return true;                 // l'admin può sempre tutto
+  const roleKey = ROLE_ALIAS[u.role] || u.role;
+  const roles = getSettings().roles || {};
+  const r = roles[roleKey];
+  if (!r) return true;                                 // ruolo sconosciuto → non bloccare (fail-open)
+  return !!(r[capKey] && r[capKey][actionKey]);
+}
 
 // ── UTENTI (roster, seed da DEMO_USERS) ──
 function getUsers() {

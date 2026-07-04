@@ -228,9 +228,9 @@ const db = {
     if (error) throw error;
     return (data || []).filter(f => f.id); // esclude i placeholder cartella
   },
-  async uploadDoc(path, file) {
+  async uploadDoc(path, file, upsert = false) {
     _initSb();
-    const { error } = await _sb.storage.from('documenti').upload(path, file, { upsert: false });
+    const { error } = await _sb.storage.from('documenti').upload(path, file, { upsert });
     if (error) throw error;
   },
   async signedUrl(path, expires = 300) {

@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 29;
+const APP_BUILD = 30;
 (function checkForUpdate() {
   fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
     .then(r => r.ok ? r.text() : null)
@@ -126,6 +126,10 @@ function renderUser() {
   // Voce Settings visibile solo agli amministratori
   if (u.role !== 'admin') {
     document.querySelectorAll('.nav-settings').forEach(a => a.style.display = 'none');
+  }
+  // Voce Assistente in base al permesso (l'admin la vede sempre)
+  if (typeof can === 'function' && !can('assistente', 'vedi')) {
+    document.querySelectorAll('.nav-assistente').forEach(a => a.style.display = 'none');
   }
 }
 

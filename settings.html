@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Impostazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=29">
+  <link rel="stylesheet" href="css/style.css?v=30">
   <style>
     .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
     .set-card {
@@ -100,7 +100,7 @@
     <a href="tickets.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.3 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Anomalie</a>
     <a href="richieste.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span> Richieste</a>
     <a href="documenti.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16"/><path d="M10 7.5h4"/><path d="M10 16.5h4"/></svg></span> Documenti</a>
-    <a href="assistente.html" class="nav-link nav-settings"><span class="nav-icon armonia-dot"></span> Assistente</a>
+    <a href="assistente.html" class="nav-link nav-assistente"><span class="nav-icon armonia-dot"></span> Assistente</a>
     <a href="settings.html"  class="nav-link active"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings</a>
   </nav>
   <div class="header-right">
@@ -358,8 +358,10 @@
         <label class="form-label">Ruolo</label>
         <select class="form-control" id="u-role">
           <option value="admin">Amministratore</option>
-          <option value="operator">Operatore / Presidio</option>
-          <option value="viewer">Visualizzatore</option>
+          <option value="operatore_agenzia">Operatore · Agenzia</option>
+          <option value="operatore_cliente">Operatore · Cliente</option>
+          <option value="visualizzatore_agenzia">Visualizzatore · Agenzia</option>
+          <option value="visualizzatore_cliente">Visualizzatore · Cliente</option>
         </select>
       </div>
       <div class="form-group" style="margin:0;">
@@ -383,15 +385,27 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=29"></script>
-<script src="js/app.js?v=29"></script>
-<script src="js/db.js?v=29"></script>
+<script src="js/config.js?v=30"></script>
+<script src="js/app.js?v=30"></script>
+<script src="js/db.js?v=30"></script>
 <script>
 let S = null;         // settings correnti
 let users = [];       // roster utenti
 let editUserId = null;
-const ROLE_LABELS = { admin:'Amministratore', operator:'Operatore', viewer:'Visualizzatore' };
-const ROLE_BADGE  = { admin:'rb-admin', operator:'rb-operator', viewer:'rb-viewer' };
+const ROLE_LABELS = {
+  admin:'Amministratore',
+  operatore_agenzia:'Operatore · Agenzia', operatore_cliente:'Operatore · Cliente',
+  visualizzatore_agenzia:'Visualizzatore · Agenzia', visualizzatore_cliente:'Visualizzatore · Cliente',
+  operator:'Operatore', viewer:'Visualizzatore',   // legacy
+};
+const ROLE_BADGE  = {
+  admin:'rb-admin',
+  operatore_agenzia:'rb-operator', operatore_cliente:'rb-operator',
+  visualizzatore_agenzia:'rb-viewer', visualizzatore_cliente:'rb-viewer',
+  operator:'rb-operator', viewer:'rb-viewer',
+};
+const _roleLabel = r => ROLE_LABELS[r] || r;
+const _roleBadge = r => ROLE_BADGE[r] || 'rb-viewer';
 
 document.addEventListener('DOMContentLoaded', () => {
   if (!requireAuth()) return;
@@ -447,7 +461,7 @@ function renderUsers() {
         <div class="ur-name">${u.name}</div>
         <div class="ur-email">${u.email}</div>
       </div>
-      <div class="ur-role"><span class="role-badge ${ROLE_BADGE[u.role]}">${ROLE_LABELS[u.role]}</span></div>
+      <div class="ur-role"><span class="role-badge ${_roleBadge(u.role)}">${_roleLabel(u.role)}</span></div>
       <button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">Modifica</button>
     </div>`).join('');
 }
@@ -468,7 +482,7 @@ function openUserModal(id) {
   document.getElementById('modal-user-title').textContent = u ? 'Modifica utente' : 'Nuovo utente';
   document.getElementById('u-name').value  = u?.name  || '';
   document.getElementById('u-email').value = u?.email || '';
-  document.getElementById('u-role').value  = u?.role  || 'operator';
+  document.getElementById('u-role').value  = (ROLE_ALIAS[u?.role] || u?.role) || 'operatore_agenzia';
   const pw = document.getElementById('u-password');
   if (!DEMO_MODE) {
     // online: in modifica lascia vuoto (= password invariata); in creazione ne genera una
@@ -510,7 +524,7 @@ async function saveUser() {
                <tr><td style="padding:3px 14px 3px 0;color:#666;">Indirizzo</td><td><a href="${loginUrl}" style="color:#5a8a00;">${loginUrl}</a></td></tr>
                <tr><td style="padding:3px 14px 3px 0;color:#666;">Email</td><td><strong>${email}</strong></td></tr>
                <tr><td style="padding:3px 14px 3px 0;color:#666;">Password</td><td><strong>${password}</strong></td></tr>
-               <tr><td style="padding:3px 14px 3px 0;color:#666;">Ruolo</td><td>${ROLE_LABELS[role]}</td></tr>
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Ruolo</td><td>${_roleLabel(role)}</td></tr>
              </table>
              <p style="font-size:13px;color:#666;">Conserva queste credenziali in un luogo sicuro.</p>`)
         ).catch(e => console.error('welcome email', e));
@@ -559,10 +573,10 @@ async function deleteUser() {
 
 /* ── PERMESSI ── */
 function renderPermTable() {
-  const roles = ['admin','operator','viewer'];
+  const roles = ['admin','operatore_agenzia','operatore_cliente','visualizzatore_agenzia','visualizzatore_cliente'];
   let html = `<thead><tr><th>Attività</th>${roles.map(r => `<th class="role-col">${ROLE_LABELS[r]}</th>`).join('')}</tr></thead><tbody>`;
   CAPABILITIES.forEach(cap => {
-    html += `<tr class="perm-group"><td colspan="4">${cap.label}</td></tr>`;
+    html += `<tr class="perm-group"><td colspan="${roles.length + 1}">${cap.label}</td></tr>`;
     cap.actions.forEach(act => {
       html += `<tr><td>${act.label}</td>${roles.map(r => {
         const checked = S.roles[r]?.[cap.key]?.[act.key] ? 'checked' : '';
@@ -727,6 +741,7 @@ async function loadSettingsFromDb() {
     const remote = await db.getAppSettings();
     if (remote) {
       S = remote;
+      S.roles = _mergeRoles(S.roles);   // porta i settings salvati ai 5 ruoli + nuovi permessi
       saveSettings(S);
       renderRecipients();
       renderPermTable();
