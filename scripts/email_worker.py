@@ -7,9 +7,13 @@
 #                le crea su Supabase e risponde con la conferma
 # Nessun servizio esterno: solo IMAP/SMTP Aruba + REST Supabase.
 # ================================================================
-import os, re, ssl, json, time, smtplib, imaplib, email, urllib.request, urllib.error
+import os, re, ssl, json, time, datetime, smtplib, imaplib, email, urllib.request, urllib.error, urllib.parse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+try:
+    from zoneinfo import ZoneInfo
+except Exception:
+    ZoneInfo = None
 
 import dateparser  # gestisce le date in italiano
 
@@ -49,12 +53,15 @@ def sb(method, path, token, payload=None, prefer=None):
         return e.code, e.read().decode()
 
 # ── SMTP ──
-def send_mail(to_addrs, subject, html, attachments=None):
+def send_mail(to_addrs, subject, html, attachments=None, in_reply_to=None):
     if isinstance(to_addrs, str): to_addrs = [to_addrs]
     msg = MIMEMultipart('mixed')
     msg['Subject'] = subject
     msg['From'] = f'Deloitte Room Management <{MAIL_USER}>'
     msg['To'] = ', '.join(to_addrs)
+    if in_reply_to:
+        msg['In-Reply-To'] = in_reply_to
+        msg['References'] = in_reply_to
     alt = MIMEMultipart('alternative')
     alt.attach(MIMEText(html, 'html'))
     msg.attach(alt)
@@ -94,6 +101,67 @@ def email_template(heading, inner, accent='#86BC25'):
         </div>
       </div>
     </div>"""
+
+# ── ASSISTENTE AI (riusa la Edge Function ai-assistant, key lato Supabase) ──
+FUNC_URL = f'{SB_URL}/functions/v1/ai-assistant'
+
+def ai_reply(token, user_text, context):
+    """Chiama ai-assistant col JWT del worker. Ritorna il testo della risposta o None."""
+    payload = json.dumps({'messages': [{'role': 'user', 'content': user_text}], 'context': context}).encode()
+    req = urllib.request.Request(FUNC_URL, data=payload, method='POST',
+        headers={'apikey': SB_ANON, 'Authorization': f'Bearer {token}', 'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = json.loads(r.read().decode() or '{}')
+        if data.get('reply'):
+            return data['reply']
+        print('  ai_reply: nessuna reply →', str(data)[:150])
+    except Exception as e:
+        print('  ai_reply errore:', e)
+    return None
+
+def get_assistant_config(token):
+    cfg = {'autoReply': True, 'digest': True, 'digestHour': 18, 'digestTo': 'marco.manfredini@area62.it'}
+    st, rows = sb('GET', "app_settings?id=eq.global&select=data", token)
+    try:
+        if isinstance(rows, list) and rows:
+            a = (rows[0].get('data') or {}).get('assistant') or {}
+            for k in cfg:
+                if k in a: cfg[k] = a[k]
+    except Exception as e:
+        print('assistant config fallback:', e)
+    return cfg
+
+def should_autoreply(frm, m):
+    low = (frm or '').lower()
+    if not low or '@' not in low: return False
+    if any(k in low for k in ('no-reply', 'noreply', 'no_reply', 'donotreply', 'do-not-reply',
+                              'mailer-daemon', 'postmaster', 'bounce', 'notifications@', 'notify@')):
+        return False
+    if MAIL_USER.lower() in low: return False                       # niente auto-risposte a sé stesso
+    if (m.get('Auto-Submitted') or '').lower() not in ('', 'no'): return False
+    if (m.get('Precedence') or '').lower() in ('bulk', 'list', 'junk'): return False
+    if m.get('List-Unsubscribe'): return False                     # newsletter/liste
+    return True
+
+def md_to_html(t):
+    out, in_ul = [], False
+    for raw in (t or '').split('\n'):
+        ln = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', raw.strip())
+        h = re.match(r'^(#{1,4})\s+(.*)', ln)
+        if h:
+            if in_ul: out.append('</ul>'); in_ul = False
+            out.append(f'<h3 style="font-size:14px;margin:14px 0 6px;">{h.group(2)}</h3>')
+            continue
+        m = re.match(r'^(?:[-*•]|\d+[.)])\s+(.*)', ln)
+        if m:
+            if not in_ul: out.append('<ul style="margin:6px 0;padding-left:20px;">'); in_ul = True
+            out.append(f'<li>{m.group(1)}</li>')
+        else:
+            if in_ul: out.append('</ul>'); in_ul = False
+            if ln: out.append(f'<p style="margin:8px 0;">{ln}</p>')
+    if in_ul: out.append('</ul>')
+    return ''.join(out)
 
 # ── PARSER PRENOTAZIONE ──
 def parse_booking(subject, body):
@@ -172,6 +240,15 @@ def process_inbound(token):
     ids = data[0].split()
     created = 0
     archived = 0
+    replied = 0
+    # config assistente + contesto per le risposte AI (sale + prenotazioni prossime)
+    ACFG = get_assistant_config(token)
+    st, ups = sb('GET', f"bookings?start_at=gte.{datetime.datetime.now(datetime.timezone.utc).isoformat()}&order=start_at.asc&limit=30", token)
+    REPLY_CTX = {
+        'sale': list(ROOM_LABELS.values()),
+        'prenotazioni_prossime': [{'sala': ROOM_LABELS.get(b['room'], b['room']), 'quando': b['start_at'], 'titolo': b.get('title')}
+                                  for b in (ups if isinstance(ups, list) else [])],
+    }
     for i in ids:
         typ, d = M.fetch(i, '(RFC822)')
         m = email.message_from_bytes(d[0][1])
@@ -227,8 +304,36 @@ def process_inbound(token):
         st, _ = sb('POST', 'inbox?on_conflict=message_id', token, inbox_row,
                    prefer='return=minimal,resolution=ignore-duplicates')
         if st in (200, 201): archived += 1
+
+        # 3) RISPOSTA AUTOMATICA AI se NON è stata creata una prenotazione
+        #    (domande, richieste, o prenotazioni incomplete da completare)
+        if linked is None and ACFG.get('autoReply') and should_autoreply(frm, m):
+            prompt = (
+                "Sei l'assistente della casella che gestisce le sale immersive Deloitte 'Solaria' (Roma e Milano) "
+                "e 'Armonia' (Roma). Un utente ha scritto questa email. Scrivi SOLO il corpo di una risposta email "
+                "in italiano, professionale e breve. Se sembra una richiesta di prenotazione ma mancano dati, chiedi "
+                "gentilmente sala, data e orario. Se puoi rispondere con le informazioni nel contesto, fallo; "
+                "altrimenti conferma la presa in carico e che un referente ricontatterà a breve. Non inventare nulla, "
+                "non scrivere oggetto o intestazioni. NON aggiungere firma finale né saluti di chiusura "
+                "(tipo 'Cordiali saluti'): la firma viene aggiunta automaticamente.\n\n"
+                f"EMAIL RICEVUTA\nOggetto: {subj}\nDa: {frm}\nTesto:\n{(bodytxt or '')[:3000]}"
+            )
+            reply = ai_reply(token, prompt, REPLY_CTX)
+            if reply:
+                sig = ('<br><br><span style="color:#888;font-size:12px;">— Assistente automatico · Area62 · '
+                       'Gestione Sale Deloitte<br>Risposta generata automaticamente; per assistenza diretta scrivi a '
+                       'marco.manfredini@area62.it</span>')
+                html = email_template('Gestione Sale Deloitte', md_to_html(reply) + sig)
+                subj_re = subj if subj.lower().startswith('re:') else f'Re: {subj}'
+                try:
+                    send_mail(frm, subj_re, html, in_reply_to=m.get('Message-ID'))
+                    sb('PATCH', f"inbox?id=eq.{inbox_row['id']}", token, {'status': 'handled'}, prefer='return=minimal')
+                    replied += 1
+                    print(f'  🤖 risposta AI inviata a {frm}')
+                except Exception as e:
+                    print('  ✗ risposta AI non inviata:', e)
     M.logout()
-    print(f'  · email archiviate in inbox: {archived}')
+    print(f'  · archiviate: {archived} · risposte AI: {replied}')
     return created
 
 # ── OUTBOUND: svuota la coda email ──
@@ -341,12 +446,103 @@ def process_reminders(token):
             print(f'  ✗ reminder non inviato: {e}')
     return n
 
+# ── RIEPILOGO GIORNALIERO (solo al responsabile) ──
+def _rows(token, path):
+    st, rows = sb('GET', path, token)
+    return rows if isinstance(rows, list) else []
+
+def gather_digest_context(token, now_local):
+    today = now_local.date().isoformat()
+    tomorrow = (now_local.date() + datetime.timedelta(days=1)).isoformat()
+    start_utc = now_local.replace(hour=0, minute=0, second=0, microsecond=0).astimezone(datetime.timezone.utc).isoformat()
+    end_utc   = now_local.replace(hour=23, minute=59, second=59, microsecond=0).astimezone(datetime.timezone.utc).isoformat()
+    checks   = _rows(token, f"checks?date=eq.{today}&select=room,check_id,state")
+    rooms_ck = sorted(set(c['room'] for c in checks))
+    bk_today = _rows(token, f"bookings?start_at=gte.{start_utc}&start_at=lte.{end_utc}&select=room,title,start_at")
+    bk_tom   = _rows(token, f"bookings?start_at=gte.{tomorrow}T00:00:00&start_at=lte.{tomorrow}T23:59:59&select=room,title,allestimento,creative_support")
+    tk_open  = _rows(token, "tickets?status=in.(open,in-progress)&select=id,room,priority,title,status")
+    tk_res   = _rows(token, f"tickets?resolved_at=gte.{start_utc}&select=id,title")
+    inbox_td = _rows(token, f"inbox?received_at=gte.{start_utc}&select=intent,status")
+    return {
+        'data': today,
+        'check_mattutini': {
+            'sale_controllate': [ROOM_LABELS.get(r, r) for r in rooms_ck],
+            'sale_totali': list(ROOM_LABELS.values()),
+            'ko': [{'sala': ROOM_LABELS.get(c['room'], c['room']), 'voce': c['check_id']} for c in checks if c.get('state') == 'ko'],
+        },
+        'prenotazioni_oggi': [{'sala': ROOM_LABELS.get(b['room'], b['room']), 'titolo': b.get('title'), 'quando': b['start_at']} for b in bk_today],
+        'prenotazioni_domani': [{'sala': ROOM_LABELS.get(b['room'], b['room']), 'titolo': b.get('title'),
+                                 'allestimento': b.get('allestimento') or [], 'materiale_creativo': bool(b.get('creative_support'))} for b in bk_tom],
+        'ticket_ancora_aperti': [{'id': t.get('id'), 'sala': ROOM_LABELS.get(t['room'], t['room']), 'priorita': t.get('priority'), 'titolo': t.get('title'), 'stato': t.get('status')} for t in tk_open],
+        'ticket_risolti_oggi': [{'id': t.get('id'), 'titolo': t.get('title')} for t in tk_res],
+        'mail_ricevute_oggi': {'totali': len(inbox_td), 'da_gestire': len([m for m in inbox_td if (m.get('status') or 'new') == 'new'])},
+    }
+
+def deterministic_digest(ctx):
+    ck = ctx['check_mattutini']
+    non_fatti = [s for s in ck['sale_totali'] if s not in ck['sale_controllate']]
+    fatto = [
+        f"Check mattutini eseguiti: {', '.join(ck['sale_controllate']) or 'nessuno'}",
+        f"Prenotazioni di oggi: {len(ctx['prenotazioni_oggi'])}",
+        f"Ticket risolti oggi: {len(ctx['ticket_risolti_oggi'])}",
+        f"Mail ricevute: {ctx['mail_ricevute_oggi']['totali']}",
+    ]
+    dafare = []
+    if non_fatti: dafare.append(f"Check NON eseguiti: {', '.join(non_fatti)}")
+    if ck['ko']: dafare.append("Check falliti: " + ', '.join(f"{k['sala']} ({k['voce']})" for k in ck['ko']))
+    if ctx['ticket_ancora_aperti']: dafare.append("Ticket ancora aperti: " + ', '.join(f"{t['id']} {t['titolo']}" for t in ctx['ticket_ancora_aperti']))
+    if ctx['mail_ricevute_oggi']['da_gestire']: dafare.append(f"Mail da gestire: {ctx['mail_ricevute_oggi']['da_gestire']}")
+    for b in ctx['prenotazioni_domani']:
+        if not b['allestimento'] or b['materiale_creativo']:
+            dafare.append(f"Domani {b['sala']} '{b['titolo']}': verificare materiale/allestimento")
+    fh = ''.join(f'<li>{x}</li>' for x in fatto)
+    dh = ''.join(f'<li>{x}</li>' for x in dafare) or '<li style="color:#5a8a00;">Nulla in sospeso</li>'
+    return f"<h3 style='font-size:14px;margin:6px 0;'>✅ Fatto oggi</h3><ul>{fh}</ul><h3 style='font-size:14px;margin:14px 0 6px;'>⚠️ Da completare / non fatto</h3><ul>{dh}</ul>"
+
+def process_daily_digest(token):
+    cfg = get_assistant_config(token)
+    if not cfg.get('digest'):
+        return False
+    tz = ZoneInfo('Europe/Rome') if ZoneInfo else datetime.timezone(datetime.timedelta(hours=2))
+    now_local = datetime.datetime.now(tz)
+    if now_local.hour < int(cfg.get('digestHour', 18)):
+        return False
+    key = f"__digest__{now_local.date().isoformat()}"
+    # già inviato oggi? (riuso reminders_log con chiave sintetica, unique booking_id+offset_h)
+    if _rows(token, f"reminders_log?booking_id=eq.{key}&select=booking_id"):
+        return False
+    # prenota subito lo slot per evitare doppioni tra run ravvicinati
+    sb('POST', 'reminders_log?on_conflict=booking_id,offset_h', token,
+       {'booking_id': key, 'offset_h': 0}, prefer='return=minimal,resolution=ignore-duplicates')
+    ctx = gather_digest_context(token, now_local)
+    prompt = (
+        "Genera un RIEPILOGO GIORNALIERO operativo in italiano (solo corpo email, conciso) per il responsabile delle sale. "
+        "Struttura in due sezioni con elenchi puntati: '✅ Fatto oggi' e '⚠️ Da completare / non fatto'. "
+        "In 'Da completare' includi: check mattutini non eseguiti (confronta sale_controllate con sale_totali), check falliti, "
+        "ticket ancora aperti, mail da gestire, e materiale/allestimento mancante per le prenotazioni di domani. "
+        "Usa SOLO i dati del contesto, niente preamboli né firme, e NON ripetere il titolo o la data (già in intestazione). "
+        "Se una sezione non ha voci, scrivi 'nulla da segnalare'."
+    )
+    body = ai_reply(token, prompt, ctx)
+    inner = md_to_html(body) if body else deterministic_digest(ctx)
+    html = email_template(f"📋 Riepilogo giornaliero — {now_local.strftime('%d/%m/%Y')}", inner, accent='#4da6ff')
+    to = cfg.get('digestTo') or 'marco.manfredini@area62.it'
+    to = os.environ.get('DIGEST_TEST_TO', to)  # override sicuro per i test
+    try:
+        send_mail(to, f"Riepilogo giornaliero sale — {now_local.strftime('%d/%m/%Y')}", html)
+        print(f'  📋 riepilogo giornaliero inviato a {to} ({"AI" if body else "fallback"})')
+        return True
+    except Exception as e:
+        print('  ✗ riepilogo non inviato:', e)
+        return False
+
 def main():
     token = sb_login()
     out = process_outbound(token)
     inb = process_inbound(token)
     rem = process_reminders(token)
-    print(f'== worker done == coda email: {out} · prenotazioni create: {inb} · reminder inviati: {rem}')
+    dig = process_daily_digest(token)
+    print(f'== worker done == coda:{out} · prenotazioni:{inb} · reminder:{rem} · riepilogo:{"sì" if dig else "no"}')
 
 if __name__ == '__main__':
     main()

@@ -495,6 +495,7 @@ function defaultSettings() {
     inboundEmail: { address:'deloitte.room@area62.it', enabled:false },
     reminders: { enabled:true, offsets_h:[24,2], recipients_extra:[] },  // reminder pre-evento (soglie in ore)
     ai: { model:'claude-haiku-4-5' },  // modello per la "stanza di Claude"
+    assistant: { autoReply:true, digest:true, digestHour:18, digestTo:'marco.manfredini@area62.it' },  // risposta AI via email + riepilogo giornaliero
   };
 }
 function getSettings() {
