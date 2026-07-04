@@ -100,9 +100,9 @@ body {
 .nav-link:hover .nav-icon svg { stroke: #a6e05a; }
 /* Assistente: cerchio verde "Armonia" con glow interno ed esterno su fondo scuro */
 .armonia-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
-  background: radial-gradient(circle at 50% 38%, #c4ff77, #86BC25 72%);
-  border: 2px solid #a6e35c;
-  box-shadow: 0 0 7px 1px rgba(134,188,37,.85), 0 0 2px rgba(134,188,37,1), inset 0 0 4px rgba(255,255,255,.55); }
+  background: transparent;                       /* centro bucato (nero) */
+  border: 2px solid #a6e35c;                     /* solo la circonferenza */
+  box-shadow: 0 0 8px 1px rgba(134,188,37,.9), inset 0 0 5px rgba(134,188,37,.85); }  /* glow esterno + interno */
 
 .header-right { display: flex; align-items: center; gap: 10px; }
 .notif-btn {
