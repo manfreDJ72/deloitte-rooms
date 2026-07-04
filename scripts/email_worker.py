@@ -13,13 +13,13 @@ from email.mime.multipart import MIMEMultipart
 
 import dateparser  # gestisce le date in italiano
 
-# ── CONFIG (da variabili d'ambiente, con default per test locale) ──
+# ── CONFIG (SOLO da variabili d'ambiente / secret; nessuna password nel codice) ──
 SB_URL   = os.environ.get('SB_URL', 'https://vepplgeiykrsgkfrbswi.supabase.co')
-SB_ANON  = os.environ.get('SB_ANON', 'sb_publishable_ptO60rE97Qv7IpWCEY1bww_FGnd8wG9')
-SB_USER  = os.environ.get('SB_USER', 'marco.manfredini@area62.it')
-SB_PASS  = os.environ.get('SB_PASS', '151DJmanfre')
+SB_ANON  = os.environ.get('SB_ANON', 'sb_publishable_ptO60rE97Qv7IpWCEY1bww_FGnd8wG9')  # publishable (già pubblica lato client)
+SB_USER  = os.environ.get('SB_USER', 'automation@area62.it')
+SB_PASS  = os.environ.get('SB_PASS', '')      # ← da secret GitHub, mai in chiaro
 MAIL_USER = os.environ.get('MAIL_USER', 'deloitte.room@area62.it')
-MAIL_PASS = os.environ.get('MAIL_PASS', '151!DJmanfre')
+MAIL_PASS = os.environ.get('MAIL_PASS', '')   # ← da secret GitHub, mai in chiaro
 IMAP_HOST = os.environ.get('IMAP_HOST', 'imaps.aruba.it')
 SMTP_HOST = os.environ.get('SMTP_HOST', 'smtps.aruba.it')
 
