@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Documenti – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=27">
+  <link rel="stylesheet" href="css/style.css?v=28">
   <style>
     .doc-drop {
       border: 1.5px dashed var(--border); border-radius: 12px;
@@ -35,6 +35,20 @@
     .doc-actions { display: flex; gap: 6px; flex-shrink: 0; }
     .admin-note { font-size: 12px; color: var(--text-muted); background: var(--bg-card2);
       border: 1px dashed var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; }
+
+    /* Visualizzatore documenti in-portale */
+    .dv-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.78); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 24px; }
+    .dv-overlay.show { display: flex; }
+    .dv-modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; width: min(980px, 96%); height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+    .dv-head { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border); }
+    .dv-title { font-weight: 700; font-size: 14px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dv-body { flex: 1; overflow: auto; background: #fff; }
+    .dv-body iframe { width: 100%; height: 100%; border: 0; display: block; }
+    .dv-body img { max-width: 100%; display: block; margin: 0 auto; }
+    .dv-docx { padding: 30px 40px; color: #1a1a1a; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; font-size: 14px; }
+    .dv-docx table { border-collapse: collapse; } .dv-docx td, .dv-docx th { border: 1px solid #ddd; padding: 6px 10px; }
+    .dv-x { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; line-height: 1; }
+    .dv-msg { padding: 50px 30px; text-align: center; color: #888; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -112,12 +126,24 @@
   <div id="doc-list"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Caricamento…</div></div></div>
 </main>
 
+<!-- Visualizzatore documenti -->
+<div class="dv-overlay" id="dv-overlay">
+  <div class="dv-modal">
+    <div class="dv-head">
+      <span class="dv-title" id="dv-title">Documento</span>
+      <a id="dv-download" class="btn btn-outline btn-sm" target="_blank" rel="noopener">⬇ Scarica</a>
+      <button class="dv-x" onclick="closeViewer()" title="Chiudi">✕</button>
+    </div>
+    <div class="dv-body" id="dv-body"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
-<script src="js/config.js?v=27"></script>
-<script src="js/app.js?v=27"></script>
-<script src="js/db.js?v=27"></script>
+<script src="js/config.js?v=28"></script>
+<script src="js/app.js?v=28"></script>
+<script src="js/db.js?v=28"></script>
 <script>
 const CATS = ['rapporti','contratti','preventivi','materiali','altro'];
 let allDocs = [];      // {name, path, cat, size, created_at}
@@ -266,6 +292,53 @@ async function toggleApproval(i) {
   } catch (e) { toast('Errore: ' + e.message, 'error'); }
 }
 
+// ── Visualizzatore documenti in-portale (PDF, HTML, immagini, Word) ──
+let _dvBlobUrl = null;
+function escHtml(s) { return (s || '').replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+async function viewDoc(i) {
+  const d = window.__docs[i];
+  const overlay = document.getElementById('dv-overlay');
+  const body = document.getElementById('dv-body');
+  document.getElementById('dv-title').textContent = d.name;
+  body.innerHTML = '<div class="dv-msg">Carico l\'anteprima…</div>';
+  overlay.classList.add('show');
+  try {
+    const url = await db.signedUrl(d.path, 300);
+    document.getElementById('dv-download').href = url;
+    const ext = (d.name.split('.').pop() || '').toLowerCase();
+    let blob = await (await fetch(url)).blob();
+    // forza il MIME corretto (lo Storage a volte serve octet-stream → l'iframe mostrerebbe il sorgente)
+    const MIME = { pdf:'application/pdf', html:'text/html', htm:'text/html', jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', gif:'image/gif', webp:'image/webp', svg:'image/svg+xml', bmp:'image/bmp' };
+    if (MIME[ext] && blob.type !== MIME[ext]) blob = new Blob([await blob.arrayBuffer()], { type: MIME[ext] });
+    if (_dvBlobUrl) URL.revokeObjectURL(_dvBlobUrl);
+    _dvBlobUrl = URL.createObjectURL(blob);
+    if (ext === 'pdf' || ext === 'html' || ext === 'htm') {
+      body.innerHTML = `<iframe src="${_dvBlobUrl}"></iframe>`;
+    } else if (['jpg','jpeg','png','gif','webp','svg','bmp'].includes(ext)) {
+      body.innerHTML = `<img src="${_dvBlobUrl}" alt="${escHtml(d.name)}">`;
+    } else if (ext === 'docx' && window.mammoth) {
+      const res = await window.mammoth.convertToHtml({ arrayBuffer: await blob.arrayBuffer() });
+      body.innerHTML = `<div class="dv-docx">${res.value || '<i>Documento senza testo</i>'}</div>`;
+    } else {
+      // fallback: mostra il testo estratto (sidecar) se disponibile
+      let txt = '';
+      try { const su = await db.signedUrl(`_text/${d.path}.txt`, 120); txt = await (await fetch(su)).text(); } catch (e) {}
+      body.innerHTML = txt
+        ? `<div class="dv-docx" style="white-space:pre-wrap;">${escHtml(txt)}</div>`
+        : `<div class="dv-msg">Anteprima non disponibile per questo formato (.${ext}).<br>Usa <b>Scarica</b> per aprirlo.</div>`;
+    }
+  } catch (e) {
+    body.innerHTML = `<div class="dv-msg" style="color:#c0392b;">Errore anteprima: ${escHtml(e.message || '')}</div>`;
+  }
+}
+function closeViewer() {
+  document.getElementById('dv-overlay').classList.remove('show');
+  document.getElementById('dv-body').innerHTML = '';
+  if (_dvBlobUrl) { URL.revokeObjectURL(_dvBlobUrl); _dvBlobUrl = null; }
+}
+document.getElementById('dv-overlay').addEventListener('click', e => { if (e.target.id === 'dv-overlay') closeViewer(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
+
 async function loadDocs() {
   try {
     try { const s = await db.getAppSettings(); docApprovals = (s && s.docApprovals) || {}; } catch (e) { docApprovals = {}; }
@@ -329,8 +402,9 @@ function renderDocs() {
         </div>
       </div>
       <div class="doc-actions">
+        <button class="btn btn-outline btn-sm" onclick="viewDoc(${i})">👁 Visualizza</button>
         ${d.cat === 'preventivi' && isAdmin ? `<button class="btn ${docApprovals[d.path] ? 'btn-ghost' : 'btn-primary'} btn-sm" onclick="toggleApproval(${i})">${docApprovals[d.path] ? 'Revoca' : '✓ Approva'}</button>` : ''}
-        <button class="btn btn-outline btn-sm" onclick="downloadDoc(${i}, this)">⬇ Scarica</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadDoc(${i}, this)" title="Scarica">⬇</button>
         ${isAdmin ? `<button class="btn btn-ghost btn-sm" onclick="removeDoc(${i})" title="Elimina">🗑</button>` : ''}
       </div>
     </div>`).join('');

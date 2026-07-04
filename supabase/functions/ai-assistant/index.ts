@@ -37,7 +37,7 @@ const tools = [
     input_schema: { type: 'object', properties: { category: { type: 'string' } } } },
   { name: 'read_document', description: 'Legge il testo di un documento dato il suo path (come da list_documents).',
     input_schema: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } },
-  { name: 'save_preventivo', description: 'Salva una BOZZA di preventivo nel repository (categoria preventivi) come Non approvato. body_html = corpo del preventivo in HTML semplice.',
+  { name: 'save_preventivo', description: 'Salva una BOZZA di preventivo nel repository (categoria preventivi) come Non approvato. body_html = SOLO il contenuto interno del preventivo in HTML semplice (paragrafi <p>, elenchi <ul><li>, tabelle <table>): NON includere <html>, <head>, <body> né il titolo (già in intestazione).',
     input_schema: { type: 'object', properties: { title: { type: 'string' }, body_html: { type: 'string' }, richiedente: { type: 'string' } }, required: ['title', 'body_html'] } },
 ];
 
@@ -114,7 +114,11 @@ async function runTool(admin: any, name: string, input: any) {
   }
   if (name === 'save_preventivo') {
     if (!input.title || !input.body_html) return { error: 'title e body_html obbligatori' };
-    const html = preventivoHtml(String(input.title), String(input.body_html), input.richiedente);
+    let bh = String(input.body_html);
+    const bm = bh.match(/<body[^>]*>([\s\S]*?)<\/body>/i);   // se arriva un doc completo, tieni solo il body
+    if (bm) bh = bm[1];
+    bh = bh.replace(/<\/?(?:html|head|body|!doctype)[^>]*>/gi, '');
+    const html = preventivoHtml(String(input.title), bh, input.richiedente);
     const path = `preventivi/${Date.now()}_${slug(String(input.title))}.html`;
     const up = await admin.storage.from('documenti').upload(path, new Blob([html], { type: 'text/html' }), { upsert: false, contentType: 'text/html' });
     if (up.error) return { error: up.error.message };
