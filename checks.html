@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=33">
+  <link rel="stylesheet" href="css/style.css?v=34">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -231,8 +231,9 @@
       <p class="page-sub" id="check-date">–</p>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
+      <span id="autosave-badge" style="font-size:12px;color:var(--green);opacity:0;transition:opacity .3s;white-space:nowrap;">✓ Salvato</span>
       <button class="btn btn-outline btn-sm" id="btn-storico">📋 Storico</button>
-      <button class="btn btn-primary" id="btn-salva" disabled>Salva sessione</button>
+      <button class="btn btn-primary" id="btn-salva" title="Salva e invia il report ai destinatari">Salva e invia report</button>
     </div>
   </div>
 
@@ -279,11 +280,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=33"></script>
-<script src="js/app.js?v=33"></script>
-<script src="js/db.js?v=33"></script>
-<script src="js/tour.js?v=33"></script>
-<script src="js/storico-solaria.js?v=33"></script>
+<script src="js/config.js?v=34"></script>
+<script src="js/app.js?v=34"></script>
+<script src="js/db.js?v=34"></script>
+<script src="js/tour.js?v=34"></script>
+<script src="js/storico-solaria.js?v=34"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -303,11 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
     now.toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
   document.querySelectorAll('#room-tabs .tab').forEach(tab => {
-    tab.addEventListener('click', () => {
+    tab.addEventListener('click', async () => {
+      await flushSave();   // salva la sala corrente PRIMA di cambiare (niente perdite)
       document.querySelectorAll('#room-tabs .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       currentRoom = tab.dataset.room;
-      loadState().then(() => renderAll());
+      await loadState(); renderAll();
     });
   });
 
@@ -334,6 +336,35 @@ async function saveSession() {
   document.getElementById('btn-salva').disabled = true;
   toast('Sessione check salvata ✓', 'success');
   sendCheckReport();  // invia il report dell'esito ai destinatari configurati
+}
+
+// ── AUTOSAVE: ogni azione salva subito il singolo check → niente perdite cambiando sala ──
+function autosave(id) {
+  const today = new Date().toISOString().slice(0, 10);
+  db.saveCheckState(currentRoom, today, id, checkState[id]).catch(e => console.warn('autosave', id, e));
+  showAutosaved();
+}
+let _noteTimers = {};
+function autosaveNote(id) {
+  const room = currentRoom, today = new Date().toISOString().slice(0, 10), data = { ...checkState[id] };
+  clearTimeout(_noteTimers[id]);
+  _noteTimers[id] = setTimeout(() => {
+    db.saveCheckState(room, today, id, data).catch(e => console.warn('autosaveNote', id, e));
+    showAutosaved();
+  }, 600);
+}
+// salva TUTTA la sala corrente (rete di sicurezza prima di cambiare sala)
+async function flushSave() {
+  const today = new Date().toISOString().slice(0, 10), room = currentRoom;
+  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(room, today, id, s).catch(() => {})));
+}
+let _autosaveT;
+function showAutosaved() {
+  const el = document.getElementById('autosave-badge');
+  if (!el) return;
+  el.style.opacity = '1';
+  clearTimeout(_autosaveT);
+  _autosaveT = setTimeout(() => { el.style.opacity = '0'; }, 1500);
 }
 
 // ── Documento rapporto di intervento (allegato) — struttura ufficiale Solaria/Armonia ──
@@ -524,6 +555,7 @@ function renderAll() {
       if (!checkState[id]) checkState[id] = {};
       checkState[id].note = e.target.value;
       document.getElementById('btn-salva').disabled = false;
+      autosaveNote(id);
     });
   });
 }
@@ -632,6 +664,7 @@ function toggleCard(id) {
 
 function markOk(id) {
   checkState[id] = { ...checkState[id], state: 'ok', ts: new Date().toISOString(), open: false };
+  autosave(id);
   document.getElementById('btn-salva').disabled = false;
   renderAll();
   toast('Check completato ✓', 'success');
@@ -639,6 +672,7 @@ function markOk(id) {
 
 function markKo(id) {
   checkState[id] = { ...checkState[id], state: 'ko', ts: new Date().toISOString(), failTs: new Date().toISOString(), showPanel: true, open: true };
+  autosave(id);
   document.getElementById('btn-salva').disabled = false;
   renderAll();
   // scroll to panel
@@ -651,6 +685,7 @@ function markKo(id) {
 function applyFix(id, fix) {
   if (!checkState[id]) checkState[id] = {};
   checkState[id].fixApplied = fix;
+  autosave(id);
   document.getElementById('btn-salva').disabled = false;
   // Re-render just the fixes
   const allItems = Object.values(CHECK_ITEMS).flat().flatMap(s => s?.items || []);
@@ -662,6 +697,7 @@ function markFixed(id) {
   if (!checkState[id]) checkState[id] = {};
   const note = document.querySelector(`.res-note-input[data-id="${id}"]`)?.value || checkState[id].note || '';
   checkState[id] = { ...checkState[id], state: 'fixed', ts: new Date().toISOString(), note, open: false, showPanel: false };
+  autosave(id);
   document.getElementById('btn-salva').disabled = false;
   renderAll();
   toast('Anomalia risolta ✓', 'success');
