@@ -206,6 +206,14 @@ const db = {
       return state;
     } catch (e) { console.error(e); return {}; }
   },
+  // tutte le righe check di una sala (per lo storico multi-sessione)
+  async getRoomChecks(room) {
+    if (DEMO_MODE) return [];
+    _initSb();
+    const { data, error } = await _sb.from('checks').select('*').eq('room', room).order('date', { ascending: false }).limit(1000);
+    if (error) { console.error('getRoomChecks', error); return []; }
+    return data || [];
+  },
   async saveCheckState(room, date, checkId, d) {
     if (DEMO_MODE) {
       const key = `${LS.checks}_${room}_${date}`;

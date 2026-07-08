@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=34">
+  <link rel="stylesheet" href="css/style.css?v=35">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -250,6 +250,9 @@
     </div>
   </div>
 
+  <!-- Barra sessioni: più check nella stessa giornata (es. mattutino + pre-evento) -->
+  <div id="session-bar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px;"></div>
+
   <!-- Summary bar -->
   <div class="summary-bar">
     <div class="sb-item"><div class="sb-dot" style="background:var(--text-faint)"></div> <span id="sb-total">–</span> totali</div>
@@ -280,11 +283,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=34"></script>
-<script src="js/app.js?v=34"></script>
-<script src="js/db.js?v=34"></script>
-<script src="js/tour.js?v=34"></script>
-<script src="js/storico-solaria.js?v=34"></script>
+<script src="js/config.js?v=35"></script>
+<script src="js/app.js?v=35"></script>
+<script src="js/db.js?v=35"></script>
+<script src="js/tour.js?v=35"></script>
+<script src="js/storico-solaria.js?v=35"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -292,6 +295,14 @@
 let currentRoom = 'solaria-roma';
 // checkState[id] = { state: 'ok'|'ko'|'fixed'|null, ts: ISO, note:'', fixApplied:'' }
 let checkState  = {};
+// ── SESSIONI: più check nella stessa giornata (mattutino, pre-evento, ...) ──
+let currentSession = 1;            // sessione attiva
+let daySessions    = [1];          // sessioni esistenti oggi per la sala
+let allSessionsData = { 1: {} };   // { sessione: { id: stato } }
+const todayStr = () => new Date().toISOString().slice(0, 10);
+// il check_id salvato su DB porta il prefisso della sessione (la #1 resta senza prefisso, per compatibilità)
+function sessionKey(id) { return currentSession === 1 ? id : `s${currentSession}::${id}`; }
+function parseSession(key) { const m = key.match(/^s(\d+)::([\s\S]+)$/); return m ? { s: +m[1], id: m[2] } : { s: 1, id: key }; }
 
 /* ─────────────────────────────────────
    INIT
@@ -323,40 +334,63 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadState() {
-  const today = new Date().toISOString().slice(0, 10);
-  checkState = await db.getCheckState(currentRoom, today);
+  const all = await db.getCheckState(currentRoom, todayStr());   // { check_id(eventualmente prefissato): stato }
+  allSessionsData = {};
+  for (const [k, v] of Object.entries(all)) {
+    const { s, id } = parseSession(k);
+    (allSessionsData[s] = allSessionsData[s] || {})[id] = v;
+  }
+  daySessions = Object.keys(allSessionsData).map(Number).sort((a, b) => a - b);
+  if (!daySessions.length) { daySessions = [1]; allSessionsData[1] = {}; }
+  currentSession = daySessions[daySessions.length - 1];   // apri l'ultima sessione del giorno
+  checkState = allSessionsData[currentSession];
+}
+
+// apre una NUOVA sessione di check nella giornata (es. pre-evento / pre-partita)
+function newCheck() {
+  const next = Math.max(...daySessions) + 1;
+  daySessions.push(next);
+  allSessionsData[next] = {};
+  currentSession = next;
+  checkState = allSessionsData[next];
+  document.getElementById('btn-salva').disabled = true;
+  renderAll();
+  toast(`Nuovo check aperto — Check #${next} ✓`, 'success');
+}
+// passa a una sessione già esistente del giorno
+function showSession(n) {
+  currentSession = n;
+  checkState = allSessionsData[n] || (allSessionsData[n] = {});
+  renderAll();
 }
 
 async function saveSession() {
-  const today = new Date().toISOString().slice(0, 10);
-  const saves = Object.entries(checkState).map(([id, s]) =>
-    db.saveCheckState(currentRoom, today, id, s)
-  );
-  await Promise.all(saves);
+  const t = todayStr();
+  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(currentRoom, t, sessionKey(id), s)));
   document.getElementById('btn-salva').disabled = true;
-  toast('Sessione check salvata ✓', 'success');
+  toast('Report salvato e inviato ✓', 'success');
   sendCheckReport();  // invia il report dell'esito ai destinatari configurati
 }
 
-// ── AUTOSAVE: ogni azione salva subito il singolo check → niente perdite cambiando sala ──
+// ── AUTOSAVE: ogni azione salva subito il singolo check (con prefisso sessione) ──
 function autosave(id) {
-  const today = new Date().toISOString().slice(0, 10);
-  db.saveCheckState(currentRoom, today, id, checkState[id]).catch(e => console.warn('autosave', id, e));
+  db.saveCheckState(currentRoom, todayStr(), sessionKey(id), checkState[id]).catch(e => console.warn('autosave', id, e));
   showAutosaved();
 }
 let _noteTimers = {};
 function autosaveNote(id) {
-  const room = currentRoom, today = new Date().toISOString().slice(0, 10), data = { ...checkState[id] };
-  clearTimeout(_noteTimers[id]);
-  _noteTimers[id] = setTimeout(() => {
-    db.saveCheckState(room, today, id, data).catch(e => console.warn('autosaveNote', id, e));
+  const room = currentRoom, t = todayStr(), key = sessionKey(id), data = { ...checkState[id] };
+  clearTimeout(_noteTimers[key]);
+  _noteTimers[key] = setTimeout(() => {
+    db.saveCheckState(room, t, key, data).catch(e => console.warn('autosaveNote', id, e));
     showAutosaved();
   }, 600);
 }
-// salva TUTTA la sala corrente (rete di sicurezza prima di cambiare sala)
+// salva TUTTA la sessione corrente (rete di sicurezza prima di cambiare sala)
 async function flushSave() {
-  const today = new Date().toISOString().slice(0, 10), room = currentRoom;
-  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(room, today, id, s).catch(() => {})));
+  const t = todayStr(), room = currentRoom, sess = currentSession;
+  const keyFor = id => sess === 1 ? id : `s${sess}::${id}`;
+  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(room, t, keyFor(id), s).catch(() => {})));
 }
 let _autosaveT;
 function showAutosaved() {
@@ -466,7 +500,8 @@ async function sendCheckReport() {
       : `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutti i check a posto.</b> Nessuna anomalia da gestire.</p>`;
     const fixedHtml = fixed.length ? `<p style="font-size:13px;color:#666;">Risolte durante il check: ${fixed.map(i => i.name).join(', ')}</p>` : '';
 
-    const html = emailTemplate(`Check mattutino — ${roomLabel}`,
+    const sessTag = currentSession > 1 ? `Check #${currentSession}` : 'Check mattutino';
+    const html = emailTemplate(`${sessTag} — ${roomLabel}`,
       `<p style="color:#666;text-transform:capitalize;">${dateStr}</p>
        <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
          <tr><td style="color:#666;padding:3px 18px 3px 0;">Eseguiti</td><td>${done.length}/${allItems.length}</td></tr>
@@ -483,7 +518,7 @@ async function sendCheckReport() {
     }));
 
     await db.sendEmail(to,
-      `Check mattutino ${roomLabel} — ${kos.length ? kos.length + ' anomalie ⚠' : 'tutto ok ✓'}`,
+      `${sessTag} ${roomLabel} — ${kos.length ? kos.length + ' anomalie ⚠' : 'tutto ok ✓'}`,
       html, attachments);
     toast(`Report check inviato a ${to.length} destinatari ✓`, 'info');
   } catch (e) { console.error('report check', e); }
@@ -492,7 +527,25 @@ async function sendCheckReport() {
 /* ─────────────────────────────────────
    RENDER ALL
 ───────────────────────────────────── */
+function renderSessionBar() {
+  const bar = document.getElementById('session-bar');
+  if (!bar) return;
+  const label = (n) => {
+    const ts = Object.values(allSessionsData[n] || {}).map(s => s && s.ts).filter(Boolean).sort()[0];
+    const t = ts ? new Date(ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
+    return `Check ${n}${t ? ' · ' + t : ''}`;
+  };
+  const chips = daySessions.map(n => {
+    const on = n === currentSession;
+    return `<button onclick="showSession(${n})" style="font-size:12.5px;font-weight:700;border:1.5px solid ${on ? 'var(--green)' : 'var(--border)'};background:${on ? 'rgba(134,188,37,.15)' : 'var(--bg-card)'};color:${on ? 'var(--green)' : 'var(--text-muted)'};border-radius:20px;padding:6px 14px;cursor:pointer;">${label(n)}</button>`;
+  }).join('');
+  bar.innerHTML =
+    `<span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-right:2px;">Check del giorno</span>${chips}` +
+    `<button onclick="newCheck()" title="Apri un nuovo check nella giornata (es. pre-evento)" style="font-size:12.5px;font-weight:700;border:1.5px dashed var(--green);background:transparent;color:var(--green);border-radius:20px;padding:6px 14px;cursor:pointer;">+ Nuovo check</button>`;
+}
+
 function renderAll() {
+  renderSessionBar();
   const sections  = CHECK_ITEMS[currentRoom] || [];
   const isArmonia = currentRoom.includes('armonia');
   const container = document.getElementById('checks-container');
@@ -734,30 +787,34 @@ function goToIntervento(id) {
 ───────────────────────────────────── */
 const MONTH_NAMES = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 
-function getStoricoSessions() {
-  // 1. Storico importato (Solaria Roma/Milano condividono lo stesso storico di riferimento)
+async function getStoricoSessions() {
+  // 1. Storico importato (Solaria Roma/Milano condividono lo storico di riferimento)
   let historical = [];
   if (currentRoom.startsWith('solaria') && typeof STORICO_SOLARIA_ROMA !== 'undefined') {
     historical = STORICO_SOLARIA_ROMA.map(s => ({ ...s, source: 'import' }));
   }
-  // 2. Sessioni salvate in locale (nuovo formato per-item via db)
-  const saved = ls(LS.checks) || {};
   const allItems = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
-  const live = Object.entries(saved)
-    .filter(([k]) => k.startsWith(LS.checks + '_' + currentRoom + '_'))
-    .map(([key, state]) => {
-      const date = key.split('_').pop();
-      const ok = allItems.filter(i => ['ok','fixed'].includes(state[i.id]?.state)).length;
-      const fails = allItems.filter(i => state[i.id]?.state === 'ko')
-        .map(i => ({ area: '', comp: i.name, note: state[i.id]?.note || '' }));
-      return { date, moment: 'live', ok, ko: fails.length, total: ok + fails.length, fails, source: 'live' };
-    });
-  return [...historical, ...live];
+  // 2. Sessioni live dal DATABASE, raggruppate per (data, sessione) → più report nella stessa giornata
+  const rows = await db.getRoomChecks(currentRoom);
+  const groups = {};
+  for (const r of (rows || [])) {
+    const { s, id } = parseSession(r.check_id);
+    const gk = `${r.date}#${s}`;
+    (groups[gk] = groups[gk] || { date: r.date, session: s, items: {} }).items[id] = r;
+  }
+  const live = Object.values(groups).map(g => {
+    const ok = allItems.filter(i => ['ok','fixed'].includes(g.items[i.id]?.state)).length;
+    const fails = allItems.filter(i => g.items[i.id]?.state === 'ko')
+      .map(i => ({ area: '', comp: i.name, note: g.items[i.id]?.note || '' }));
+    return { date: g.date, session: g.session, moment: g.session > 1 ? `Check ${g.session}` : '', ok, ko: fails.length, total: ok + fails.length, fails, source: 'live' };
+  });
+  return [...live, ...historical];
 }
 
-function renderStorico() {
+async function renderStorico() {
   const el = document.getElementById('storico-body');
-  const sessions = getStoricoSessions();
+  el.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Carico lo storico…</div></div>';
+  const sessions = await getStoricoSessions();
 
   if (!sessions.length) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Nessuno storico per questa sala</div><div class="empty-sub">Lo storico si popolerà con i check salvati.</div></div>';
@@ -817,10 +874,11 @@ function renderStorico() {
   // ── ELENCO SESSIONI (più recenti prima) ──
   const listHtml = sessions
     .slice()
-    .sort((a,b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : (b.moment==='evening'?1:-1)))
+    .sort((a,b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : ((b.session||1) - (a.session||1))))
     .slice(0, 60)
     .map(s => {
-      const momentBadge = s.moment === 'morning' ? '<span style="font-size:10px;color:#4da6ff;">🌅 Mattino</span>'
+      const momentBadge = (s.session > 1) ? `<span style="font-size:10px;color:var(--orange);font-weight:700;">● Check ${s.session}</span>`
+        : s.moment === 'morning' ? '<span style="font-size:10px;color:#4da6ff;">🌅 Mattino</span>'
         : s.moment === 'evening' ? '<span style="font-size:10px;color:var(--orange);">🌆 Sera</span>'
         : '<span style="font-size:10px;color:var(--green);">● Live</span>';
       const dateFmt = /^\d{4}-\d{2}-\d{2}$/.test(s.date)
