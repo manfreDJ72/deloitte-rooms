@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rapporto di Intervento – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=39">
+  <link rel="stylesheet" href="css/style.css?v=40">
   <style>
     .rap-wrap { max-width: 780px; margin: 0 auto; }
     .rap-card { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
@@ -165,9 +165,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=39"></script>
-<script src="js/app.js?v=39"></script>
-<script src="js/db.js?v=39"></script>
+<script src="js/config.js?v=40"></script>
+<script src="js/app.js?v=40"></script>
+<script src="js/db.js?v=40"></script>
 <script>
 const STAGES = [
   { key:'analisi', num:1, label:'Analisi', desc:'Analisi per determinare la natura del problema e se è risolvibile da remoto o serve un intervento fisico.' },
@@ -255,6 +255,10 @@ async function apriRapporto() {
 
   const html = emailTemplate(`Anomalia aperta — ${rap.num} (${rap.priority})`,
     `<p style="font-size:16px;"><b>${rap.componente}</b></p>
+     <div style="background:#f5f7ef;border-left:4px solid #86BC25;padding:10px 14px;border-radius:6px;margin:10px 0;font-size:14px;">
+       <b>Ticket:</b> ${ticketId || '(in apertura)'} — aperto nella sezione Anomalie<br>
+       <b>Rapporto di intervento:</b> ${rap.num} · <b>stato: Apertura rapporto</b> (fase analisi)
+     </div>
      <p><b>Area:</b> ${rap.area}<br><b>Priorità:</b> ${rap.priority}<br><b>Presidio:</b> ${rap.tecnico || '—'}</p>
      <p><b>Rilevazione:</b><br>${(rap.descrizione || '—').replace(/\n/g,'<br>')}</p>
      <p style="color:#666;font-size:13px;">È stata avviata la fase di <b>analisi</b> (SLA ${STAGE_SLA[rap.priority].analisi}h).</p>`,

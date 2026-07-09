@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=39">
+  <link rel="stylesheet" href="css/style.css?v=40">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -284,11 +284,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=39"></script>
-<script src="js/app.js?v=39"></script>
-<script src="js/db.js?v=39"></script>
-<script src="js/tour.js?v=39"></script>
-<script src="js/storico-solaria.js?v=39"></script>
+<script src="js/config.js?v=40"></script>
+<script src="js/app.js?v=40"></script>
+<script src="js/db.js?v=40"></script>
+<script src="js/tour.js?v=40"></script>
+<script src="js/storico-solaria.js?v=40"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -559,10 +559,17 @@ async function sendCheckReport() {
     // ── Anomalie che PERSISTONO: richiedono rapporto di intervento (allegato con stato) ──
     const anomListHtml = kos.length
       ? `<h3 style="color:#c00;margin:18px 0 6px;">⚠ Anomalie da gestire — richiedono rapporto di intervento (${kos.length})</h3>
-         <ul style="margin:0 0 6px;padding-left:18px;">${kos.map(i => `<li><b>${i.name}</b>${checkState[i.id]?.note ? ' — ' + checkState[i.id].note : ''}</li>`).join('')}</ul>`
+         <ul style="margin:0 0 6px;padding-left:18px;">${kos.map(i => {
+            const tk = getCheckTicket(currentRoom, todayStr(), currentSession, i.id);
+            const note = checkState[i.id]?.note ? ' — ' + checkState[i.id].note : '';
+            const tag = tk
+              ? ` <span style="background:#ffe3e3;color:#a11;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:700;">Ticket ${tk} · Apertura rapporto</span>`
+              : ` <span style="color:#c00;font-size:12px;">(ticket in apertura)</span>`;
+            return `<li style="margin-bottom:4px;"><b>${i.name}</b>${note}${tag}</li>`;
+         }).join('')}</ul>`
       : '';
     const ticketNote = kos.length
-      ? `<p style="font-size:13px;color:#666;">In allegato il <b>rapporto di intervento</b> di ciascuna anomalia (stato: <b>Apertura rapporto</b>) ed è stato aperto un ticket in Anomalie. Gli aggiornamenti di stato proseguono sul portale.</p>`
+      ? `<p style="font-size:13px;color:#666;">Per ogni anomalia è <b>aperto il ticket in Anomalie</b> (vedi codice qui sopra) e il <b>rapporto di intervento</b> è in stato <b>Apertura rapporto</b>; il documento è anche in allegato. Gli aggiornamenti di stato proseguono sul portale.</p>`
       : '';
     const allClearHtml = (!kos.length && !fixed.length)
       ? `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutto a posto.</b> Nessuna anomalia rilevata durante il check.</p>` : '';
