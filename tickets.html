@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Anomalie – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=36">
+  <link rel="stylesheet" href="css/style.css?v=37">
 </head>
 <body>
 
@@ -209,6 +209,12 @@
       <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
         <textarea class="form-control" id="action-text" rows="2" placeholder="Aggiungi aggiornamento intervento..."></textarea>
         <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+          <select class="form-control" id="action-priority" style="max-width:190px;min-height:36px;" title="Sposta la priorità del ticket">
+            <option value="P1">Priorità: P1 – Critico</option>
+            <option value="P2">Priorità: P2 – Alto</option>
+            <option value="P3">Priorità: P3 – Medio</option>
+            <option value="P4">Priorità: P4 – Basso</option>
+          </select>
           <select class="form-control" id="action-status" style="max-width:200px;min-height:36px;">
             <option value="">— Mantieni stato attuale —</option>
             <option value="in-progress">→ Imposta: In lavorazione</option>
@@ -223,10 +229,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=36"></script>
-<script src="js/app.js?v=36"></script>
-<script src="js/db.js?v=36"></script>
-<script src="js/tour.js?v=36"></script>
+<script src="js/config.js?v=37"></script>
+<script src="js/app.js?v=37"></script>
+<script src="js/db.js?v=37"></script>
+<script src="js/tour.js?v=37"></script>
 <script>
 let filterStatus   = 'all';
 let filterRoomVal  = 'all';
@@ -474,33 +480,46 @@ function openDetail(id) {
 
   document.getElementById('action-text').value = '';
   document.getElementById('action-status').value = '';
+  document.getElementById('action-priority').value = t.priority;
   openModal('modal-detail');
 }
 
 function addAction() {
-  const text   = document.getElementById('action-text').value.trim();
-  const status = document.getElementById('action-status').value;
-  if (!text) { toast('Scrivi un aggiornamento', 'error'); return; }
+  const text    = document.getElementById('action-text').value.trim();
+  const status  = document.getElementById('action-status').value;
+  const newPrio = document.getElementById('action-priority').value;
 
   const tickets = ls(LS.tickets)||[];
   const idx = tickets.findIndex(t => t.id === detailId);
   if (idx < 0) return;
+  const t = tickets[idx];
+  const prioChanged = newPrio && newPrio !== t.priority;
+
+  if (!text && !status && !prioChanged) {
+    toast('Scrivi un aggiornamento o sposta stato/priorità', 'error');
+    return;
+  }
 
   const user = currentUser();
-  tickets[idx].actions.push({ ts: new Date().toISOString(), user: user?.name||'Operatore', text });
-  tickets[idx].updatedAt = new Date().toISOString();
+  const now = new Date().toISOString();
 
+  // Spostamento di priorità (tracciato nel log del ticket)
+  if (prioChanged) {
+    const old = t.priority;
+    t.priority = newPrio;
+    t.actions.push({ ts: now, user: user?.name||'Operatore', text: `Priorità spostata: ${old} → ${newPrio}` });
+  }
+  if (text) t.actions.push({ ts: now, user: user?.name||'Operatore', text });
+  t.updatedAt = now;
   if (status) {
-    tickets[idx].status = status;
-    if (status === 'resolved') {
-      tickets[idx].resolvedAt = new Date().toISOString();
-    }
+    t.status = status;
+    if (status === 'resolved') t.resolvedAt = now;
   }
 
   lsSet(LS.tickets, tickets);
   closeModal('modal-detail');
   renderAll();
-  toast('Aggiornamento salvato ✓', 'success');
+  toast(prioChanged ? `Ticket ${t.id} spostato a ${newPrio} ✓` : 'Aggiornamento salvato ✓', 'success');
 }
 </script>
 </body>

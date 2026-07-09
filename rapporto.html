@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rapporto di Intervento – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=36">
+  <link rel="stylesheet" href="css/style.css?v=37">
   <style>
     .rap-wrap { max-width: 780px; margin: 0 auto; }
     .rap-card { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
@@ -129,9 +129,9 @@
         <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">Priorità (definisce gli SLA)</label>
           <div class="priority-btns" id="prio-btns">
-            <button class="priority-btn" data-p="P1">P1 – Critico</button>
+            <button class="priority-btn sel" data-p="P1">P1 – Critico</button>
             <button class="priority-btn" data-p="P2">P2 – Alto</button>
-            <button class="priority-btn sel" data-p="P3">P3 – Medio</button>
+            <button class="priority-btn" data-p="P3">P3 – Medio</button>
             <button class="priority-btn" data-p="P4">P4 – Basso</button>
           </div>
         </div>
@@ -165,9 +165,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=36"></script>
-<script src="js/app.js?v=36"></script>
-<script src="js/db.js?v=36"></script>
+<script src="js/config.js?v=37"></script>
+<script src="js/app.js?v=37"></script>
+<script src="js/db.js?v=37"></script>
 <script>
 const STAGES = [
   { key:'analisi', num:1, label:'Analisi', desc:'Analisi per determinare la natura del problema e se è risolvibile da remoto o serve un intervento fisico.' },
@@ -183,7 +183,7 @@ const STAGE_SLA = {
 const AREA_ROOM = { 'Solaria – Roma':'solaria-roma','Solaria – Milano':'solaria-milano','Armonia – Roma':'armonia-roma' };
 
 let rap = null;
-let priority = 'P3';
+let priority = 'P1';
 let prefill = null;   // dati passati dal check (per collegare il ticket)
 
 document.addEventListener('DOMContentLoaded', async () => {

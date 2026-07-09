@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=36">
+  <link rel="stylesheet" href="css/style.css?v=37">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -284,11 +284,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=36"></script>
-<script src="js/app.js?v=36"></script>
-<script src="js/db.js?v=36"></script>
-<script src="js/tour.js?v=36"></script>
-<script src="js/storico-solaria.js?v=36"></script>
+<script src="js/config.js?v=37"></script>
+<script src="js/app.js?v=37"></script>
+<script src="js/db.js?v=37"></script>
+<script src="js/tour.js?v=37"></script>
+<script src="js/storico-solaria.js?v=37"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -411,7 +411,7 @@ async function createTicketsForSession(koItems) {
     ].filter(Boolean).join('\n');
     try {
       const tk = await db.createTicket({
-        room: currentRoom, priority: 'P2', category: 'altro',
+        room: currentRoom, priority: 'P1', category: 'altro',
         title: item.name, desc, segnalatore: u?.name || 'Presidio',
       });
       setCheckTicket(currentRoom, t, currentSession, item.id, tk.id);
