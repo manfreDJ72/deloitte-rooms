@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=38">
+  <link rel="stylesheet" href="css/style.css?v=39">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -284,11 +284,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=38"></script>
-<script src="js/app.js?v=38"></script>
-<script src="js/db.js?v=38"></script>
-<script src="js/tour.js?v=38"></script>
-<script src="js/storico-solaria.js?v=38"></script>
+<script src="js/config.js?v=39"></script>
+<script src="js/app.js?v=39"></script>
+<script src="js/db.js?v=39"></script>
+<script src="js/tour.js?v=39"></script>
+<script src="js/storico-solaria.js?v=39"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -541,12 +541,13 @@ async function sendCheckReport() {
     if (!to.length) return; // nessun destinatario configurato per il report
 
     const u = currentUser();
-    const accent = kos.length ? '#ff4d4d' : '#86BC25';
+    // barra/tag in alto a 3 stati: rosso = anomalie persistenti, arancione = solo risolte sul momento, verde = tutto ok
+    const accent = kos.length ? '#ff4d4d' : (fixed.length ? '#f0a030' : '#86BC25');
     const PORTAL = 'https://rooms.area62.it';
     const portalBtn = `<p style="margin-top:18px;"><a href="${PORTAL}/checks.html" style="display:inline-block;background:#86BC25;color:#0d0d0d;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:8px;">Apri il portale →</a></p>`;
     // ── Anomalie RISOLTE SUL MOMENTO (stato 'fixed'): vanno sempre segnalate nel report ──
     const resolvedHtml = fixed.length
-      ? `<h3 style="color:#5a8a00;margin:18px 0 6px;">🔧 Anomalie risolte sul momento (${fixed.length})</h3>
+      ? `<h3 style="color:#b9770e;margin:18px 0 6px;">🔧 Anomalie risolte sul momento (${fixed.length})</h3>
          <ul style="margin:0 0 6px;padding-left:18px;">${fixed.map(i => {
             const st = checkState[i.id] || {};
             const extra = [st.fixApplied ? 'soluzione: ' + st.fixApplied : '', st.note].filter(Boolean).join(' · ');
@@ -566,6 +567,13 @@ async function sendCheckReport() {
     const allClearHtml = (!kos.length && !fixed.length)
       ? `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutto a posto.</b> Nessuna anomalia rilevata durante il check.</p>` : '';
 
+    // Banner di stato in cima: l'esito è chiaro al primo sguardo (coerente col colore della barra)
+    const statusBanner = kos.length
+      ? `<div style="background:rgba(255,77,77,.10);border-left:4px solid #ff4d4d;color:#c0392b;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">⚠ Anomalie ancora presenti — richiesto rapporto di intervento</div>`
+      : fixed.length
+      ? `<div style="background:rgba(240,160,48,.14);border-left:4px solid #f0a030;color:#b9770e;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">🔧 Anomalie rilevate ma risolte sul momento — nessun intervento necessario</div>`
+      : `<div style="background:rgba(134,188,37,.14);border-left:4px solid #86BC25;color:#5a8a00;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">✓ Tutto a posto — nessuna anomalia</div>`;
+
     // Oggetto leggibile: si capisce l'esito senza aprire la mail
     const subjBits = [];
     if (kos.length)   subjBits.push(`${kos.length} da gestire ⚠`);
@@ -577,18 +585,18 @@ async function sendCheckReport() {
       // check successivo: report MIRATO agli eventi sopraggiunti durante la giornata
       heading = `Segnalazione durante la giornata — ${roomLabel}`;
       bodyInner =
-        `<p style="color:#666;text-transform:capitalize;">${dateStr} · Check #${currentSession}</p>
+        `${statusBanner}<p style="color:#666;text-transform:capitalize;">${dateStr} · Check #${currentSession}</p>
          ${resolvedHtml}${anomListHtml}${ticketNote}${allClearHtml}${portalBtn}`;
       subject = `Check #${currentSession} ${roomLabel} — ${subjTail}`;
     } else {
       // primo check mattutino: report COMPLETO, autoconsistente (leggibile senza portale)
       heading = `Check mattutino — ${roomLabel}`;
       bodyInner =
-        `<p style="color:#666;text-transform:capitalize;">${dateStr}</p>
+        `${statusBanner}<p style="color:#666;text-transform:capitalize;">${dateStr}</p>
          <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
            <tr><td style="color:#666;padding:3px 18px 3px 0;">Eseguiti</td><td>${done.length}/${allItems.length}</td></tr>
            <tr><td style="color:#666;padding:3px 18px 3px 0;">OK</td><td style="color:#5a8a00;"><b>${ok.length}</b></td></tr>
-           <tr><td style="color:#666;padding:3px 18px 3px 0;">Risolte sul momento</td><td style="color:#5a8a00;"><b>${fixed.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Risolte sul momento</td><td style="color:#b9770e;"><b>${fixed.length}</b></td></tr>
            <tr><td style="color:#666;padding:3px 18px 3px 0;">Da gestire</td><td style="color:#c00;"><b>${kos.length}</b></td></tr>
            <tr><td style="color:#666;padding:3px 18px 3px 0;">Presidio</td><td>${u?.name || '—'}</td></tr>
          </table>
