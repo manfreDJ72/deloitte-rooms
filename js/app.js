@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 35;
+const APP_BUILD = 36;
 (function checkForUpdate() {
   fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
     .then(r => r.ok ? r.text() : null)
@@ -87,6 +87,20 @@ function emailTemplate(heading, innerHtml, accent = '#86BC25') {
       </div>
     </div>
   </div>`;
+}
+
+// ── MAPPA check → ticket (idempotenza tra checks.html e rapporto.html) ──
+// Evita di aprire più ticket per la stessa voce di check nella stessa sessione.
+const CHECK_TICKET_MAP = 'dlt_check_ticket_map';
+function _ctKey(room, date, session, checkId) { return `${room}#${date}#${session || 1}#${checkId}`; }
+function getCheckTicket(room, date, session, checkId) {
+  const m = ls(CHECK_TICKET_MAP) || {};
+  return m[_ctKey(room, date, session, checkId)] || null;
+}
+function setCheckTicket(room, date, session, checkId, ticketId) {
+  const m = ls(CHECK_TICKET_MAP) || {};
+  m[_ctKey(room, date, session, checkId)] = ticketId;
+  localStorage.setItem(CHECK_TICKET_MAP, JSON.stringify(m)); // chiave non sincronizzata: nessun push
 }
 
 function currentUser() { return ls(LS.user); }

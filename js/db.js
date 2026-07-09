@@ -191,6 +191,36 @@ const db = {
     lsSet(LS.tickets, list); // write-through automatico
     return ticket;
   },
+  // Crea un ticket con INSERT diretto sul DB: sicuro anche dalle pagine che NON
+  // hanno la collezione ticket idratata in locale (checks/rapporto), dove il
+  // push dell'intera collezione cancellerebbe i ticket esistenti su Supabase.
+  async createTicket(fields) {
+    const now = new Date().toISOString();
+    const t = { status: 'open', createdAt: now, updatedAt: now, actions: [], ...fields };
+    if (DEMO_MODE) {
+      const list = ls(LS.tickets) || [];
+      t.id = t.id || 'TCK-' + String(list.length + 1).padStart(3, '0');
+      list.unshift(t); lsSet(LS.tickets, list);
+      return t;
+    }
+    _initSb();
+    // id progressivo robusto: max(NNN)+1 sui ticket esistenti
+    let next = 1;
+    try {
+      const { data } = await _sb.from('tickets').select('id');
+      next = 1 + (data || []).reduce((m, r) => {
+        const n = parseInt(String(r.id).replace(/\D/g, ''), 10);
+        return isNaN(n) ? m : Math.max(m, n);
+      }, 0);
+    } catch (e) { console.error('createTicket count', e); }
+    t.id = 'TCK-' + String(next).padStart(3, '0');
+    const { error } = await _sb.from('tickets').insert(SYNC[LS.tickets].toDb(t));
+    if (error) throw new Error(error.message);
+    // aggiorna la cache locale SENZA ritriggerare il push distruttivo
+    const list = ls(LS.tickets) || []; list.unshift(t);
+    localStorage.setItem(LS.tickets, JSON.stringify(list));
+    return t;
+  },
 
   // usate da checks.html
   async getCheckState(room, date) {

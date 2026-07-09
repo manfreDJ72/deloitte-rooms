@@ -173,6 +173,8 @@ body {
   -webkit-user-select: none; user-select: none;
 }
 .btn:active { transform: scale(.97); }
+.btn:disabled, .btn[disabled] { opacity: .4; cursor: not-allowed; filter: grayscale(.35); }
+.btn:disabled:active, .btn[disabled]:active { transform: none; }
 
 .btn-primary   { background: var(--green); color: #fff; }
 .btn-primary:hover { background: var(--green-dark); }

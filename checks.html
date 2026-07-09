@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=35">
+  <link rel="stylesheet" href="css/style.css?v=36">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -232,8 +232,9 @@
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
       <span id="autosave-badge" style="font-size:12px;color:var(--green);opacity:0;transition:opacity .3s;white-space:nowrap;">✓ Salvato</span>
+      <span id="save-hint" style="font-size:11.5px;color:var(--text-faint);white-space:nowrap;"></span>
       <button class="btn btn-outline btn-sm" id="btn-storico">📋 Storico</button>
-      <button class="btn btn-primary" id="btn-salva" title="Salva e invia il report ai destinatari">Salva e invia report</button>
+      <button class="btn btn-primary" id="btn-salva" title="Chiudi il check e invia il report / segnala le anomalie">🔒 Chiudi e segnala</button>
     </div>
   </div>
 
@@ -283,11 +284,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=35"></script>
-<script src="js/app.js?v=35"></script>
-<script src="js/db.js?v=35"></script>
-<script src="js/tour.js?v=35"></script>
-<script src="js/storico-solaria.js?v=35"></script>
+<script src="js/config.js?v=36"></script>
+<script src="js/app.js?v=36"></script>
+<script src="js/db.js?v=36"></script>
+<script src="js/tour.js?v=36"></script>
+<script src="js/storico-solaria.js?v=36"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -364,12 +365,60 @@ function showSession(n) {
   renderAll();
 }
 
+// "Chiudi e segnala": salva la sessione, apre i ticket in Anomalie per ogni
+// anomalia e invia il report (completo per il mattutino, mirato per i successivi).
 async function saveSession() {
+  const allItems = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
+  const done = allItems.filter(i => checkState[i.id]?.state).length;
+  const koItems = allItems.filter(i => checkState[i.id]?.state === 'ko');
+  // guardie coerenti col gating del bottone
+  if (currentSession === 1 && done < allItems.length) {
+    toast(`Completa tutti i controlli prima di chiudere (${allItems.length - done} rimasti)`, 'error');
+    return;
+  }
+  if (currentSession > 1 && koItems.length === 0) {
+    toast('In un check successivo segnala almeno un\'anomalia sopraggiunta', 'error');
+    return;
+  }
   const t = todayStr();
   await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(currentRoom, t, sessionKey(id), s)));
   document.getElementById('btn-salva').disabled = true;
-  toast('Report salvato e inviato ✓', 'success');
-  sendCheckReport();  // invia il report dell'esito ai destinatari configurati
+  const created = await createTicketsForSession(koItems); // apre i ticket lato Anomalie
+  await sendCheckReport();
+  toast(created > 0
+    ? `Chiuso e segnalato ✓ — ${created} ticket ${created === 1 ? 'aperto' : 'aperti'} in Anomalie`
+    : 'Check chiuso e report inviato ✓', 'success');
+}
+
+// Apre un ticket in Anomalie per ogni anomalia del check (idempotente: una sola
+// volta per voce/sessione grazie alla mappa check→ticket in localStorage).
+async function createTicketsForSession(koItems) {
+  if ((typeof DEMO_MODE !== 'undefined' && DEMO_MODE) || !koItems.length) return 0;
+  const room = ROOMS.find(r => r.id === currentRoom);
+  const roomLabel = room ? `${room.name} – ${room.city}` : currentRoom;
+  const dateStr = new Date().toLocaleDateString('it-IT');
+  const t = todayStr();
+  const u = currentUser();
+  const origine = currentSession > 1 ? `Check #${currentSession} (durante la giornata)` : 'Check mattutino';
+  let created = 0;
+  for (const item of koItems) {
+    if (getCheckTicket(currentRoom, t, currentSession, item.id)) continue; // già segnalato
+    const s = checkState[item.id] || {};
+    const desc = [
+      `Rilevata durante: ${origine} — ${roomLabel} del ${dateStr}.`,
+      s.note ? `Note presidio: ${s.note}` : '',
+      s.fixApplied ? `Soluzione tentata: ${s.fixApplied}` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const tk = await db.createTicket({
+        room: currentRoom, priority: 'P2', category: 'altro',
+        title: item.name, desc, segnalatore: u?.name || 'Presidio',
+      });
+      setCheckTicket(currentRoom, t, currentSession, item.id, tk.id);
+      created++;
+    } catch (e) { console.error('createTicket', item.id, e); }
+  }
+  return created;
 }
 
 // ── AUTOSAVE: ogni azione salva subito il singolo check (con prefisso sessione) ──
@@ -493,23 +542,40 @@ async function sendCheckReport() {
     const accent = kos.length ? '#ff4d4d' : '#86BC25';
     const PORTAL = 'https://rooms.area62.it';
     const portalBtn = `<p style="margin-top:18px;"><a href="${PORTAL}/checks.html" style="display:inline-block;background:#86BC25;color:#0d0d0d;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:8px;">Apri il portale →</a></p>`;
-    const anomHtml = kos.length
+    const anomListHtml = kos.length
       ? `<h3 style="color:#c00;margin:16px 0 6px;">⚠ Anomalie da gestire (${kos.length})</h3>
-         <ul style="margin:0 0 8px;padding-left:18px;">${kos.map(i => `<li><b>${i.name}</b>${checkState[i.id]?.note ? ' — ' + checkState[i.id].note : ''}</li>`).join('')}</ul>
-         <p style="font-size:13px;color:#666;">In allegato il <b>rapporto di intervento</b> per ciascuna anomalia. Clicca sul portale per verificare lo stato aggiornato (se già risolta).</p>`
-      : `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutti i check a posto.</b> Nessuna anomalia da gestire.</p>`;
+         <ul style="margin:0 0 8px;padding-left:18px;">${kos.map(i => `<li><b>${i.name}</b>${checkState[i.id]?.note ? ' — ' + checkState[i.id].note : ''}</li>`).join('')}</ul>`
+      : '';
+    const ticketNote = kos.length
+      ? `<p style="font-size:13px;color:#666;">Per ciascuna anomalia è stato aperto un <b>ticket nella sezione Anomalie</b> e in allegato trovi il <b>rapporto di intervento</b>. Gli aggiornamenti di stato sono sul portale.</p>`
+      : '';
     const fixedHtml = fixed.length ? `<p style="font-size:13px;color:#666;">Risolte durante il check: ${fixed.map(i => i.name).join(', ')}</p>` : '';
 
-    const sessTag = currentSession > 1 ? `Check #${currentSession}` : 'Check mattutino';
-    const html = emailTemplate(`${sessTag} — ${roomLabel}`,
-      `<p style="color:#666;text-transform:capitalize;">${dateStr}</p>
-       <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
-         <tr><td style="color:#666;padding:3px 18px 3px 0;">Eseguiti</td><td>${done.length}/${allItems.length}</td></tr>
-         <tr><td style="color:#666;padding:3px 18px 3px 0;">OK</td><td style="color:#5a8a00;"><b>${ok.length}</b></td></tr>
-         <tr><td style="color:#666;padding:3px 18px 3px 0;">Anomalie</td><td style="color:#c00;"><b>${kos.length}</b></td></tr>
-         <tr><td style="color:#666;padding:3px 18px 3px 0;">Presidio</td><td>${u?.name || '—'}</td></tr>
-       </table>
-       ${anomHtml}${fixedHtml}${portalBtn}`, accent);
+    let heading, bodyInner, subject;
+    if (currentSession > 1) {
+      // check successivo: report MIRATO solo alle anomalie sopraggiunte durante la giornata
+      heading = `Segnalazione durante la giornata — ${roomLabel}`;
+      bodyInner =
+        `<p style="color:#666;text-transform:capitalize;">${dateStr} · Check #${currentSession}</p>
+         <p style="font-size:15px;">Segnalate <b>${kos.length} ${kos.length === 1 ? 'anomalia' : 'anomalie'}</b> sopraggiunte durante la giornata in <b>${roomLabel}</b>.</p>
+         ${anomListHtml}${ticketNote}${portalBtn}`;
+      subject = `Check #${currentSession} ${roomLabel} — ${kos.length} ${kos.length === 1 ? 'anomalia' : 'anomalie'} ⚠`;
+    } else {
+      // primo check mattutino: report COMPLETO a tutti
+      heading = `Check mattutino — ${roomLabel}`;
+      const okBlock = kos.length ? '' : `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutti i check a posto.</b> Nessuna anomalia da gestire.</p>`;
+      bodyInner =
+        `<p style="color:#666;text-transform:capitalize;">${dateStr}</p>
+         <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Eseguiti</td><td>${done.length}/${allItems.length}</td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">OK</td><td style="color:#5a8a00;"><b>${ok.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Anomalie</td><td style="color:#c00;"><b>${kos.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Presidio</td><td>${u?.name || '—'}</td></tr>
+         </table>
+         ${anomListHtml}${okBlock}${ticketNote}${fixedHtml}${portalBtn}`;
+      subject = `Check mattutino ${roomLabel} — ${kos.length ? kos.length + ' anomalie ⚠' : 'tutto ok ✓'}`;
+    }
+    const html = emailTemplate(heading, bodyInner, accent);
 
     const attachments = kos.map(i => ({
       filename: `rapporto-intervento-${i.id}.html`,
@@ -517,9 +583,7 @@ async function sendCheckReport() {
       mimetype: 'text/html',
     }));
 
-    await db.sendEmail(to,
-      `${sessTag} ${roomLabel} — ${kos.length ? kos.length + ' anomalie ⚠' : 'tutto ok ✓'}`,
-      html, attachments);
+    await db.sendEmail(to, subject, html, attachments);
     toast(`Report check inviato a ${to.length} destinatari ✓`, 'info');
   } catch (e) { console.error('report check', e); }
 }
@@ -607,10 +671,43 @@ function renderAll() {
       const id = inp.dataset.id;
       if (!checkState[id]) checkState[id] = {};
       checkState[id].note = e.target.value;
-      document.getElementById('btn-salva').disabled = false;
+      updateSaveButton();
       autosaveNote(id);
     });
   });
+
+  updateSaveButton();
+}
+
+// Gating del bottone "Chiudi e segnala":
+//  • primo check (mattutino): abilitato solo a check COMPLETO (tutti i controlli marcati)
+//  • check successivi (durante la giornata): abilitato appena c'è ≥1 anomalia da segnalare
+function updateSaveButton() {
+  const btn = document.getElementById('btn-salva');
+  const hint = document.getElementById('save-hint');
+  if (!btn) return;
+  const allItems  = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
+  const done      = allItems.filter(i => checkState[i.id]?.state).length;
+  const ko        = allItems.filter(i => checkState[i.id]?.state === 'ko').length;
+  const remaining = allItems.length - done;
+  if (currentSession === 1) {
+    const complete = allItems.length > 0 && remaining === 0;
+    btn.disabled = !complete;
+    btn.title = complete
+      ? 'Chiudi il check mattutino e invia il report a tutti'
+      : `Completa tutti i controlli prima di chiudere (${remaining} rimasti)`;
+    if (hint) hint.textContent = complete
+      ? (ko ? `${ko} ${ko === 1 ? 'anomalia' : 'anomalie'} da segnalare` : 'Tutto ok — pronto per la chiusura')
+      : `Check mattutino · ${remaining} controlli rimasti`;
+  } else {
+    btn.disabled = ko === 0;
+    btn.title = ko
+      ? 'Segnala le anomalie di questo check e invia il report'
+      : 'Segna almeno un\'anomalia sopraggiunta da segnalare';
+    if (hint) hint.textContent = ko
+      ? `Check #${currentSession} · ${ko} ${ko === 1 ? 'anomalia' : 'anomalie'} da segnalare`
+      : `Check #${currentSession} · segnala le anomalie sopraggiunte`;
+  }
 }
 
 /* ─────────────────────────────────────
@@ -718,7 +815,7 @@ function toggleCard(id) {
 function markOk(id) {
   checkState[id] = { ...checkState[id], state: 'ok', ts: new Date().toISOString(), open: false };
   autosave(id);
-  document.getElementById('btn-salva').disabled = false;
+  updateSaveButton();
   renderAll();
   toast('Check completato ✓', 'success');
 }
@@ -726,7 +823,7 @@ function markOk(id) {
 function markKo(id) {
   checkState[id] = { ...checkState[id], state: 'ko', ts: new Date().toISOString(), failTs: new Date().toISOString(), showPanel: true, open: true };
   autosave(id);
-  document.getElementById('btn-salva').disabled = false;
+  updateSaveButton();
   renderAll();
   // scroll to panel
   setTimeout(() => {
@@ -739,7 +836,7 @@ function applyFix(id, fix) {
   if (!checkState[id]) checkState[id] = {};
   checkState[id].fixApplied = fix;
   autosave(id);
-  document.getElementById('btn-salva').disabled = false;
+  updateSaveButton();
   // Re-render just the fixes
   const allItems = Object.values(CHECK_ITEMS).flat().flatMap(s => s?.items || []);
   renderAll();
@@ -751,13 +848,12 @@ function markFixed(id) {
   const note = document.querySelector(`.res-note-input[data-id="${id}"]`)?.value || checkState[id].note || '';
   checkState[id] = { ...checkState[id], state: 'fixed', ts: new Date().toISOString(), note, open: false, showPanel: false };
   autosave(id);
-  document.getElementById('btn-salva').disabled = false;
+  updateSaveButton();
   renderAll();
   toast('Anomalia risolta ✓', 'success');
 }
 
 function goToIntervento(id) {
-  // Salva prima lo stato
   const sections = CHECK_ITEMS[currentRoom] || [];
   const allItems  = sections.flatMap(s => s.items);
   const item      = allItems.find(i => i.id === id);
@@ -765,9 +861,12 @@ function goToIntervento(id) {
   if (!checkState[id]) checkState[id] = {};
   checkState[id].note = note;
 
-  saveSession();
+  // salva SOLO questa voce (non chiudere l'intero check: potrebbe non essere completo)
+  const t = todayStr();
+  db.saveCheckState(currentRoom, t, sessionKey(id), checkState[id]).catch(() => {});
 
-  // Passa i dati alla pagina rapporto tramite sessionStorage
+  // Passa i dati alla pagina rapporto tramite sessionStorage (incluso il riferimento
+  // per collegare/riusare l'eventuale ticket già aperto per questa voce)
   const room = ROOMS.find(r => r.id === currentRoom);
   sessionStorage.setItem('rapporto_prefill', JSON.stringify({
     fromCheck: id,
@@ -777,6 +876,9 @@ function goToIntervento(id) {
     note,
     fixApplied: checkState[id]?.fixApplied || '',
     ts: checkState[id]?.failTs || new Date().toISOString(),
+    date: t,
+    session: currentSession,
+    ticketId: getCheckTicket(currentRoom, t, currentSession, id) || '',
   }));
 
   window.location.href = 'rapporto.html';
