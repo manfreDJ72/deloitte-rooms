@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=37">
+  <link rel="stylesheet" href="css/style.css?v=38">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -284,11 +284,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=37"></script>
-<script src="js/app.js?v=37"></script>
-<script src="js/db.js?v=37"></script>
-<script src="js/tour.js?v=37"></script>
-<script src="js/storico-solaria.js?v=37"></script>
+<script src="js/config.js?v=38"></script>
+<script src="js/app.js?v=38"></script>
+<script src="js/db.js?v=38"></script>
+<script src="js/tour.js?v=38"></script>
+<script src="js/storico-solaria.js?v=38"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -451,10 +451,11 @@ function showAutosaved() {
 }
 
 // ── Documento rapporto di intervento (allegato) — struttura ufficiale Solaria/Armonia ──
-function buildInterventoDoc(item, s, roomLabel, dateStr) {
+function buildInterventoDoc(item, s, roomLabel, dateStr, status) {
   const PORTAL = 'https://rooms.area62.it';
   const ora = s.failTs ? new Date(s.failTs).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }) : '';
   const dataOgg = new Date().toLocaleDateString('it-IT');
+  const stato = status || 'Apertura rapporto';
   return `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Rapporto di Intervento — ${item.name}</title>
@@ -491,6 +492,7 @@ function buildInterventoDoc(item, s, roomLabel, dateStr) {
         <tr><td class="k">Ora intervento</td><td>${ora || '&nbsp;'}</td></tr>
         <tr><td class="k">Area / Spazio</td><td><b>${roomLabel}</b></td></tr>
         <tr><td class="k">Componente / Voce check</td><td><b>${item.name}</b></td></tr>
+        <tr><td class="k">Stato del rapporto</td><td><b style="color:#c0392b;">${stato}</b></td></tr>
         <tr><td class="k">Tecnico intervenuto</td><td>&nbsp;</td></tr>
         <tr><td class="k">Società</td><td>&nbsp;</td></tr>
         <tr><td class="k">Presenti durante l'intervento</td><td>&nbsp;</td></tr>
@@ -542,38 +544,56 @@ async function sendCheckReport() {
     const accent = kos.length ? '#ff4d4d' : '#86BC25';
     const PORTAL = 'https://rooms.area62.it';
     const portalBtn = `<p style="margin-top:18px;"><a href="${PORTAL}/checks.html" style="display:inline-block;background:#86BC25;color:#0d0d0d;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:8px;">Apri il portale →</a></p>`;
+    // ── Anomalie RISOLTE SUL MOMENTO (stato 'fixed'): vanno sempre segnalate nel report ──
+    const resolvedHtml = fixed.length
+      ? `<h3 style="color:#5a8a00;margin:18px 0 6px;">🔧 Anomalie risolte sul momento (${fixed.length})</h3>
+         <ul style="margin:0 0 6px;padding-left:18px;">${fixed.map(i => {
+            const st = checkState[i.id] || {};
+            const extra = [st.fixApplied ? 'soluzione: ' + st.fixApplied : '', st.note].filter(Boolean).join(' · ');
+            return `<li><b>${i.name}</b>${extra ? ' — ' + extra : ''}</li>`;
+         }).join('')}</ul>
+         <p style="font-size:13px;color:#666;">Rilevate durante il check e <b>risolte in autonomia</b> dal presidio: nessun intervento necessario.</p>`
+      : '';
+
+    // ── Anomalie che PERSISTONO: richiedono rapporto di intervento (allegato con stato) ──
     const anomListHtml = kos.length
-      ? `<h3 style="color:#c00;margin:16px 0 6px;">⚠ Anomalie da gestire (${kos.length})</h3>
-         <ul style="margin:0 0 8px;padding-left:18px;">${kos.map(i => `<li><b>${i.name}</b>${checkState[i.id]?.note ? ' — ' + checkState[i.id].note : ''}</li>`).join('')}</ul>`
+      ? `<h3 style="color:#c00;margin:18px 0 6px;">⚠ Anomalie da gestire — richiedono rapporto di intervento (${kos.length})</h3>
+         <ul style="margin:0 0 6px;padding-left:18px;">${kos.map(i => `<li><b>${i.name}</b>${checkState[i.id]?.note ? ' — ' + checkState[i.id].note : ''}</li>`).join('')}</ul>`
       : '';
     const ticketNote = kos.length
-      ? `<p style="font-size:13px;color:#666;">Per ciascuna anomalia è stato aperto un <b>ticket nella sezione Anomalie</b> e in allegato trovi il <b>rapporto di intervento</b>. Gli aggiornamenti di stato sono sul portale.</p>`
+      ? `<p style="font-size:13px;color:#666;">In allegato il <b>rapporto di intervento</b> di ciascuna anomalia (stato: <b>Apertura rapporto</b>) ed è stato aperto un ticket in Anomalie. Gli aggiornamenti di stato proseguono sul portale.</p>`
       : '';
-    const fixedHtml = fixed.length ? `<p style="font-size:13px;color:#666;">Risolte durante il check: ${fixed.map(i => i.name).join(', ')}</p>` : '';
+    const allClearHtml = (!kos.length && !fixed.length)
+      ? `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutto a posto.</b> Nessuna anomalia rilevata durante il check.</p>` : '';
+
+    // Oggetto leggibile: si capisce l'esito senza aprire la mail
+    const subjBits = [];
+    if (kos.length)   subjBits.push(`${kos.length} da gestire ⚠`);
+    if (fixed.length) subjBits.push(`${fixed.length} risolte sul momento`);
+    const subjTail = subjBits.length ? subjBits.join(' · ') : 'tutto ok ✓';
 
     let heading, bodyInner, subject;
     if (currentSession > 1) {
-      // check successivo: report MIRATO solo alle anomalie sopraggiunte durante la giornata
+      // check successivo: report MIRATO agli eventi sopraggiunti durante la giornata
       heading = `Segnalazione durante la giornata — ${roomLabel}`;
       bodyInner =
         `<p style="color:#666;text-transform:capitalize;">${dateStr} · Check #${currentSession}</p>
-         <p style="font-size:15px;">Segnalate <b>${kos.length} ${kos.length === 1 ? 'anomalia' : 'anomalie'}</b> sopraggiunte durante la giornata in <b>${roomLabel}</b>.</p>
-         ${anomListHtml}${ticketNote}${portalBtn}`;
-      subject = `Check #${currentSession} ${roomLabel} — ${kos.length} ${kos.length === 1 ? 'anomalia' : 'anomalie'} ⚠`;
+         ${resolvedHtml}${anomListHtml}${ticketNote}${allClearHtml}${portalBtn}`;
+      subject = `Check #${currentSession} ${roomLabel} — ${subjTail}`;
     } else {
-      // primo check mattutino: report COMPLETO a tutti
+      // primo check mattutino: report COMPLETO, autoconsistente (leggibile senza portale)
       heading = `Check mattutino — ${roomLabel}`;
-      const okBlock = kos.length ? '' : `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutti i check a posto.</b> Nessuna anomalia da gestire.</p>`;
       bodyInner =
         `<p style="color:#666;text-transform:capitalize;">${dateStr}</p>
          <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
            <tr><td style="color:#666;padding:3px 18px 3px 0;">Eseguiti</td><td>${done.length}/${allItems.length}</td></tr>
            <tr><td style="color:#666;padding:3px 18px 3px 0;">OK</td><td style="color:#5a8a00;"><b>${ok.length}</b></td></tr>
-           <tr><td style="color:#666;padding:3px 18px 3px 0;">Anomalie</td><td style="color:#c00;"><b>${kos.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Risolte sul momento</td><td style="color:#5a8a00;"><b>${fixed.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Da gestire</td><td style="color:#c00;"><b>${kos.length}</b></td></tr>
            <tr><td style="color:#666;padding:3px 18px 3px 0;">Presidio</td><td>${u?.name || '—'}</td></tr>
          </table>
-         ${anomListHtml}${okBlock}${ticketNote}${fixedHtml}${portalBtn}`;
-      subject = `Check mattutino ${roomLabel} — ${kos.length ? kos.length + ' anomalie ⚠' : 'tutto ok ✓'}`;
+         ${resolvedHtml}${anomListHtml}${ticketNote}${allClearHtml}${portalBtn}`;
+      subject = `Check mattutino ${roomLabel} — ${subjTail}`;
     }
     const html = emailTemplate(heading, bodyInner, accent);
 
