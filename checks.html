@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=40">
+  <link rel="stylesheet" href="css/style.css?v=41">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -284,11 +284,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=40"></script>
-<script src="js/app.js?v=40"></script>
-<script src="js/db.js?v=40"></script>
-<script src="js/tour.js?v=40"></script>
-<script src="js/storico-solaria.js?v=40"></script>
+<script src="js/config.js?v=41"></script>
+<script src="js/app.js?v=41"></script>
+<script src="js/db.js?v=41"></script>
+<script src="js/tour.js?v=41"></script>
+<script src="js/storico-solaria.js?v=41"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -345,6 +345,22 @@ async function loadState() {
   if (!daySessions.length) { daySessions = [1]; allSessionsData[1] = {}; }
   currentSession = daySessions[daySessions.length - 1];   // apri l'ultima sessione del giorno
   checkState = allSessionsData[currentSession];
+  await loadOpenTickets();
+}
+
+// ── Ticket ancora APERTI per questa sala: le voci corrispondenti restano
+//    "in attesa di chiusura" e non vanno rifatte finché il ticket non si chiude ──
+let openTickets = {};
+const _normName = s => (s || '').trim().toLowerCase();
+function lockedTicket(item) { return openTickets[_normName(item.name)] || null; }
+async function loadOpenTickets() {
+  openTickets = {};
+  try {
+    const tks = await db.getTickets();
+    (tks || [])
+      .filter(t => t.room === currentRoom && !['resolved', 'closed'].includes(t.status))
+      .forEach(t => { openTickets[_normName(t.title)] = t; });
+  } catch (e) { console.warn('loadOpenTickets', e); }
 }
 
 // apre una NUOVA sessione di check nella giornata (es. pre-evento / pre-partita)
@@ -402,6 +418,7 @@ async function createTicketsForSession(koItems) {
   const origine = currentSession > 1 ? `Check #${currentSession} (durante la giornata)` : 'Check mattutino';
   let created = 0;
   for (const item of koItems) {
+    if (lockedTicket(item)) continue;                                      // ha già un ticket aperto: non duplicare
     if (getCheckTicket(currentRoom, t, currentSession, item.id)) continue; // già segnalato
     const s = checkState[item.id] || {};
     const desc = [
@@ -530,10 +547,11 @@ async function sendCheckReport() {
     const roomLabel = room ? `${room.name} – ${room.city}` : currentRoom;
     const dateStr = new Date().toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-    const done  = allItems.filter(i => checkState[i.id]?.state);
-    const ok    = allItems.filter(i => ['ok','fixed'].includes(checkState[i.id]?.state));
-    const kos   = allItems.filter(i => checkState[i.id]?.state === 'ko');
-    const fixed = allItems.filter(i => checkState[i.id]?.state === 'fixed');
+    const done    = allItems.filter(i => checkState[i.id]?.state);
+    const ok      = allItems.filter(i => ['ok','fixed'].includes(checkState[i.id]?.state));
+    const kos     = allItems.filter(i => checkState[i.id]?.state === 'ko');
+    const fixed   = allItems.filter(i => checkState[i.id]?.state === 'fixed');
+    const waiting = allItems.filter(i => lockedTicket(i));   // voci con ticket ancora aperto
 
     const recips = (getSettings().emailRecipients || [])
       .filter(r => r.email && (r.events || []).includes('check-report')).map(r => r.email);
@@ -541,8 +559,8 @@ async function sendCheckReport() {
     if (!to.length) return; // nessun destinatario configurato per il report
 
     const u = currentUser();
-    // barra/tag in alto a 3 stati: rosso = anomalie persistenti, arancione = solo risolte sul momento, verde = tutto ok
-    const accent = kos.length ? '#ff4d4d' : (fixed.length ? '#f0a030' : '#86BC25');
+    // barra/tag in alto a 3 stati: rosso = anomalie persistenti o in attesa, arancione = solo risolte sul momento, verde = tutto ok
+    const accent = (kos.length || waiting.length) ? '#ff4d4d' : (fixed.length ? '#f0a030' : '#86BC25');
     const PORTAL = 'https://rooms.area62.it';
     const portalBtn = `<p style="margin-top:18px;"><a href="${PORTAL}/checks.html" style="display:inline-block;background:#86BC25;color:#0d0d0d;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:8px;">Apri il portale →</a></p>`;
     // ── Anomalie RISOLTE SUL MOMENTO (stato 'fixed'): vanno sempre segnalate nel report ──
@@ -571,20 +589,31 @@ async function sendCheckReport() {
     const ticketNote = kos.length
       ? `<p style="font-size:13px;color:#666;">Per ogni anomalia è <b>aperto il ticket in Anomalie</b> (vedi codice qui sopra) e il <b>rapporto di intervento</b> è in stato <b>Apertura rapporto</b>; il documento è anche in allegato. Gli aggiornamenti di stato proseguono sul portale.</p>`
       : '';
-    const allClearHtml = (!kos.length && !fixed.length)
+    // ── Voci ancora IN ATTESA di chiusura (ticket aperti da giorni precedenti) ──
+    const waitingHtml = waiting.length
+      ? `<h3 style="color:#c0392b;margin:18px 0 6px;">⏳ In attesa di chiusura (ticket già aperti) (${waiting.length})</h3>
+         <ul style="margin:0 0 6px;padding-left:18px;">${waiting.map(i => {
+            const tk = lockedTicket(i);
+            return `<li style="margin-bottom:4px;"><b>${i.name}</b> <span style="background:#ffe3e3;color:#a11;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:700;">Ticket ${tk.id}${tk.priority ? ' · ' + tk.priority : ''}</span></li>`;
+         }).join('')}</ul>
+         <p style="font-size:13px;color:#666;">Anomalie <b>già segnalate</b> e in gestione: il relativo controllo resta bloccato finché il ticket / rapporto di intervento non viene chiuso.</p>`
+      : '';
+
+    const allClearHtml = (!kos.length && !fixed.length && !waiting.length)
       ? `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutto a posto.</b> Nessuna anomalia rilevata durante il check.</p>` : '';
 
     // Banner di stato in cima: l'esito è chiaro al primo sguardo (coerente col colore della barra)
-    const statusBanner = kos.length
-      ? `<div style="background:rgba(255,77,77,.10);border-left:4px solid #ff4d4d;color:#c0392b;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">⚠ Anomalie ancora presenti — richiesto rapporto di intervento</div>`
+    const statusBanner = (kos.length || waiting.length)
+      ? `<div style="background:rgba(255,77,77,.10);border-left:4px solid #ff4d4d;color:#c0392b;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">⚠ Anomalie ancora presenti${waiting.length ? ' / in attesa di chiusura' : ''} — rapporto di intervento</div>`
       : fixed.length
       ? `<div style="background:rgba(240,160,48,.14);border-left:4px solid #f0a030;color:#b9770e;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">🔧 Anomalie rilevate ma risolte sul momento — nessun intervento necessario</div>`
       : `<div style="background:rgba(134,188,37,.14);border-left:4px solid #86BC25;color:#5a8a00;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">✓ Tutto a posto — nessuna anomalia</div>`;
 
     // Oggetto leggibile: si capisce l'esito senza aprire la mail
     const subjBits = [];
-    if (kos.length)   subjBits.push(`${kos.length} da gestire ⚠`);
-    if (fixed.length) subjBits.push(`${fixed.length} risolte sul momento`);
+    if (kos.length)     subjBits.push(`${kos.length} da gestire ⚠`);
+    if (waiting.length) subjBits.push(`${waiting.length} in attesa`);
+    if (fixed.length)   subjBits.push(`${fixed.length} risolte sul momento`);
     const subjTail = subjBits.length ? subjBits.join(' · ') : 'tutto ok ✓';
 
     let heading, bodyInner, subject;
@@ -593,7 +622,7 @@ async function sendCheckReport() {
       heading = `Segnalazione durante la giornata — ${roomLabel}`;
       bodyInner =
         `${statusBanner}<p style="color:#666;text-transform:capitalize;">${dateStr} · Check #${currentSession}</p>
-         ${resolvedHtml}${anomListHtml}${ticketNote}${allClearHtml}${portalBtn}`;
+         ${resolvedHtml}${anomListHtml}${ticketNote}${waitingHtml}${allClearHtml}${portalBtn}`;
       subject = `Check #${currentSession} ${roomLabel} — ${subjTail}`;
     } else {
       // primo check mattutino: report COMPLETO, autoconsistente (leggibile senza portale)
@@ -605,9 +634,10 @@ async function sendCheckReport() {
            <tr><td style="color:#666;padding:3px 18px 3px 0;">OK</td><td style="color:#5a8a00;"><b>${ok.length}</b></td></tr>
            <tr><td style="color:#666;padding:3px 18px 3px 0;">Risolte sul momento</td><td style="color:#b9770e;"><b>${fixed.length}</b></td></tr>
            <tr><td style="color:#666;padding:3px 18px 3px 0;">Da gestire</td><td style="color:#c00;"><b>${kos.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">In attesa (ticket aperti)</td><td style="color:#c0392b;"><b>${waiting.length}</b></td></tr>
            <tr><td style="color:#666;padding:3px 18px 3px 0;">Presidio</td><td>${u?.name || '—'}</td></tr>
          </table>
-         ${resolvedHtml}${anomListHtml}${ticketNote}${allClearHtml}${portalBtn}`;
+         ${resolvedHtml}${anomListHtml}${ticketNote}${waitingHtml}${allClearHtml}${portalBtn}`;
       subject = `Check mattutino ${roomLabel} — ${subjTail}`;
     }
     const html = emailTemplate(heading, bodyInner, accent);
@@ -652,21 +682,23 @@ function renderAll() {
   container.className = `checks-wrap ${isArmonia ? 'armonia' : 'solaria'}`;
 
   const allItems = sections.flatMap(s => s.items);
-  const done   = allItems.filter(i => checkState[i.id]?.state).length;
+  const locked = allItems.filter(i => lockedTicket(i)).length;               // voci con ticket aperto
+  const marked = allItems.filter(i => checkState[i.id]?.state).length;
   const ok     = allItems.filter(i => ['ok','fixed'].includes(checkState[i.id]?.state)).length;
-  const ko     = allItems.filter(i => checkState[i.id]?.state === 'ko').length;
-  const pct    = allItems.length ? Math.round(done / allItems.length * 100) : 0;
+  const ko     = allItems.filter(i => checkState[i.id]?.state === 'ko').length + locked; // le voci in attesa contano come anomalie
+  const handled = marked + locked;
+  const pct    = allItems.length ? Math.round(handled / allItems.length * 100) : 0;
 
   document.getElementById('sb-total').textContent = allItems.length;
   document.getElementById('sb-ok').textContent    = ok;
   document.getElementById('sb-ko').textContent    = ko;
-  document.getElementById('sb-nd').textContent    = allItems.length - done;
+  document.getElementById('sb-nd').textContent    = allItems.length - handled;
   document.getElementById('sb-fill').style.width  = pct + '%';
   document.getElementById('sb-pct').textContent   = pct + '%';
 
   container.innerHTML = sections.map(sec => {
     const secOk  = sec.items.filter(i => ['ok','fixed'].includes(checkState[i.id]?.state)).length;
-    const secDone = sec.items.filter(i => checkState[i.id]?.state).length;
+    const secDone = sec.items.filter(i => checkState[i.id]?.state || lockedTicket(i)).length;
     return `
     <div class="section-block">
       <div class="section-header">
@@ -722,9 +754,9 @@ function updateSaveButton() {
   const hint = document.getElementById('save-hint');
   if (!btn) return;
   const allItems  = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
-  const done      = allItems.filter(i => checkState[i.id]?.state).length;
+  const handled   = allItems.filter(i => checkState[i.id]?.state || lockedTicket(i)).length; // marcati o già a ticket
   const ko        = allItems.filter(i => checkState[i.id]?.state === 'ko').length;
-  const remaining = allItems.length - done;
+  const remaining = allItems.length - handled;
   if (currentSession === 1) {
     const complete = allItems.length > 0 && remaining === 0;
     btn.disabled = !complete;
@@ -748,7 +780,28 @@ function updateSaveButton() {
 /* ─────────────────────────────────────
    RENDER CARD
 ───────────────────────────────────── */
+// Voce con TICKET APERTO: bloccata in rosso "in attesa di chiusura", non rifattibile
+function renderLockedCard(item, tk) {
+  const pr = tk.priority ? ' · ' + tk.priority : '';
+  return `
+  <div class="check-card done-ko" id="card-${item.id}">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 18px;">
+      <div class="check-status-dot"></div>
+      <div class="check-card-name">${item.name}</div>
+      <div class="check-card-meta"><span style="color:var(--red);font-weight:700;">⏳ In attesa di chiusura</span> · Ticket ${tk.id}${pr}</div>
+    </div>
+    <div style="padding:0 18px 16px;border-top:1px solid var(--border);">
+      <div style="font-size:13px;color:var(--red);line-height:1.6;padding:12px 0;">
+        Anomalia già segnalata e <b>in gestione</b> (Ticket ${tk.id}${pr}). Il controllo resta bloccato in attesa della <b>chiusura del rapporto di intervento</b> e si riabilita da solo quando il ticket viene risolto.
+      </div>
+      <a class="btn btn-outline btn-sm" href="tickets.html" style="text-decoration:none;">Vai al ticket ${tk.id} →</a>
+    </div>
+  </div>`;
+}
+
 function renderCard(item) {
+  const lk = lockedTicket(item);
+  if (lk) return renderLockedCard(item, lk);
   const s     = checkState[item.id] || {};
   const state = s.state || null;
   const isOpen  = s.open || false;
