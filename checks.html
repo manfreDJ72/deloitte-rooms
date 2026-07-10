@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=41">
+  <link rel="stylesheet" href="css/style.css?v=42">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -284,11 +284,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=41"></script>
-<script src="js/app.js?v=41"></script>
-<script src="js/db.js?v=41"></script>
-<script src="js/tour.js?v=41"></script>
-<script src="js/storico-solaria.js?v=41"></script>
+<script src="js/config.js?v=42"></script>
+<script src="js/app.js?v=42"></script>
+<script src="js/db.js?v=42"></script>
+<script src="js/tour.js?v=42"></script>
+<script src="js/storico-solaria.js?v=42"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -783,12 +783,13 @@ function updateSaveButton() {
 // Voce con TICKET APERTO: bloccata in rosso "in attesa di chiusura", non rifattibile
 function renderLockedCard(item, tk) {
   const pr = tk.priority ? ' · ' + tk.priority : '';
+  const st = tk.status === 'in-progress' ? ' · in lavorazione' : (tk.status === 'open' ? ' · aperto' : '');
   return `
   <div class="check-card done-ko" id="card-${item.id}">
     <div style="display:flex;align-items:center;gap:14px;padding:16px 18px;">
       <div class="check-status-dot"></div>
       <div class="check-card-name">${item.name}</div>
-      <div class="check-card-meta"><span style="color:var(--red);font-weight:700;">⏳ In attesa di chiusura</span> · Ticket ${tk.id}${pr}</div>
+      <div class="check-card-meta"><span style="color:var(--red);font-weight:700;">⏳ In attesa di chiusura</span> · Ticket ${tk.id}${pr}${st}</div>
     </div>
     <div style="padding:0 18px 16px;border-top:1px solid var(--border);">
       <div style="font-size:13px;color:var(--red);line-height:1.6;padding:12px 0;">
