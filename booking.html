@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Prenotazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=43">
+  <link rel="stylesheet" href="css/style.css?v=44">
   <style>
     /* ── Supporto creativo + allegati ── */
     .creative-flag {
@@ -326,8 +326,18 @@
           <input class="form-control" type="date" id="mt-start">
         </div>
         <div class="form-group">
+          <label class="form-label">Ora inizio</label>
+          <input class="form-control" type="time" id="mt-start-time" value="09:00">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label class="form-label">Data fine</label>
           <input class="form-control" type="date" id="mt-end">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ora fine</label>
+          <input class="form-control" type="time" id="mt-end-time" value="18:00">
         </div>
       </div>
       <div class="form-group">
@@ -359,10 +369,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=43"></script>
-<script src="js/app.js?v=43"></script>
-<script src="js/db.js?v=43"></script>
-<script src="js/tour.js?v=43"></script>
+<script src="js/config.js?v=44"></script>
+<script src="js/app.js?v=44"></script>
+<script src="js/db.js?v=44"></script>
+<script src="js/tour.js?v=44"></script>
 <script>
 let weekOffset = 0;
 let monthOffset = 0;
@@ -629,14 +639,17 @@ function renderMaintSidebar() {
   }
   el.innerHTML = maint.map(m => {
     const room = ROOMS.find(r => r.id === m.room);
+    const sameDay = new Date(m.start).toDateString() === new Date(m.end).toDateString();
+    const when = sameDay
+      ? `${formatDate(m.start)} · ${formatTime(m.start)}–${formatTime(m.end)}`
+      : `${formatDate(m.start)} ${formatTime(m.start)} – ${formatDate(m.end)} ${formatTime(m.end)}`;
     return `<div class="maint-chip">
       <div class="maint-icon">🔧</div>
       <div class="maint-info">
         <div class="mi-title">${m.title}</div>
         <div class="mi-date">
           <span class="room-tag ${m.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span>
-          ${formatDate(m.start)}
-          ${m.start !== m.end ? ' – '+formatDate(m.end) : ''}
+          ${when}
         </div>
       </div>
     </div>`;
@@ -862,13 +875,15 @@ document.getElementById('btn-salva-maint').addEventListener('click', () => {
   const start = document.getElementById('mt-start').value;
   if (!title || !start) { toast('Compila titolo e data inizio', 'error'); return; }
   const maint = ls(LS.maint)||[];
-  const endV  = document.getElementById('mt-end').value || start;
+  const endV   = document.getElementById('mt-end').value || start;
+  const startT = document.getElementById('mt-start-time').value || '09:00';
+  const endT   = document.getElementById('mt-end-time').value   || '18:00';
   maint.push({
     id: genId(), type: document.getElementById('mt-type').value,
     room: document.getElementById('mt-room').value,
     title, desc: document.getElementById('mt-desc').value,
-    start: new Date(start+'T09:00').toISOString(),
-    end:   new Date(endV+'T18:00').toISOString(),
+    start: new Date(start+'T'+startT).toISOString(),
+    end:   new Date(endV+'T'+endT).toISOString(),
   });
   lsSet(LS.maint, maint);
   closeModal('modal-maint');

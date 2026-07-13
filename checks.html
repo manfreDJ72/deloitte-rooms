@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=43">
+  <link rel="stylesheet" href="css/style.css?v=44">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -284,11 +284,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=43"></script>
-<script src="js/app.js?v=43"></script>
-<script src="js/db.js?v=43"></script>
-<script src="js/tour.js?v=43"></script>
-<script src="js/storico-solaria.js?v=43"></script>
+<script src="js/config.js?v=44"></script>
+<script src="js/app.js?v=44"></script>
+<script src="js/db.js?v=44"></script>
+<script src="js/tour.js?v=44"></script>
+<script src="js/storico-solaria.js?v=44"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -754,18 +754,20 @@ function updateSaveButton() {
   const hint = document.getElementById('save-hint');
   if (!btn) return;
   const allItems  = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
-  const handled   = allItems.filter(i => checkState[i.id]?.state || lockedTicket(i)).length; // marcati o già a ticket
+  const locked    = allItems.filter(i => lockedTicket(i)).length;                              // già a ticket: fuori dal conteggio
+  const handled   = allItems.filter(i => checkState[i.id]?.state || lockedTicket(i)).length;   // marcati o già a ticket
   const ko        = allItems.filter(i => checkState[i.id]?.state === 'ko').length;
   const remaining = allItems.length - handled;
+  const attesaTxt = locked ? ` · ${locked} in attesa di chiusura (a ticket, escluse)` : '';
   if (currentSession === 1) {
     const complete = allItems.length > 0 && remaining === 0;
     btn.disabled = !complete;
     btn.title = complete
       ? 'Chiudi il check mattutino e invia il report a tutti'
-      : `Completa tutti i controlli prima di chiudere (${remaining} rimasti)`;
+      : `Completa i controlli non ancora eseguiti (${remaining} rimasti — le voci a ticket sono escluse)`;
     if (hint) hint.textContent = complete
-      ? (ko ? `${ko} ${ko === 1 ? 'anomalia' : 'anomalie'} da segnalare` : 'Tutto ok — pronto per la chiusura')
-      : `Check mattutino · ${remaining} controlli rimasti`;
+      ? (ko ? `${ko} ${ko === 1 ? 'anomalia' : 'anomalie'} da segnalare${attesaTxt}` : `Pronto per la chiusura${attesaTxt}`)
+      : `Check mattutino · ${remaining} da eseguire${attesaTxt}`;
   } else {
     btn.disabled = ko === 0;
     btn.title = ko
