@@ -357,8 +357,20 @@ def process_outbound(token):
                {'status': 'sent', 'sent_at': 'now()'}, prefer='return=minimal')
             sent += 1
         except Exception as e:
-            sb('PATCH', f"email_queue?id=eq.{row['id']}", token,
-               {'status': 'error', 'error': str(e)[:300]}, prefer='return=minimal')
+            err = str(e)[:300]
+            # 554 = IP del runner GitHub in blacklist DNSBL: errore TRANSITORIO.
+            # Lascio l'email 'pending' così il prossimo run (ogni ~5 min) ritenta con un
+            # altro IP, finché non ne becca uno pulito. Dopo 12h rinuncio (-> 'error').
+            keep_pending = '554' in err
+            if keep_pending:
+                try:
+                    ct = datetime.datetime.fromisoformat((row.get('created_at') or '').replace('Z', '+00:00'))
+                    if (datetime.datetime.now(datetime.timezone.utc) - ct).total_seconds() > 12 * 3600:
+                        keep_pending = False
+                except Exception:
+                    pass
+            patch = {'error': err} if keep_pending else {'status': 'error', 'error': err}
+            sb('PATCH', f"email_queue?id=eq.{row['id']}", token, patch, prefer='return=minimal')
     return sent
 
 # ── REMINDER: promemoria pre-evento (verifica materiale pronto) ──
