@@ -548,13 +548,83 @@ def process_daily_digest(token):
         print('  ✗ riepilogo non inviato:', e)
         return False
 
+WATCHDOG_TO = ['marco.manfredini@area62.it', 'andrea.isidoro@alascom.it']
+WATCH_ROOMS = [('Solaria – Roma', 'Solaria Roma'), ('Solaria – Milano', 'Solaria Milano'), ('Armonia – Roma', 'Armonia Roma')]
+
+def process_check_watchdog(token):
+    """Alle 10:00 (ora Italia): se non risultano inviati i check mattutini del giorno
+    delle sale attive, accoda un alert a Marco + Andrea Isidoro spiegando il motivo
+    (check non chiuso oppure problema di invio nel worker/Aruba). Una sola volta al giorno."""
+    try:
+        from zoneinfo import ZoneInfo
+        now_local = datetime.datetime.now(ZoneInfo('Europe/Rome'))
+    except Exception:
+        now_local = datetime.datetime.utcnow() + datetime.timedelta(hours=2)  # fallback CEST
+    if now_local.hour < 10:
+        return 0
+    day = now_local.strftime('%Y-%m-%d')
+    # dedup: alert già emesso oggi?
+    st, ex = sb('GET', f"email_queue?select=id&subject=like.*Guardiano check*&created_at=gte.{day}T00:00:00", token)
+    if isinstance(ex, list) and ex:
+        return 0
+    # sale ATTIVE = quelle con almeno un report inviato negli ultimi 7 giorni
+    week = (now_local - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+    st, recent = sb('GET', f"email_queue?select=subject,status,created_at&subject=like.Check mattutino*&created_at=gte.{week}T00:00:00", token)
+    recent = recent if isinstance(recent, list) else []
+    def room_of(subj):
+        for key, label in WATCH_ROOMS:
+            if key in (subj or ''):
+                return label
+        return None
+    active = set(room_of(r.get('subject')) for r in recent if r.get('status') == 'sent')
+    active.discard(None)
+    if not active:
+        return 0
+    done, queued = set(), set()
+    for r in recent:
+        if (r.get('created_at') or '') < day:
+            continue
+        lbl = room_of(r.get('subject'))
+        if not lbl:
+            continue
+        (done if r.get('status') == 'sent' else queued).add(lbl)
+    missing = active - done
+    if not missing:
+        return 0
+    lines = []
+    for l in sorted(active):
+        if l in done:
+            lines.append(f'{l}: ✓ inviato')
+        elif l in queued:
+            lines.append(f'{l}: ⚠ report in coda ma NON ancora consegnato (problema di invio)')
+        else:
+            lines.append(f'{l}: ✗ check non ancora chiuso/inviato')
+    st, errs = sb('GET', f"email_queue?select=id&status=in.(error,pending)&created_at=gte.{day}T00:00:00", token)
+    n_err = len(errs) if isinstance(errs, list) else 0
+    reason = (f'<p style="color:#c0392b;"><b>Possibile problema nel worker/invio:</b> {n_err} email di oggi risultano in errore o in attesa '
+              f'(es. IP dei runner in blacklist DNSBL / 554). Il worker sta ritentando in automatico.</p>'
+              if n_err else
+              '<p>La coda email è pulita: molto probabilmente i check <b>non sono ancora stati chiusi</b> dal presidio.</p>')
+    body = ('<p>Alle ore 10:00 non risultano ancora inviati tutti i check mattutini della giornata:</p>'
+            '<ul>' + ''.join(f'<li>{l}</li>' for l in lines) + '</ul>' + reason +
+            '<p style="font-size:13px;color:#666;">Verifica sul portale che i check delle sale segnalate siano stati chiusi con "Chiudi e segnala".</p>')
+    html = email_template('⚠ Guardiano check — report non ancora inviati', body, accent='#f0a030')
+    sb('POST', 'email_queue', token, {
+        'to_addr': WATCHDOG_TO,
+        'subject': f'Guardiano check — report della giornata non ancora inviati ({now_local.strftime("%d/%m")}) ⚠',
+        'html': html, 'status': 'pending',
+    }, prefer='return=minimal')
+    print(f'  🛡 guardiano: alert accodato (mancano: {", ".join(sorted(missing))})')
+    return 1
+
 def main():
     token = sb_login()
+    wd = process_check_watchdog(token)   # accoda l'eventuale alert PRIMA di svuotare la coda
     out = process_outbound(token)
     inb = process_inbound(token)
     rem = process_reminders(token)
     dig = process_daily_digest(token)
-    print(f'== worker done == coda:{out} · prenotazioni:{inb} · reminder:{rem} · riepilogo:{"sì" if dig else "no"}')
+    print(f'== worker done == coda:{out} · prenotazioni:{inb} · reminder:{rem} · riepilogo:{"sì" if dig else "no"} · guardiano:{wd}')
 
 if __name__ == '__main__':
     main()
