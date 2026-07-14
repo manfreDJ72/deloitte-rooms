@@ -51,6 +51,8 @@ def sb(method, path, token, payload=None, prefer=None):
             return r.status, (json.loads(txt) if txt else None)
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode()
+    except Exception as e:
+        return 0, str(e)  # rete/URL/timeout: mai far crashare il worker
 
 # ── SMTP ──
 def send_mail(to_addrs, subject, html, attachments=None, in_reply_to=None):
@@ -564,12 +566,12 @@ def process_check_watchdog(token):
         return 0
     day = now_local.strftime('%Y-%m-%d')
     # dedup: alert già emesso oggi?
-    st, ex = sb('GET', f"email_queue?select=id&subject=like.*Guardiano check*&created_at=gte.{day}T00:00:00", token)
+    st, ex = sb('GET', f"email_queue?select=id&subject=like.*Guardiano%20check*&created_at=gte.{day}T00:00:00", token)
     if isinstance(ex, list) and ex:
         return 0
     # sale ATTIVE = quelle con almeno un report inviato negli ultimi 7 giorni
     week = (now_local - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
-    st, recent = sb('GET', f"email_queue?select=subject,status,created_at&subject=like.Check mattutino*&created_at=gte.{week}T00:00:00", token)
+    st, recent = sb('GET', f"email_queue?select=subject,status,created_at&subject=like.Check%20mattutino*&created_at=gte.{week}T00:00:00", token)
     recent = recent if isinstance(recent, list) else []
     def room_of(subj):
         for key, label in WATCH_ROOMS:
@@ -619,7 +621,10 @@ def process_check_watchdog(token):
 
 def main():
     token = sb_login()
-    wd = process_check_watchdog(token)   # accoda l'eventuale alert PRIMA di svuotare la coda
+    try:
+        wd = process_check_watchdog(token)   # accoda l'eventuale alert PRIMA di svuotare la coda
+    except Exception as e:
+        wd = 0; print('  ✗ guardiano errore (ignorato):', e)   # non deve mai bloccare l'invio
     out = process_outbound(token)
     inb = process_inbound(token)
     rem = process_reminders(token)
