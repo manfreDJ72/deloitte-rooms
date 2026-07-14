@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Anomalie – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=44">
+  <link rel="stylesheet" href="css/style.css?v=45">
 </head>
 <body>
 
@@ -234,10 +234,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=44"></script>
-<script src="js/app.js?v=44"></script>
-<script src="js/db.js?v=44"></script>
-<script src="js/tour.js?v=44"></script>
+<script src="js/config.js?v=45"></script>
+<script src="js/app.js?v=45"></script>
+<script src="js/db.js?v=45"></script>
+<script src="js/tour.js?v=45"></script>
 <script>
 let filterStatus   = 'all';
 let filterRoomVal  = 'all';
@@ -526,15 +526,36 @@ function addAction() {
   }
   if (text) t.actions.push({ ts: now, user: user?.name||'Operatore', text });
   t.updatedAt = now;
+  const wasResolved = t.status === 'resolved';
   if (status) {
     t.status = status;
     if (status === 'resolved') t.resolvedAt = now;
   }
 
   lsSet(LS.tickets, tickets);
+  // Alla RISOLUZIONE del ticket → notifica di chiusura ai destinatari 'rapporto'
+  // (gli stessi che hanno ricevuto l'apertura dell'intervento).
+  if (status === 'resolved' && !wasResolved) notifyTicketClosed(t);
   closeModal('modal-detail');
   renderAll();
-  toast(roomChanged ? `Ticket ${t.id} → ${roomLabel(newRoom)} ✓` : prioChanged ? `Ticket ${t.id} spostato a ${newPrio} ✓` : 'Aggiornamento salvato ✓', 'success');
+  toast(status === 'resolved' && !wasResolved ? `Ticket ${t.id} risolto ✓ — chiusura inviata`
+    : roomChanged ? `Ticket ${t.id} → ${roomLabel(newRoom)} ✓`
+    : prioChanged ? `Ticket ${t.id} spostato a ${newPrio} ✓` : 'Aggiornamento salvato ✓', 'success');
+}
+
+// Notifica di CHIUSURA intervento (email verde ai destinatari evento 'rapporto')
+function notifyTicketClosed(t) {
+  try {
+    const room = ROOMS.find(r => r.id === t.room);
+    const roomLabel = room ? `${room.name} – ${room.city}` : t.room;
+    const html = emailTemplate(`Intervento chiuso — ${t.title} (${t.id})`,
+      `<div style="background:rgba(134,188,37,.14);border-left:4px solid #86BC25;color:#3b6d11;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 12px;">✓ Intervento risolto e chiuso</div>
+       <p><b>Componente:</b> ${t.title}<br><b>Sala:</b> ${roomLabel}<br><b>Priorità:</b> ${t.priority}<br><b>Ticket:</b> ${t.id}</p>
+       ${t.desc ? `<p><b>Rilevazione:</b><br>${String(t.desc).replace(/\n/g,'<br>')}</p>` : ''}
+       <p style="color:#666;font-size:13px;">Chiusura registrata da ${currentUser()?.name || 'Presidio'} il ${formatDate(new Date())}. Il ticket risulta risolto sul portale.</p>`,
+      '#86BC25');
+    db.notify('rapporto', `Intervento chiuso — ${t.title} (${t.id}) ✓`, html);
+  } catch (e) { console.error('notifyTicketClosed', e); }
 }
 </script>
 </body>
