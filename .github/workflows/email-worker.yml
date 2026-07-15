@@ -26,4 +26,6 @@ jobs:
           SB_PASS: ${{ secrets.SB_PASS }}
           MAIL_USER: deloitte.room@area62.it
           MAIL_PASS: ${{ secrets.MAIL_PASS }}
+          BREVO_SMTP_USER: ${{ secrets.BREVO_SMTP_USER }}
+          BREVO_SMTP_KEY: ${{ secrets.BREVO_SMTP_KEY }}
         run: python scripts/email_worker.py
