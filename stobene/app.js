@@ -222,7 +222,7 @@ function updateHints() {
 // ------------------------------------------------------------
 // Bottone principale: invia messaggio
 // ------------------------------------------------------------
-function onBigButton(settings) {
+async function onBigButton(settings) {
   const btn = $('#big-button');
   const now = new Date();
   const msg = settings.message || `Ciao ${settings.contactName}, sto bene! ❤️`;
@@ -240,40 +240,70 @@ function onBigButton(settings) {
 
   updateLastCheckLabel();
 
-  // Overlay conferma "Messaggio inviato" dopo che la transizione è ben partita
-  setTimeout(showOverlay, 500);
+  // Delay minimo così l'animazione ha tempo di completarsi
+  const minDelay = new Promise((r) => setTimeout(r, 700));
+  const send = openChannel(settings, msg).catch((e) => ({ error: e }));
 
-  // Apri il canale (WhatsApp/SMS/email) DOPO l'animazione, così l'utente vede il verde
-  setTimeout(() => {
-    openChannel(settings, msg);
-  }, 900);
+  const [result] = await Promise.all([send, minDelay]);
+  const isError = result && result.error;
+  showOverlay(isError ? '⚠️ Invio fallito — riprova' : 'Messaggio inviato');
+  if (isError) console.warn('openChannel error', result.error);
 
-  // Cleanup della classe ripple
-  setTimeout(() => btn.classList.remove('tapping'), 900);
+  setTimeout(() => btn.classList.remove('tapping'), 100);
 }
 
-function openChannel(settings, message) {
+async function openChannel(settings, message) {
   const encoded = encodeURIComponent(message);
-  let url;
+
   if (settings.method === 'whatsapp') {
     const num = normalizePhone(settings.phone).replace(/^\+/, '');
-    url = `https://wa.me/${num}?text=${encoded}`;
-  } else if (settings.method === 'sms') {
-    const num = normalizePhone(settings.phone);
-    // ?body= funziona su iOS; Android usa ?body= o &body=
-    url = `sms:${num}${isIOS() ? '&' : '?'}body=${encoded}`;
-  } else {
-    const subject = encodeURIComponent(`Sto bene — ${settings.name || ''}`.trim());
-    url = `mailto:${encodeURIComponent(settings.email)}?subject=${subject}&body=${encoded}`;
+    window.location.href = `https://wa.me/${num}?text=${encoded}`;
+    return { ok: true, via: 'whatsapp' };
   }
-  // window.location.href tende a funzionare meglio dei mailto:/sms: rispetto a window.open
-  window.location.href = url;
+
+  if (settings.method === 'sms') {
+    const num = normalizePhone(settings.phone);
+    window.location.href = `sms:${num}${isIOS() ? '&' : '?'}body=${encoded}`;
+    return { ok: true, via: 'sms' };
+  }
+
+  // EMAIL: invia lato server via /api/send (Vercel + Resend);
+  // se la function non risponde (es. deploy solo statico), fallback a mailto:
+  const subject = `Sto bene${settings.name ? ` — ${settings.name}` : ''}`;
+  try {
+    const r = await fetch('/api/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: settings.email,
+        message,
+        senderName: settings.name,
+        subject,
+      }),
+    });
+    if (r.ok) {
+      return { ok: true, via: 'api' };
+    }
+    const err = await r.json().catch(() => ({}));
+    // Errori 4xx (dati sbagliati / recipient non ammesso) → non ha senso fare mailto fallback
+    if (r.status >= 400 && r.status < 500) {
+      throw new Error(err.error || `HTTP ${r.status}`);
+    }
+    throw new Error(err.error || `HTTP ${r.status}`);
+  } catch (e) {
+    console.warn('API send failed, fallback a mailto:', e);
+    const to = encodeURIComponent(settings.email);
+    window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encoded}`;
+    return { ok: true, via: 'mailto', warning: String(e.message || e) };
+  }
 }
 
-function showOverlay() {
+function showOverlay(text) {
   const o = $('#overlay');
+  const label = o.querySelector('.overlay-card p');
+  if (label && text) label.textContent = text;
   o.classList.remove('hidden');
-  setTimeout(() => o.classList.add('hidden'), 1400);
+  setTimeout(() => o.classList.add('hidden'), 1500);
 }
 
 // ------------------------------------------------------------
