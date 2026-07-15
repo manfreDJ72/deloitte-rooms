@@ -26,6 +26,10 @@ MAIL_USER = os.environ.get('MAIL_USER', 'deloitte.room@area62.it')
 MAIL_PASS = os.environ.get('MAIL_PASS', '')   # ← da secret GitHub, mai in chiaro
 IMAP_HOST = os.environ.get('IMAP_HOST', 'imaps.aruba.it')
 SMTP_HOST = os.environ.get('SMTP_HOST', 'smtps.aruba.it')
+# Relay SMTP dedicato (Brevo) — IP puliti, niente 554. Attivo SOLO se il secret è presente.
+BREVO_USER = os.environ.get('BREVO_SMTP_USER', '')
+BREVO_KEY  = os.environ.get('BREVO_SMTP_KEY', '')
+USE_BREVO  = bool(BREVO_KEY)
 
 ROOM_LABELS = {
     'solaria-roma': 'Solaria – Roma', 'solaria-milano': 'Solaria – Milano',
@@ -81,9 +85,17 @@ def send_mail(to_addrs, subject, html, attachments=None, in_reply_to=None):
         except Exception as e:
             print('allegato saltato:', e)
     ctx = ssl.create_default_context()
-    with smtplib.SMTP_SSL(SMTP_HOST, 465, context=ctx, timeout=40) as s:
-        s.login(MAIL_USER, MAIL_PASS)
-        s.sendmail(MAIL_USER, to_addrs, msg.as_string())
+    if USE_BREVO:
+        # Invio via relay Brevo (smtp-relay.brevo.com:587, STARTTLS) — IP puliti
+        with smtplib.SMTP('smtp-relay.brevo.com', 587, timeout=40) as s:
+            s.starttls(context=ctx)
+            s.login(BREVO_USER, BREVO_KEY)
+            s.sendmail(MAIL_USER, to_addrs, msg.as_string())
+    else:
+        # Invio diretto via SMTP Aruba (default)
+        with smtplib.SMTP_SSL(SMTP_HOST, 465, context=ctx, timeout=40) as s:
+            s.login(MAIL_USER, MAIL_PASS)
+            s.sendmail(MAIL_USER, to_addrs, msg.as_string())
 
 # ── TEMPLATE EMAIL (coerente col portale) ──
 def email_template(heading, inner, accent='#86BC25'):
