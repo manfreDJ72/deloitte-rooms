@@ -141,8 +141,7 @@ function showMain(settings) {
 
   const btn = $('#big-button');
   const alreadyToday = wasCheckedToday();
-  if (!alreadyToday) btn.classList.add('pulse');
-  else btn.classList.remove('pulse');
+  applyButtonState(alreadyToday);
 
   btn.onclick = () => onBigButton(settings);
   $('#btn-settings').onclick = () => {
@@ -158,6 +157,16 @@ function showMain(settings) {
   $('#btn-install').onclick = triggerInstall;
 }
 
+function applyButtonState(done) {
+  const btn = $('#big-button');
+  btn.classList.toggle('done', !!done);
+  btn.classList.toggle('pulse', !done);
+  document.body.classList.toggle('done', !!done);
+  // theme-color della status bar mobile
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', done ? '#16a34a' : '#f97316');
+}
+
 function wasCheckedToday() {
   const h = loadHistory();
   if (!h.length) return false;
@@ -166,14 +175,20 @@ function wasCheckedToday() {
 function updateLastCheckLabel() {
   const el = $('#last-check');
   const h = loadHistory();
+  const today = new Date();
   if (!h.length) {
-    el.textContent = 'Nessun check-in ancora.';
+    el.textContent = 'Non hai ancora fatto il check-in oggi.';
     el.classList.remove('done');
     return;
   }
   const last = new Date(h[0].at);
-  el.textContent = 'Ultimo check-in: ' + fmtDateShort(last);
-  el.classList.toggle('done', isSameDay(last, new Date()));
+  if (isSameDay(last, today)) {
+    el.textContent = `✓ Fatto oggi alle ${fmtTime(last)}`;
+    el.classList.add('done');
+  } else {
+    el.textContent = 'Ultimo check-in: ' + fmtDateShort(last);
+    el.classList.remove('done');
+  }
 }
 function updateNextReminderLabel(settings) {
   const [h, m] = (settings.reminderTime || '10:00').split(':').map(Number);
@@ -215,22 +230,26 @@ function onBigButton(settings) {
   // Registra localmente
   pushHistory({ at: now.toISOString() });
 
-  // Feedback visivo
-  btn.classList.add('sent');
-  btn.classList.remove('pulse');
-  showOverlay();
-  if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+  // Feedback tattile
+  if (navigator.vibrate) navigator.vibrate([25, 40, 80]);
 
-  // Apri canale scelto
+  // Animazione: onda + transizione arancione → verde
+  btn.classList.remove('tapping'); void btn.offsetWidth; // reset animation
+  btn.classList.add('tapping');
+  requestAnimationFrame(() => applyButtonState(true));
+
+  updateLastCheckLabel();
+
+  // Overlay conferma "Messaggio inviato" dopo che la transizione è ben partita
+  setTimeout(showOverlay, 500);
+
+  // Apri il canale (WhatsApp/SMS/email) DOPO l'animazione, così l'utente vede il verde
   setTimeout(() => {
     openChannel(settings, msg);
-  }, 250);
+  }, 900);
 
-  // Ripristina lo stato del bottone dopo qualche secondo
-  setTimeout(() => {
-    btn.classList.remove('sent');
-    updateLastCheckLabel();
-  }, 3000);
+  // Cleanup della classe ripple
+  setTimeout(() => btn.classList.remove('tapping'), 900);
 }
 
 function openChannel(settings, message) {
