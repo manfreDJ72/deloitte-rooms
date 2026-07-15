@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#16a34a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sto Bene">
+  <title>Sto Bene</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<section id="screen-setup" class="screen hidden">
+  <div class="setup-inner">
+    <div class="setup-logo" aria-hidden="true">
+      <svg viewBox="0 0 96 96" width="72" height="72">
+        <circle cx="48" cy="48" r="44" fill="#16a34a"/>
+        <path d="M28 50 L44 64 L70 34" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h1>Sto Bene</h1>
+    <p class="lead">Un tap al giorno per dire ai tuoi cari che stai bene.</p>
+
+    <form id="setup-form" autocomplete="off">
+      <label class="field">
+        <span>Il tuo nome</span>
+        <input type="text" id="f-name" placeholder="Es. Emilia" required>
+      </label>
+
+      <label class="field">
+        <span>Nome del contatto a cui scrivere</span>
+        <input type="text" id="f-contact-name" placeholder="Es. Marco" required>
+      </label>
+
+      <div class="field">
+        <span>Come vuoi mandare il messaggio?</span>
+        <div class="radio-row">
+          <label class="radio">
+            <input type="radio" name="method" value="whatsapp" checked>
+            <span>WhatsApp</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="method" value="sms">
+            <span>SMS</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="method" value="email">
+            <span>Email</span>
+          </label>
+        </div>
+      </div>
+
+      <label class="field" id="field-phone">
+        <span>Numero di telefono <small>(con prefisso internazionale)</small></span>
+        <input type="tel" id="f-phone" placeholder="+39 333 1234567" inputmode="tel">
+      </label>
+
+      <label class="field hidden" id="field-email">
+        <span>Indirizzo email</span>
+        <input type="email" id="f-email" placeholder="marco@example.com">
+      </label>
+
+      <label class="field">
+        <span>Testo del messaggio</span>
+        <textarea id="f-message" rows="2" placeholder="Ciao Marco, sto bene! ❤️"></textarea>
+      </label>
+
+      <label class="field">
+        <span>Orario notifica giornaliera</span>
+        <input type="time" id="f-time" value="10:00" required>
+      </label>
+
+      <button type="submit" class="btn-primary">Salva e inizia</button>
+    </form>
+  </div>
+</section>
+
+<!-- MAIN SCREEN -->
+<section id="screen-main" class="screen hidden">
+  <header class="top-bar">
+    <div class="greet">Ciao <span id="greet-name"></span></div>
+    <button id="btn-settings" class="icon-btn" aria-label="Impostazioni">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <main class="main-center">
+    <button id="big-button" class="big-button" aria-label="Sto bene">
+      <span class="big-button-label">STO BENE</span>
+      <svg class="big-button-check" viewBox="0 0 96 96" aria-hidden="true">
+        <path d="M22 50 L42 68 L74 30" stroke="white" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <p class="last-check" id="last-check">Nessun check-in ancora oggi.</p>
+
+    <div id="perm-hint" class="hint hidden">
+      <p>Per ricevere il promemoria giornaliero, attiva le notifiche.</p>
+      <button id="btn-perm" class="btn-secondary">Attiva notifiche</button>
+    </div>
+
+    <div id="ios-hint" class="hint hidden">
+      <p><strong>Suggerimento:</strong> il tuo dispositivo non permette notifiche automatiche schedulate. Ti consigliamo di impostare anche una <em>sveglia</em> nell'app Orologio del telefono alle <span id="ios-time"></span>.</p>
+    </div>
+
+    <div id="install-hint" class="hint hidden">
+      <p>Installa "Sto Bene" sul telefono per usarla come una app.</p>
+      <button id="btn-install" class="btn-secondary">Installa</button>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <small>Prossimo promemoria: <span id="next-reminder">—</span></small>
+  </footer>
+</section>
+
+<!-- FEEDBACK OVERLAY -->
+<div id="overlay" class="overlay hidden" aria-hidden="true">
+  <div class="overlay-card">
+    <svg viewBox="0 0 96 96" width="96" height="96" class="overlay-check">
+      <circle cx="48" cy="48" r="44" fill="#16a34a"/>
+      <path d="M28 50 L44 64 L70 34" stroke="white" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p>Messaggio inviato</p>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
