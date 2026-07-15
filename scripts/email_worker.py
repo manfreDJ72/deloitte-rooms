@@ -591,8 +591,6 @@ def process_check_watchdog(token):
             continue
         (done if r.get('status') == 'sent' else queued).add(lbl)
     missing = active - done
-    if not missing:
-        return 0
     lines = []
     for l in sorted(active):
         if l in done:
@@ -601,22 +599,31 @@ def process_check_watchdog(token):
             lines.append(f'{l}: ⚠ report in coda ma NON ancora consegnato (problema di invio)')
         else:
             lines.append(f'{l}: ✗ check non ancora chiuso/inviato')
-    st, errs = sb('GET', f"email_queue?select=id&status=in.(error,pending)&created_at=gte.{day}T00:00:00", token)
-    n_err = len(errs) if isinstance(errs, list) else 0
-    reason = (f'<p style="color:#c0392b;"><b>Possibile problema nel worker/invio:</b> {n_err} email di oggi risultano in errore o in attesa '
-              f'(es. IP dei runner in blacklist DNSBL / 554). Il worker sta ritentando in automatico.</p>'
-              if n_err else
-              '<p>La coda email è pulita: molto probabilmente i check <b>non sono ancora stati chiusi</b> dal presidio.</p>')
-    body = ('<p>Alle ore 10:00 non risultano ancora inviati tutti i check mattutini della giornata:</p>'
-            '<ul>' + ''.join(f'<li>{l}</li>' for l in lines) + '</ul>' + reason +
-            '<p style="font-size:13px;color:#666;">Verifica sul portale che i check delle sale segnalate siano stati chiusi con "Chiudi e segnala".</p>')
-    html = email_template('⚠ Guardiano check — report non ancora inviati', body, accent='#f0a030')
-    sb('POST', 'email_queue', token, {
-        'to_addr': WATCHDOG_TO,
-        'subject': f'Guardiano check — report della giornata non ancora inviati ({now_local.strftime("%d/%m")}) ⚠',
-        'html': html, 'status': 'pending',
-    }, prefer='return=minimal')
-    print(f'  🛡 guardiano: alert accodato (mancano: {", ".join(sorted(missing))})')
+    lst = '<ul>' + ''.join(f'<li>{l}</li>' for l in lines) + '</ul>'
+    if not missing:
+        # TUTTO A POSTO: conferma verde (solo a Marco) — così sai che il sistema è vivo
+        body = ('<p>Alle ore 10:00 <b>tutti i check mattutini della giornata risultano inviati correttamente</b>:</p>'
+                + lst +
+                '<p style="font-size:13px;color:#666;">Sistema operativo: portale, worker e invio email funzionanti. Nessun problema.</p>')
+        html = email_template('✓ Guardiano check — tutto a posto', body, accent='#86BC25')
+        to = ['marco.manfredini@area62.it']
+        subject = f'Guardiano check — tutto a posto ({now_local.strftime("%d/%m")}) ✓'
+    else:
+        # PROBLEMA: alert arancione a Marco + Andrea Isidoro
+        st, errs = sb('GET', f"email_queue?select=id&status=in.(error,pending)&created_at=gte.{day}T00:00:00", token)
+        n_err = len(errs) if isinstance(errs, list) else 0
+        reason = (f'<p style="color:#c0392b;"><b>Possibile problema nel worker/invio:</b> {n_err} email di oggi risultano in errore o in attesa '
+                  f'(es. IP dei runner in blacklist DNSBL / 554). Il worker sta ritentando in automatico.</p>'
+                  if n_err else
+                  '<p>La coda email è pulita: molto probabilmente i check <b>non sono ancora stati chiusi</b> dal presidio.</p>')
+        body = ('<p>Alle ore 10:00 non risultano ancora inviati tutti i check mattutini della giornata:</p>'
+                + lst + reason +
+                '<p style="font-size:13px;color:#666;">Verifica sul portale che i check delle sale segnalate siano stati chiusi con "Chiudi e segnala".</p>')
+        html = email_template('⚠ Guardiano check — report non ancora inviati', body, accent='#f0a030')
+        to = WATCHDOG_TO
+        subject = f'Guardiano check — report non ancora inviati ({now_local.strftime("%d/%m")}) ⚠'
+    sb('POST', 'email_queue', token, {'to_addr': to, 'subject': subject, 'html': html, 'status': 'pending'}, prefer='return=minimal')
+    print(f'  🛡 guardiano: stato accodato ({"tutto ok" if not missing else "mancano: " + ", ".join(sorted(missing))})')
     return 1
 
 def main():
