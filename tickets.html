@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Anomalie – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=46">
+  <link rel="stylesheet" href="css/style.css?v=47">
 </head>
 <body>
 
@@ -234,21 +234,22 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=46"></script>
-<script src="js/app.js?v=46"></script>
-<script src="js/db.js?v=46"></script>
-<script src="js/tour.js?v=46"></script>
+<script src="js/config.js?v=47"></script>
+<script src="js/app.js?v=47"></script>
+<script src="js/db.js?v=47"></script>
+<script src="js/tour.js?v=47"></script>
 <script>
 let filterStatus   = 'all';
 let filterRoomVal  = 'all';
 let filterPriorityVal = 'all';
 let detailId       = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (!requireAuth()) return;
   const u = currentUser();
   document.getElementById('tk-segnalatore').value = u?.name || '';
 
+  await db.refreshTickets();   // stato fresco dal DB: tutti vedono lo stesso
   renderAll();
 
   // Tabs
@@ -306,27 +307,20 @@ function updateSLAPreview() {
     </div>`).join('');
 }
 
-function saveTicket() {
+async function saveTicket() {
   const title = document.getElementById('tk-title').value.trim();
   const desc  = document.getElementById('tk-desc').value.trim();
   if (!title) { toast('Inserisci un titolo', 'error'); return; }
 
-  const tickets = ls(LS.tickets)||[];
-  const ticket = {
-    id: 'TCK-' + String(tickets.length + 1).padStart(3, '0'),
+  // INSERT mirato sul DB (niente push distruttivo dell'intera collezione)
+  const ticket = await db.createTicket({
     room: document.getElementById('tk-room').value,
     priority: document.getElementById('tk-priority').value,
-    title,
-    desc,
+    title, desc,
     category: document.getElementById('tk-cat').value,
     status: 'open',
     segnalatore: document.getElementById('tk-segnalatore').value,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    actions: [],
-  };
-  tickets.unshift(ticket);
-  lsSet(LS.tickets, tickets);
+  });
   closeModal('modal-ticket');
   renderAll();
   toast(`Ticket ${ticket.id} aperto (${ticket.priority})`, 'error');
@@ -490,7 +484,7 @@ function openDetail(id) {
   openModal('modal-detail');
 }
 
-function addAction() {
+async function addAction() {
   const text    = document.getElementById('action-text').value.trim();
   const status  = document.getElementById('action-status').value;
   const newPrio = document.getElementById('action-priority').value;
@@ -512,19 +506,13 @@ function addAction() {
   const now = new Date().toISOString();
   const roomLabel = id => { const r = ROOMS.find(x => x.id === id); return r ? `${r.name} – ${r.city}` : id; };
 
-  // Correzione sala (tracciata nel log del ticket)
-  if (roomChanged) {
-    const old = t.room;
-    t.room = newRoom;
-    t.actions.push({ ts: now, user: user?.name||'Operatore', text: `Sala corretta: ${roomLabel(old)} → ${roomLabel(newRoom)}` });
-  }
-  // Spostamento di priorità (tracciato nel log del ticket)
-  if (prioChanged) {
-    const old = t.priority;
-    t.priority = newPrio;
-    t.actions.push({ ts: now, user: user?.name||'Operatore', text: `Priorità spostata: ${old} → ${newPrio}` });
-  }
-  if (text) t.actions.push({ ts: now, user: user?.name||'Operatore', text });
+  // Le NUOVE azioni vengono raccolte per essere aggiunte in APPEND (mai perse).
+  const newActs = [];
+  const addAct = txt => { const a = { ts: now, user: user?.name || 'Operatore', text: txt }; t.actions.push(a); newActs.push(a); };
+
+  if (roomChanged) { const old = t.room;     t.room = newRoom;     addAct(`Sala corretta: ${roomLabel(old)} → ${roomLabel(newRoom)}`); }
+  if (prioChanged) { const old = t.priority; t.priority = newPrio; addAct(`Priorità spostata: ${old} → ${newPrio}`); }
+  if (text) addAct(text);
   t.updatedAt = now;
   const wasResolved = t.status === 'resolved';
   if (status) {
@@ -532,9 +520,10 @@ function addAction() {
     if (status === 'resolved') t.resolvedAt = now;
   }
 
-  lsSet(LS.tickets, tickets);
-  // Alla RISOLUZIONE del ticket → notifica di chiusura ai destinatari 'rapporto'
-  // (gli stessi che hanno ricevuto l'apertura dell'intervento).
+  // Salvataggio MIRATO: aggiorna solo questo ticket + azioni in append (niente
+  // sovrascrittura dell'intera collezione → lo stato resta comune a tutti gli utenti).
+  await db.upsertTicket(t, newActs);
+  // Alla RISOLUZIONE del ticket → notifica di chiusura ai destinatari (rapporto + Deloitte).
   if (status === 'resolved' && !wasResolved) notifyTicketClosed(t);
   closeModal('modal-detail');
   renderAll();
@@ -543,18 +532,30 @@ function addAction() {
     : prioChanged ? `Ticket ${t.id} spostato a ${newPrio} ✓` : 'Aggiornamento salvato ✓', 'success');
 }
 
-// Notifica di CHIUSURA intervento (email verde ai destinatari evento 'rapporto')
+// Notifica di CHIUSURA intervento — con storico, ai destinatari rapporto + check-report (Deloitte incluso)
 function notifyTicketClosed(t) {
   try {
     const room = ROOMS.find(r => r.id === t.room);
     const roomLabel = room ? `${room.name} – ${room.city}` : t.room;
+    const storico = (t.actions || []).length
+      ? `<h3 style="font-size:14px;margin:16px 0 6px;">Storico intervento</h3>
+         <ul style="margin:0;padding-left:18px;font-size:13px;color:#444;line-height:1.6;">${
+            t.actions.slice().sort((a,b)=>new Date(a.ts)-new Date(b.ts)).map(a =>
+              `<li>${formatDateTime(a.ts)} · <b>${a.user||'—'}</b> — ${a.text}</li>`).join('')}</ul>`
+      : '';
     const html = emailTemplate(`Intervento chiuso — ${t.title} (${t.id})`,
       `<div style="background:rgba(134,188,37,.14);border-left:4px solid #86BC25;color:#3b6d11;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 12px;">✓ Intervento risolto e chiuso</div>
        <p><b>Componente:</b> ${t.title}<br><b>Sala:</b> ${roomLabel}<br><b>Priorità:</b> ${t.priority}<br><b>Ticket:</b> ${t.id}</p>
        ${t.desc ? `<p><b>Rilevazione:</b><br>${String(t.desc).replace(/\n/g,'<br>')}</p>` : ''}
+       ${storico}
        <p style="color:#666;font-size:13px;">Chiusura registrata da ${currentUser()?.name || 'Presidio'} il ${formatDate(new Date())}. Il ticket risulta risolto sul portale.</p>`,
       '#86BC25');
-    db.notify('rapporto', `Intervento chiuso — ${t.title} (${t.id}) ✓`, html);
+    // Destinatari: unione eventi 'rapporto' + 'check-report' → include anche i referenti Deloitte
+    const s = (typeof getSettings === 'function') ? getSettings() : null;
+    const to = [...new Set((s?.emailRecipients || [])
+      .filter(r => r.email && ((r.events || []).includes('rapporto') || (r.events || []).includes('check-report')))
+      .map(r => r.email))];
+    if (to.length) db.sendEmail(to, `Intervento chiuso — ${t.title} (${t.id}) ✓`, html);
   } catch (e) { console.error('notifyTicketClosed', e); }
 }
 </script>

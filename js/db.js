@@ -221,6 +221,39 @@ const db = {
     localStorage.setItem(LS.tickets, JSON.stringify(list));
     return t;
   },
+  // Salva UN SOLO ticket (upsert mirato) + eventuali NUOVE azioni in append.
+  // Sostituisce il push dell'intera collezione: due utenti che modificano ticket
+  // diversi non si sovrascrivono più, e le azioni non vanno perse (append, non delete).
+  async upsertTicket(ticket, newActions) {
+    // cache locale: aggiorno solo questo ticket, senza write-through distruttivo
+    const list = ls(LS.tickets) || [];
+    const i = list.findIndex(t => t.id === ticket.id);
+    if (i >= 0) list[i] = ticket; else list.unshift(ticket);
+    localStorage.setItem(LS.tickets, JSON.stringify(list));
+    if (DEMO_MODE) return ticket;
+    _initSb();
+    try {
+      const { error } = await _sb.from('tickets').upsert(SYNC[LS.tickets].toDb(ticket));
+      if (error) throw error;
+      if (newActions && newActions.length) {
+        await _sb.from('ticket_actions').insert(newActions.map(a => ({
+          id: a.id || genId(), ticket_id: ticket.id,
+          ts: _num(a.ts) || new Date().toISOString(), user_name: a.user, text: a.text,
+        })));
+      }
+    } catch (e) { console.error('upsertTicket', e); toast('Errore salvataggio ticket', 'error'); }
+    return ticket;
+  },
+  // Ricarica i ticket freschi dal DB nella cache locale (nessun push): così tutti
+  // vedono lo stesso stato all'apertura della pagina.
+  async refreshTickets() {
+    if (DEMO_MODE) return ls(LS.tickets) || [];
+    try {
+      const fresh = await this.getTickets();
+      localStorage.setItem(LS.tickets, JSON.stringify(fresh));
+      return fresh;
+    } catch (e) { console.warn('refreshTickets', e); return ls(LS.tickets) || []; }
+  },
 
   // usate da checks.html
   async getCheckState(room, date) {
