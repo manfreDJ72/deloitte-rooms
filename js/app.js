@@ -1,5 +1,65 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 45;
+const APP_BUILD = 46;
+
+/* ── AREA 62 CO-PILOT BRIDGE ── */
+(function installCopilotBridge() {
+  if (typeof DEMO_MODE === 'undefined' || DEMO_MODE) return;
+  let bridge = null;
+  try {
+    const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const raw = params.get('copilot_session');
+    if (raw) {
+      const base64 = raw.replaceAll('-', '+').replaceAll('_', '/');
+      const padded = base64.padEnd(base64.length + ((4 - base64.length % 4) % 4), '=');
+      const json = decodeURIComponent(escape(atob(padded)));
+      bridge = JSON.parse(json);
+      const user = bridge.user || {};
+      localStorage.setItem(LS.user, JSON.stringify({
+        id: user.id,
+        email: user.email,
+        name: user.name || user.email || 'Area 62',
+        role: user.role || 'operator',
+        avatar: user.avatar || (user.email || 'A6').slice(0, 2).toUpperCase(),
+        sb: true,
+        copilot: true
+      }));
+      if (bridge.return_to) sessionStorage.setItem('area62_copilot_return_to', bridge.return_to);
+      history.replaceState(null, document.title, location.pathname + location.search);
+    }
+  } catch (e) {
+    console.error('copilot bridge', e);
+  }
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    installCopilotReturnButton();
+    if (!bridge?.access_token || !bridge?.refresh_token) return;
+    try {
+      if (typeof _initSb === 'function') _initSb();
+      if (typeof _sb !== 'undefined' && _sb) {
+        await _sb.auth.setSession({
+          access_token: bridge.access_token,
+          refresh_token: bridge.refresh_token
+        });
+      }
+      if (typeof db !== 'undefined' && db?.hydrateAll) await db.hydrateAll();
+      if (typeof toast === 'function') toast('Sessione Co-Pilot collegata', 'success');
+    } catch (e) {
+      console.error('copilot setSession', e);
+    }
+  });
+})();
+
+function installCopilotReturnButton() {
+  const returnTo = sessionStorage.getItem('area62_copilot_return_to');
+  if (!returnTo || document.getElementById('copilot-return')) return;
+  const link = document.createElement('a');
+  link.id = 'copilot-return';
+  link.href = returnTo;
+  link.textContent = 'Co-Pilot';
+  link.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:9999;min-height:40px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:#86bc25;color:#fff;text-decoration:none;font:800 13px Inter,system-ui,sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.28)';
+  document.body.appendChild(link);
+}
+
 (function checkForUpdate() {
   fetch('version.txt?t=' + Date.now(), { cache: 'no-store' })
     .then(r => r.ok ? r.text() : null)
