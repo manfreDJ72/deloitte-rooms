@@ -85,17 +85,24 @@ def send_mail(to_addrs, subject, html, attachments=None, in_reply_to=None):
         except Exception as e:
             print('allegato saltato:', e)
     ctx = ssl.create_default_context()
-    if USE_BREVO:
-        # Invio via relay Brevo (smtp-relay.brevo.com:587, STARTTLS) — IP puliti
-        with smtplib.SMTP('smtp-relay.brevo.com', 587, timeout=40) as s:
-            s.starttls(context=ctx)
-            s.login(BREVO_USER, BREVO_KEY)
-            s.sendmail(MAIL_USER, to_addrs, msg.as_string())
-    else:
-        # Invio diretto via SMTP Aruba (default)
+
+    def _send_aruba():
         with smtplib.SMTP_SSL(SMTP_HOST, 465, context=ctx, timeout=40) as s:
             s.login(MAIL_USER, MAIL_PASS)
             s.sendmail(MAIL_USER, to_addrs, msg.as_string())
+
+    # Prova prima Brevo (IP puliti); se fallisce (es. 535 credenziali) RIPIEGA su Aruba,
+    # così una config Brevo errata non blocca mai l'invio.
+    if USE_BREVO:
+        try:
+            with smtplib.SMTP('smtp-relay.brevo.com', 587, timeout=40) as s:
+                s.starttls(context=ctx)
+                s.login(BREVO_USER, BREVO_KEY)
+                s.sendmail(MAIL_USER, to_addrs, msg.as_string())
+            return
+        except Exception as e:
+            print('  Brevo non disponibile, fallback su Aruba:', str(e)[:120])
+    _send_aruba()
 
 # ── TEMPLATE EMAIL (coerente col portale) ──
 def email_template(heading, inner, accent='#86BC25'):
