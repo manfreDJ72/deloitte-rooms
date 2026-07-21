@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 47;
+const APP_BUILD = 48;
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
 (function installCopilotBridge() {
@@ -14,12 +14,15 @@ const APP_BUILD = 47;
       const json = decodeURIComponent(escape(atob(padded)));
       bridge = JSON.parse(json);
       const user = bridge.user || {};
+      const workspace = normalizeWorkspace(bridge.workspace);
+      if (workspace) sessionStorage.setItem('area62_workspace', workspace);
       localStorage.setItem(LS.user, JSON.stringify({
         id: user.id,
         email: user.email,
         name: user.name || user.email || 'Area 62',
         role: user.role || 'operator',
         avatar: user.avatar || (user.email || 'A6').slice(0, 2).toUpperCase(),
+        workspace,
         sb: true,
         copilot: true
       }));
@@ -32,6 +35,8 @@ const APP_BUILD = 47;
 
   window.addEventListener('DOMContentLoaded', async () => {
     installCopilotReturnButton();
+    applyWorkspaceChrome();
+    setTimeout(applyWorkspaceChrome, 0);
     if (!bridge?.access_token || !bridge?.refresh_token) return;
     try {
       if (typeof _initSb === 'function') _initSb();
@@ -58,6 +63,100 @@ function installCopilotReturnButton() {
   link.textContent = 'Co-Pilot';
   link.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:9999;min-height:40px;padding:0 14px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:#86bc25;color:#fff;text-decoration:none;font:800 13px Inter,system-ui,sans-serif;box-shadow:0 12px 30px rgba(0,0,0,.28)';
   document.body.appendChild(link);
+}
+
+const AREA62_ROOM_PAGES = new Set(['dashboard.html', 'booking.html', 'checks.html', 'tickets.html', 'assistente.html']);
+const AREA62_DELOITTE_PAGES = new Set(['richieste.html', 'documenti.html', 'rapporto.html']);
+
+function normalizeWorkspace(value) {
+  if (value === 'rooms' || value === 'viva' || value === 'viva-rooms') return 'rooms';
+  if (value === 'deloitte') return 'deloitte';
+  return null;
+}
+
+function currentPageName() {
+  return window.location.pathname.split('/').pop() || 'dashboard.html';
+}
+
+function workspaceFromPage() {
+  const page = currentPageName();
+  if (AREA62_DELOITTE_PAGES.has(page)) return 'deloitte';
+  return 'rooms';
+}
+
+function getWorkspaceContext() {
+  const params = new URLSearchParams(window.location.search);
+  const explicit = normalizeWorkspace(params.get('workspace') || params.get('area'));
+  if (explicit) {
+    sessionStorage.setItem('area62_workspace', explicit);
+    return explicit;
+  }
+  const stored = normalizeWorkspace(sessionStorage.getItem('area62_workspace'));
+  if (stored) return stored;
+  try {
+    const user = JSON.parse(localStorage.getItem(LS.user) || 'null');
+    const userWorkspace = normalizeWorkspace(user?.workspace);
+    if (userWorkspace) return userWorkspace;
+  } catch {}
+  return workspaceFromPage();
+}
+
+function withWorkspace(href, workspace) {
+  if (!href || href === '#') return href;
+  try {
+    const url = new URL(href, window.location.href);
+    url.searchParams.set('workspace', workspace);
+    return url.pathname.split('/').pop() + url.search + url.hash;
+  } catch {
+    return href;
+  }
+}
+
+function rewriteWorkspaceLinks(workspace) {
+  document.querySelectorAll('a[href$=".html"], a[href*=".html?"]').forEach((link) => {
+    const href = link.getAttribute('href') || '';
+    link.setAttribute('href', withWorkspace(href, workspace));
+  });
+}
+
+function applyWorkspaceChrome() {
+  const workspace = getWorkspaceContext();
+  document.documentElement.dataset.workspace = workspace;
+  document.body?.setAttribute('data-workspace', workspace);
+  rewriteWorkspaceLinks(workspace);
+
+  const isRooms = workspace === 'rooms';
+  const titleSuffix = isRooms ? 'Viva Room Management' : 'Deloitte Operations';
+  document.title = document.title.replace(/Deloitte Room Management/g, titleSuffix);
+
+  document.querySelectorAll('.header-title').forEach((el) => {
+    el.textContent = isRooms ? 'Viva Room Management' : 'Deloitte Operations';
+  });
+  document.querySelectorAll('.header-logo-deloitte').forEach((logo) => {
+    logo.style.display = isRooms ? 'none' : '';
+  });
+
+  const roomPages = new Set(['dashboard.html', 'booking.html', 'checks.html', 'tickets.html', 'assistente.html']);
+  const deloittePages = new Set(['richieste.html', 'documenti.html', 'rapporto.html']);
+  document.querySelectorAll('.nav-link').forEach((link) => {
+    const page = (link.getAttribute('href') || '').split('?')[0];
+    const deloitteLink = deloittePages.has(page);
+    const roomLink = roomPages.has(page);
+    link.hidden = isRooms ? deloitteLink : roomLink && page !== 'dashboard.html';
+  });
+  document.querySelectorAll('.dash-card').forEach((card) => {
+    const page = (card.getAttribute('href') || '').split('?')[0];
+    card.hidden = isRooms ? deloittePages.has(page) : roomPages.has(page) && page !== 'dashboard.html';
+  });
+
+  const dateSub = document.getElementById('date-sub');
+  if (dateSub && isRooms) {
+    const today = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    dateSub.textContent = `${today} · Solaria & Armonia · Viva Rooms`;
+  }
+  document.querySelectorAll('.page-sub').forEach((el) => {
+    if (isRooms) el.textContent = el.textContent.replace(/Deloitte/g, 'Viva Rooms');
+  });
 }
 
 (function checkForUpdate() {
@@ -301,6 +400,8 @@ function seedDemoData() {
 document.addEventListener('DOMContentLoaded', () => {
   renderUser();
   markActiveNav();
+  applyWorkspaceChrome();
+  setTimeout(applyWorkspaceChrome, 0);
   if (DEMO_MODE) seedDemoData();  // in produzione i dati arrivano da Supabase
 
   // Close modals on overlay click
