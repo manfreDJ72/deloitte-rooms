@@ -1,35 +1,31 @@
 // ============================================================
-// Sto Bene — semplice PWA di check-in giornaliero
+// Sto Bene — Client (auth Supabase + chiamate edge functions)
 // ============================================================
 
-const STORAGE_KEY = 'stobene.settings.v1';
-const HISTORY_KEY = 'stobene.history.v1';
-const NOTIF_TAG   = 'stobene-daily-reminder';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const CFG = window.STOBENE_CONFIG || {};
+if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) {
+  document.body.innerHTML = `
+    <div style="padding:32px;font-family:sans-serif;max-width:520px;margin:40px auto">
+      <h1 style="color:#dc2626">Configurazione mancante</h1>
+      <p>Serve impostare <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code>
+      in <code>config.js</code>. Vedi <code>config.example.js</code>.</p>
+    </div>`;
+  throw new Error('Missing Supabase config');
+}
+
+const sb = createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true },
+});
+
+const NOTIF_TAG = 'stobene-daily-reminder';
 const NOTIF_DAYS_AHEAD = 30;
 
-const $ = (sel) => document.querySelector(sel);
+const $  = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
-// ------------------------------------------------------------
-// Persistenza impostazioni
-// ------------------------------------------------------------
-function loadSettings() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); }
-  catch { return null; }
-}
-function saveSettings(s) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-}
-function loadHistory() {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
-  catch { return []; }
-}
-function pushHistory(entry) {
-  const h = loadHistory();
-  h.unshift(entry);
-  // manteniamo massimo 100 voci
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0, 100)));
-}
+let currentProfile = null;
 
 // ------------------------------------------------------------
 // Utilities
@@ -39,9 +35,7 @@ function isSameDay(a, b) {
       && a.getMonth()    === b.getMonth()
       && a.getDate()     === b.getDate();
 }
-function fmtTime(d) {
-  return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-}
+function fmtTime(d) { return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }); }
 function fmtDateShort(d) {
   const today = new Date();
   const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
@@ -55,32 +49,92 @@ function nextOccurrence(hour, minute, from = new Date()) {
   if (d <= from) d.setDate(d.getDate() + 1);
   return d;
 }
-function normalizePhone(v) {
-  // rimuove spazi/trattini, tiene leading + e cifre
-  return (v || '').replace(/[^\d+]/g, '');
+function normalizePhone(v) { return (v || '').replace(/[^\d+]/g, ''); }
+function isIOS() { return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream; }
+function showScreen(id) {
+  ['screen-loading','screen-auth','screen-setup','screen-main','screen-history']
+    .forEach((s) => $('#' + s)?.classList.toggle('hidden', s !== id));
 }
-function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+function showError(el, text) {
+  el.textContent = text; el.classList.remove('hidden');
+}
+function clearMsg(...els) {
+  els.forEach((e) => { e.textContent = ''; e.classList.add('hidden'); });
 }
 
 // ------------------------------------------------------------
-// SETUP screen
+// AUTH
+// ------------------------------------------------------------
+function bindAuth() {
+  const tabs = $$('.tab');
+  const submit = $('#auth-submit');
+  const passLabel = () => $$('.field')[1].querySelector('span');
+  let mode = 'login';
+
+  tabs.forEach((t) => t.addEventListener('click', () => {
+    tabs.forEach((x) => x.classList.remove('active'));
+    t.classList.add('active');
+    mode = t.dataset.tab;
+    submit.textContent = mode === 'login' ? 'Entra' : 'Crea account';
+    $('#auth-password').setAttribute('autocomplete', mode === 'login' ? 'current-password' : 'new-password');
+    clearMsg($('#auth-error'), $('#auth-info'));
+  }));
+
+  $('#auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearMsg($('#auth-error'), $('#auth-info'));
+    const email = $('#auth-email').value.trim();
+    const password = $('#auth-password').value;
+
+    submit.disabled = true;
+    const oldText = submit.textContent;
+    submit.textContent = mode === 'login' ? 'Accesso…' : 'Creazione…';
+
+    try {
+      if (mode === 'login') {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        await bootLoggedIn();
+      } else {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+        // Se conferma email è attiva, l'utente riceve link e non è ancora loggato
+        if (!data.session) {
+          $('#auth-info').textContent = 'Ti abbiamo mandato una email di conferma. Aprila e clicca sul link, poi torna qui per entrare.';
+          $('#auth-info').classList.remove('hidden');
+        } else {
+          await bootLoggedIn();
+        }
+      }
+    } catch (err) {
+      showError($('#auth-error'), traduciErroreAuth(err));
+    } finally {
+      submit.disabled = false;
+      submit.textContent = oldText;
+    }
+  });
+}
+function traduciErroreAuth(err) {
+  const m = String(err?.message || err);
+  if (/invalid login credentials/i.test(m))  return 'Email o password non corretti.';
+  if (/user already registered/i.test(m))    return 'Account già esistente — usa "Entra".';
+  if (/password.*weak/i.test(m))             return 'Password troppo debole (almeno 6 caratteri).';
+  if (/email.*invalid/i.test(m))             return 'Email non valida.';
+  return 'Errore: ' + m;
+}
+
+// ------------------------------------------------------------
+// SETUP form
 // ------------------------------------------------------------
 function bindSetup() {
-  const form = $('#setup-form');
-  const method = () => document.querySelector('input[name="method"]:checked').value;
-
-  function updateMethodFields() {
-    const m = method();
+  const methodInputs = $$('input[name="method"]');
+  function refreshMethodFields() {
+    const m = document.querySelector('input[name="method"]:checked').value;
     $('#field-phone').classList.toggle('hidden', m === 'email');
-    $('#field-email').classList.toggle('hidden', m !== 'email');
-    $('#f-phone').required = (m !== 'email');
-    $('#f-email').required = (m === 'email');
+    $('#f-contact-phone').required = (m !== 'email');
   }
-  $$('input[name="method"]').forEach(r => r.addEventListener('change', updateMethodFields));
-  updateMethodFields();
+  methodInputs.forEach((r) => r.addEventListener('change', refreshMethodFields));
 
-  // Auto-riempimento messaggio quando cambia il nome del contatto
   $('#f-contact-name').addEventListener('input', (e) => {
     const msg = $('#f-message');
     const cn = e.target.value.trim();
@@ -88,73 +142,78 @@ function bindSetup() {
       msg.value = cn ? `Ciao ${cn}, sto bene! ❤️` : 'Sto bene! ❤️';
     }
   });
-  $('#f-message').addEventListener('input', (e) => {
-    e.target.dataset.userEdited = '1';
-  });
+  $('#f-message').addEventListener('input', (e) => { e.target.dataset.userEdited = '1'; });
 
-  form.addEventListener('submit', async (e) => {
+  $('#setup-back').addEventListener('click', () => showScreen('screen-main'));
+
+  $('#setup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const m = method();
-    const settings = {
+    clearMsg($('#setup-error'));
+    const method = document.querySelector('input[name="method"]:checked').value;
+    const payload = {
       name: $('#f-name').value.trim(),
-      contactName: $('#f-contact-name').value.trim(),
-      method: m,
-      phone: normalizePhone($('#f-phone').value),
-      email: $('#f-email').value.trim(),
-      message: $('#f-message').value.trim() || `Ciao ${$('#f-contact-name').value.trim()}, sto bene! ❤️`,
-      reminderTime: $('#f-time').value || '10:00',
-      createdAt: new Date().toISOString(),
+      contact_name: $('#f-contact-name').value.trim(),
+      contact_email: $('#f-contact-email').value.trim().toLowerCase(),
+      contact_phone: normalizePhone($('#f-contact-phone').value),
+      method,
+      message_template: $('#f-message').value.trim()
+        || `Ciao ${$('#f-contact-name').value.trim()}, sto bene! ❤️`,
+      reminder_time: $('#f-time').value,
+      alert_after_min: Number($('#f-alert-min').value),
+      reminder_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Rome',
     };
-    saveSettings(settings);
+
+    const user = (await sb.auth.getUser()).data.user;
+    const { data, error } = await sb.from('profiles')
+      .update(payload).eq('user_id', user.id)
+      .select().single();
+    if (error) { showError($('#setup-error'), 'Salvataggio fallito: ' + error.message); return; }
+    currentProfile = data;
     await requestNotificationPermission();
-    await scheduleDailyNotifications(settings);
-    showMain(settings);
+    await scheduleDailyNotifications(currentProfile);
+    goToMain();
   });
 }
-
-function fillSetupFromSettings(s) {
-  $('#f-name').value = s.name || '';
-  $('#f-contact-name').value = s.contactName || '';
-  document.querySelector(`input[name="method"][value="${s.method}"]`).checked = true;
-  $('#f-phone').value = s.phone || '';
-  $('#f-email').value = s.email || '';
-  $('#f-message').value = s.message || '';
-  $('#f-message').dataset.userEdited = '1';
-  $('#f-time').value = s.reminderTime || '10:00';
-  // rerun visibility
-  const evt = new Event('change');
-  document.querySelector('input[name="method"]:checked').dispatchEvent(evt);
+function fillSetupFromProfile(p) {
+  $('#f-name').value = p.name || '';
+  $('#f-contact-name').value = p.contact_name || '';
+  $('#f-contact-email').value = p.contact_email || '';
+  $('#f-contact-phone').value = p.contact_phone || '';
+  document.querySelector(`input[name="method"][value="${p.method || 'email'}"]`).checked = true;
+  $('#f-message').value = p.message_template || '';
+  if (p.message_template) $('#f-message').dataset.userEdited = '1';
+  $('#f-time').value = p.reminder_time?.slice(0, 5) || '10:00';
+  $('#f-alert-min').value = String(p.alert_after_min || 60);
+  document.querySelector('input[name="method"]:checked').dispatchEvent(new Event('change'));
 }
 
 // ------------------------------------------------------------
-// MAIN screen
+// MAIN
 // ------------------------------------------------------------
-function showMain(settings) {
-  $('#screen-setup').classList.add('hidden');
-  $('#screen-main').classList.remove('hidden');
+async function goToMain() {
+  showScreen('screen-main');
+  $('#greet-name').textContent = currentProfile.name || '';
+  await refreshMainState();
+}
 
-  $('#greet-name').textContent = settings.name;
-
-  updateLastCheckLabel();
-  updateNextReminderLabel(settings);
+async function refreshMainState() {
+  updateNextReminderLabel(currentProfile);
   updateHints();
+  const lastToday = await getLastCheckinToday();
+  applyButtonState(!!lastToday);
+  updateLastCheckLabel(lastToday);
+}
 
-  const btn = $('#big-button');
-  const alreadyToday = wasCheckedToday();
-  applyButtonState(alreadyToday);
-
-  btn.onclick = () => onBigButton(settings);
-  $('#btn-settings').onclick = () => {
-    fillSetupFromSettings(settings);
-    $('#screen-main').classList.add('hidden');
-    $('#screen-setup').classList.remove('hidden');
-  };
-  $('#btn-perm').onclick = async () => {
-    await requestNotificationPermission();
-    await scheduleDailyNotifications(settings);
-    updateHints();
-  };
-  $('#btn-install').onclick = triggerInstall;
+async function getLastCheckinToday() {
+  const user = (await sb.auth.getUser()).data.user;
+  const start = new Date(); start.setHours(0,0,0,0);
+  const { data } = await sb.from('checkins')
+    .select('at, method_used, email_sent, email_error')
+    .eq('user_id', user.id)
+    .gte('at', start.toISOString())
+    .order('at', { ascending: false })
+    .limit(1);
+  return data?.[0] || null;
 }
 
 function applyButtonState(done) {
@@ -162,140 +221,122 @@ function applyButtonState(done) {
   btn.classList.toggle('done', !!done);
   btn.classList.toggle('pulse', !done);
   document.body.classList.toggle('done', !!done);
-  // theme-color della status bar mobile
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', done ? '#16a34a' : '#f97316');
 }
-
-function wasCheckedToday() {
-  const h = loadHistory();
-  if (!h.length) return false;
-  return isSameDay(new Date(h[0].at), new Date());
-}
-function updateLastCheckLabel() {
+function updateLastCheckLabel(lastToday) {
   const el = $('#last-check');
-  const h = loadHistory();
-  const today = new Date();
-  if (!h.length) {
+  if (!lastToday) {
     el.textContent = 'Non hai ancora fatto il check-in oggi.';
     el.classList.remove('done');
     return;
   }
-  const last = new Date(h[0].at);
-  if (isSameDay(last, today)) {
-    el.textContent = `✓ Fatto oggi alle ${fmtTime(last)}`;
-    el.classList.add('done');
-  } else {
-    el.textContent = 'Ultimo check-in: ' + fmtDateShort(last);
-    el.classList.remove('done');
-  }
+  const t = fmtTime(new Date(lastToday.at));
+  const suffix = lastToday.email_sent === false ? ' — email FALLITA' : '';
+  el.textContent = `✓ Fatto oggi alle ${t}${suffix}`;
+  el.classList.add('done');
 }
-function updateNextReminderLabel(settings) {
-  const [h, m] = (settings.reminderTime || '10:00').split(':').map(Number);
+function updateNextReminderLabel(profile) {
+  const [h, m] = (profile.reminder_time || '10:00').split(':').map(Number);
   const next = nextOccurrence(h, m);
   const dLabel = isSameDay(next, new Date()) ? 'oggi' : 'domani';
   $('#next-reminder').textContent = `${dLabel} alle ${fmtTime(next)}`;
 }
 function updateHints() {
-  const permHint = $('#perm-hint');
-  const iosHint  = $('#ios-hint');
-  const installHint = $('#install-hint');
-
   const notifSupported = 'Notification' in window;
   const perm = notifSupported ? Notification.permission : 'unsupported';
-  permHint.classList.toggle('hidden', !notifSupported || perm === 'granted');
+  $('#perm-hint').classList.toggle('hidden', !notifSupported || perm === 'granted');
 
   const triggersSupported = supportsNotificationTriggers();
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches
                      || window.navigator.standalone === true;
-  // Se non supporta trigger e (iOS OR non installata) → suggerisci sveglia
   const showIosHint = !triggersSupported && (isIOS() || !isStandalone);
-  iosHint.classList.toggle('hidden', !showIosHint);
-  if (showIosHint) {
-    const s = loadSettings();
-    $('#ios-time').textContent = s ? s.reminderTime : '10:00';
+  $('#ios-hint').classList.toggle('hidden', !showIosHint);
+  if (showIosHint && currentProfile) {
+    $('#ios-time').textContent = currentProfile.reminder_time?.slice(0, 5) || '10:00';
   }
+}
 
-  installHint.classList.toggle('hidden', !window.__stoBeneInstallPrompt || isStandalone);
+function bindMain() {
+  $('#big-button').addEventListener('click', onBigButton);
+  $('#btn-settings').addEventListener('click', () => {
+    fillSetupFromProfile(currentProfile);
+    $('#setup-back').classList.remove('hidden');
+    showScreen('screen-setup');
+  });
+  $('#btn-history').addEventListener('click', showHistory);
+  $('#btn-perm').addEventListener('click', async () => {
+    await requestNotificationPermission();
+    await scheduleDailyNotifications(currentProfile);
+    updateHints();
+  });
 }
 
 // ------------------------------------------------------------
-// Bottone principale: invia messaggio
+// BOTTONE PRINCIPALE
 // ------------------------------------------------------------
-async function onBigButton(settings) {
+async function onBigButton() {
   const btn = $('#big-button');
-  const now = new Date();
-  const msg = settings.message || `Ciao ${settings.contactName}, sto bene! ❤️`;
+  const message = currentProfile.message_template || `Ciao ${currentProfile.contact_name || ''}, sto bene! ❤️`;
 
-  // Registra localmente
-  pushHistory({ at: now.toISOString() });
-
-  // Feedback tattile
   if (navigator.vibrate) navigator.vibrate([25, 40, 80]);
-
-  // Animazione: onda + transizione arancione → verde
-  btn.classList.remove('tapping'); void btn.offsetWidth; // reset animation
+  btn.classList.remove('tapping'); void btn.offsetWidth;
   btn.classList.add('tapping');
   requestAnimationFrame(() => applyButtonState(true));
 
-  updateLastCheckLabel();
-
-  // Delay minimo così l'animazione ha tempo di completarsi
   const minDelay = new Promise((r) => setTimeout(r, 700));
-  const send = openChannel(settings, msg).catch((e) => ({ error: e }));
+  const send = doCheckin(message).catch((e) => ({ error: e }));
 
   const [result] = await Promise.all([send, minDelay]);
-  const isError = result && result.error;
-  showOverlay(isError ? '⚠️ Invio fallito — riprova' : 'Messaggio inviato');
-  if (isError) console.warn('openChannel error', result.error);
+  const err = result?.error || result?.email?.sent === false;
+  showOverlay(err ? '⚠️ Email non inviata — controlla lo storico' : 'Messaggio inviato');
+  if (err) console.warn('checkin outcome:', result);
 
   setTimeout(() => btn.classList.remove('tapping'), 100);
+  await refreshMainState();
 }
 
-async function openChannel(settings, message) {
-  const encoded = encodeURIComponent(message);
+async function doCheckin(message) {
+  const method = currentProfile.method;
 
-  if (settings.method === 'whatsapp') {
-    const num = normalizePhone(settings.phone).replace(/^\+/, '');
-    window.location.href = `https://wa.me/${num}?text=${encoded}`;
-    return { ok: true, via: 'whatsapp' };
+  // Per WhatsApp/SMS: apri app nativa + registra checkin (senza email)
+  if (method === 'whatsapp' || method === 'sms') {
+    // Registriamo il checkin server-side (senza inviare email)
+    const cRes = await invokeSendCheckin({ method, message });
+    // Poi apriamo il canale nativo
+    const encoded = encodeURIComponent(message);
+    const num = normalizePhone(currentProfile.contact_phone).replace(/^\+/, '');
+    setTimeout(() => {
+      if (method === 'whatsapp') {
+        window.location.href = `https://wa.me/${num}?text=${encoded}`;
+      } else {
+        window.location.href = `sms:${'+' + num}${isIOS() ? '&' : '?'}body=${encoded}`;
+      }
+    }, 400);
+    return cRes;
   }
 
-  if (settings.method === 'sms') {
-    const num = normalizePhone(settings.phone);
-    window.location.href = `sms:${num}${isIOS() ? '&' : '?'}body=${encoded}`;
-    return { ok: true, via: 'sms' };
-  }
+  // Email: la function fa DB insert + invio Resend
+  return await invokeSendCheckin({ method: 'email', message });
+}
 
-  // EMAIL: invia lato server via /api/send (Vercel + Resend);
-  // se la function non risponde (es. deploy solo statico), fallback a mailto:
-  const subject = `Sto bene${settings.name ? ` — ${settings.name}` : ''}`;
-  try {
-    const r = await fetch('/api/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: settings.email,
-        message,
-        senderName: settings.name,
-        subject,
-      }),
-    });
-    if (r.ok) {
-      return { ok: true, via: 'api' };
-    }
-    const err = await r.json().catch(() => ({}));
-    // Errori 4xx (dati sbagliati / recipient non ammesso) → non ha senso fare mailto fallback
-    if (r.status >= 400 && r.status < 500) {
-      throw new Error(err.error || `HTTP ${r.status}`);
-    }
-    throw new Error(err.error || `HTTP ${r.status}`);
-  } catch (e) {
-    console.warn('API send failed, fallback a mailto:', e);
-    const to = encodeURIComponent(settings.email);
-    window.location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encoded}`;
-    return { ok: true, via: 'mailto', warning: String(e.message || e) };
-  }
+async function invokeSendCheckin(body) {
+  const { data: sessData } = await sb.auth.getSession();
+  const token = sessData?.session?.access_token;
+  if (!token) throw new Error('Non sei loggato');
+
+  const url = `${CFG.SUPABASE_URL}/functions/v1/send-checkin`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  return data;
 }
 
 function showOverlay(text) {
@@ -303,108 +344,140 @@ function showOverlay(text) {
   const label = o.querySelector('.overlay-card p');
   if (label && text) label.textContent = text;
   o.classList.remove('hidden');
-  setTimeout(() => o.classList.add('hidden'), 1500);
+  setTimeout(() => o.classList.add('hidden'), 1600);
 }
 
 // ------------------------------------------------------------
-// Notifiche
+// STORICO
+// ------------------------------------------------------------
+async function showHistory() {
+  showScreen('screen-history');
+  const list = $('#history-list');
+  list.innerHTML = '<p class="empty">Caricamento…</p>';
+  const user = (await sb.auth.getUser()).data.user;
+  const { data, error } = await sb.from('checkins')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('at', { ascending: false })
+    .limit(60);
+  if (error) { list.innerHTML = `<p class="empty">Errore: ${error.message}</p>`; return; }
+  if (!data.length) { list.innerHTML = '<p class="empty">Nessun check-in ancora.</p>'; return; }
+
+  list.innerHTML = data.map((c) => {
+    const d = new Date(c.at);
+    const dateStr = d.toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: 'short' });
+    const timeStr = fmtTime(d);
+    let statusHtml = '';
+    if (c.method_used === 'email') {
+      if (c.email_sent === true) {
+        statusHtml = `<span class="badge ok">✓ Email inviata</span>`;
+      } else if (c.email_sent === false) {
+        statusHtml = `<span class="badge err">✗ ${escapeHtml(c.email_error || 'Email fallita')}</span>`;
+      }
+    } else {
+      statusHtml = `<span class="badge ok">${c.method_used.toUpperCase()}</span>`;
+    }
+    return `<div class="history-item">
+      <div class="history-item-main">
+        <div class="hi-date">${dateStr}</div>
+        <div class="hi-time">${timeStr}</div>
+      </div>
+      <div class="history-item-status">${statusHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function bindHistory() {
+  $('#history-back').addEventListener('click', () => showScreen('screen-main'));
+  $('#btn-logout').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    currentProfile = null;
+    showScreen('screen-auth');
+  });
+}
+
+// ------------------------------------------------------------
+// NOTIFICHE locali (reminder giornaliero)
 // ------------------------------------------------------------
 async function requestNotificationPermission() {
   if (!('Notification' in window)) return 'unsupported';
   if (Notification.permission === 'granted') return 'granted';
   if (Notification.permission === 'denied')  return 'denied';
-  try {
-    const p = await Notification.requestPermission();
-    return p;
-  } catch { return 'denied'; }
+  try { return await Notification.requestPermission(); } catch { return 'denied'; }
 }
-
 function supportsNotificationTriggers() {
-  return 'Notification' in window
-      && 'TimestampTrigger' in window
-      && 'serviceWorker' in navigator;
+  return 'Notification' in window && 'TimestampTrigger' in window && 'serviceWorker' in navigator;
 }
-
-async function scheduleDailyNotifications(settings) {
+async function scheduleDailyNotifications(profile) {
   if (!supportsNotificationTriggers()) return;
   if (Notification.permission !== 'granted') return;
-
   const reg = await navigator.serviceWorker.ready;
-  // cancella precedenti (dello stesso tag)
   try {
     const existing = await reg.getNotifications({ includeTriggered: true, tag: NOTIF_TAG });
-    existing.forEach(n => n.close());
-  } catch { /* browsers vecchi ignorano l'opzione */ }
-
-  const [h, m] = settings.reminderTime.split(':').map(Number);
-  const now = new Date();
-  const first = nextOccurrence(h, m, now);
-  const body = 'Un tap sul bottone per dire che stai bene ❤️';
-
+    existing.forEach((n) => n.close());
+  } catch {}
+  const [h, m] = String(profile.reminder_time || '10:00').split(':').map(Number);
+  const first = nextOccurrence(h, m);
   for (let i = 0; i < NOTIF_DAYS_AHEAD; i++) {
-    const when = new Date(first);
-    when.setDate(first.getDate() + i);
+    const when = new Date(first); when.setDate(first.getDate() + i);
     try {
       await reg.showNotification('Sto Bene — è il momento del check-in', {
         tag: `${NOTIF_TAG}-${i}`,
-        body,
+        body: 'Un tap sul bottone per dire che stai bene ❤️',
         icon: 'icon-192.png',
         badge: 'icon-192.png',
         // eslint-disable-next-line no-undef
         showTrigger: new TimestampTrigger(when.getTime()),
         data: { url: location.href },
       });
-    } catch (e) {
-      console.warn('Impossibile schedulare notifica', when, e);
-      break;
-    }
+    } catch (e) { console.warn('trigger fallito', e); break; }
   }
 }
 
 // ------------------------------------------------------------
-// PWA install prompt
-// ------------------------------------------------------------
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  window.__stoBeneInstallPrompt = e;
-  updateHints();
-});
-async function triggerInstall() {
-  const p = window.__stoBeneInstallPrompt;
-  if (!p) return;
-  p.prompt();
-  await p.userChoice;
-  window.__stoBeneInstallPrompt = null;
-  updateHints();
-}
-
-// ------------------------------------------------------------
-// Service Worker
+// SERVICE WORKER
 // ------------------------------------------------------------
 async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
-  try {
-    await navigator.serviceWorker.register('sw.js');
-  } catch (e) {
-    console.warn('SW registration failed', e);
-  }
+  try { await navigator.serviceWorker.register('sw.js'); }
+  catch (e) { console.warn('SW registration failed', e); }
 }
 
 // ------------------------------------------------------------
-// Bootstrap
+// BOOTSTRAP
 // ------------------------------------------------------------
-async function boot() {
-  bindSetup();
-  await registerSW();
-
-  const s = loadSettings();
-  if (s) {
-    showMain(s);
-    // Rischedula ogni apertura app (garantisce sempre 30 giorni avanti)
-    scheduleDailyNotifications(s);
+async function bootLoggedIn() {
+  const user = (await sb.auth.getUser()).data.user;
+  if (!user) { showScreen('screen-auth'); return; }
+  // fetch profile
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
+  if (error) { alert('Errore caricamento profilo: ' + error.message); return; }
+  currentProfile = profile;
+  const isConfigured = !!(profile?.name && profile?.contact_email);
+  if (!isConfigured) {
+    $('#setup-back').classList.add('hidden');
+    fillSetupFromProfile(profile || {});
+    showScreen('screen-setup');
   } else {
-    $('#screen-setup').classList.remove('hidden');
+    await goToMain();
+    scheduleDailyNotifications(profile);
   }
 }
+
+async function boot() {
+  bindAuth(); bindSetup(); bindMain(); bindHistory();
+  await registerSW();
+  const { data: sess } = await sb.auth.getSession();
+  if (sess?.session) await bootLoggedIn();
+  else showScreen('screen-auth');
+}
+
+sb.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT') showScreen('screen-auth');
+});
 
 document.addEventListener('DOMContentLoaded', boot);
