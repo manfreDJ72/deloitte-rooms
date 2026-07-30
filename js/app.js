@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 48;
+const APP_BUILD = 49;
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
 (function installCopilotBridge() {
