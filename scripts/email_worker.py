@@ -379,10 +379,13 @@ def process_outbound(token):
             sent += 1
         except Exception as e:
             err = str(e)[:300]
-            # 554 = IP del runner GitHub in blacklist DNSBL: errore TRANSITORIO.
-            # Lascio l'email 'pending' così il prossimo run (ogni ~5 min) ritenta con un
-            # altro IP, finché non ne becca uno pulito. Dopo 12h rinuncio (-> 'error').
-            keep_pending = '554' in err
+            # Errori TRANSITORI di blocco IP del runner GitHub (Aruba li dà con codici
+            # diversi: 554 "connessione rifiutata/blacklist" o 550 "temporaneamente
+            # rifiutata"). Lascio l'email 'pending' → il prossimo run (~2 min) ritenta
+            # con un altro IP finché non ne becca uno pulito. Dopo 12h rinuncio (-> 'error').
+            el = err.lower()
+            keep_pending = any(s in el for s in ('554', 'temporaneamente rifiutata',
+                'temporarily rejected', 'blacklist', 'connessione rifiutata', 'connection refused'))
             if keep_pending:
                 try:
                     ct = datetime.datetime.fromisoformat((row.get('created_at') or '').replace('Z', '+00:00'))
