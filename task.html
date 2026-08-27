@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Task Interni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=52">
+  <link rel="stylesheet" href="css/style.css?v=53">
   <style>
     .tk-card {
       background:var(--bg-card); border:1.5px solid var(--border);
@@ -31,7 +31,9 @@
     .dom-chip { font-size:11px; font-weight:600; color:var(--text-muted); background:var(--bg-card2); padding:2px 8px; border-radius:6px; }
     .tk-late { color:var(--red); font-weight:700; }
     .tk-status-sel { width:150px; flex-shrink:0; }
-    .tk-row-actions { display:flex; align-items:center; gap:10px; margin-top:10px; }
+    .tk-row-actions { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+    .tk-report-tag { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; cursor:pointer; border:1px solid var(--border); background:var(--bg-card2); color:var(--text-muted); user-select:none; transition:all .15s; }
+    .tk-report-tag.on { background:rgba(134,188,37,.15); color:var(--green); border-color:rgba(134,188,37,.4); }
 
     /* chips destinatari */
     .chips-box { display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--bg-card2); min-height:42px; align-items:center; }
@@ -176,6 +178,11 @@
         <label class="form-label">Note</label>
         <textarea class="form-control" id="tk-note" rows="2" placeholder="Dettagli, riferimenti, credenziali gestite a parte..."></textarea>
       </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:600;">
+          <input type="checkbox" id="tk-inreport" checked style="width:auto;transform:scale(1.15);"> 📄 Includi questo task nel Report attività (PDF)
+        </label>
+      </div>
       <div class="form-group" style="margin:0;">
         <label class="form-label">📧 Avvisa al completamento — destinatari</label>
         <div class="chips-box" id="tk-recip-box">
@@ -194,10 +201,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=52"></script>
-<script src="js/app.js?v=52"></script>
-<script src="js/db.js?v=52"></script>
-<script src="js/tour.js?v=52"></script>
+<script src="js/config.js?v=53"></script>
+<script src="js/app.js?v=53"></script>
+<script src="js/db.js?v=53"></script>
+<script src="js/report.js?v=53"></script>
+<script src="js/tour.js?v=53"></script>
 <script>
 const PRIO_LABEL  = { alta:'Alta', media:'Media', bassa:'Bassa' };
 const PRIO_BADGE  = { alta:'badge-p1', media:'badge-p2', bassa:'badge-p3' };
@@ -351,11 +359,23 @@ function renderTasks() {
         <select class="form-control tk-status-sel" data-id="${t.id}">
           ${Object.entries(STATO_LABEL).map(([k,v])=>`<option value="${k}" ${t.stato===k?'selected':''}>${v}</option>`).join('')}
         </select>
+        <span class="tk-report-tag ${t.inReport!==false?'on':''}" data-rep="${t.id}" title="Includi/escludi dal Report attività (PDF)">📄 ${t.inReport!==false?'nel report':'escluso'}</span>
       </div>
     </div>`;
   }).join('');
 
   el.querySelectorAll('.tk-status-sel').forEach(sel => sel.addEventListener('change', () => quickStatus(sel.dataset.id, sel.value)));
+  el.querySelectorAll('.tk-report-tag').forEach(tag => tag.addEventListener('click', () => toggleReport(tag.dataset.rep)));
+}
+
+async function toggleReport(id) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  t.inReport = t.inReport === false;   // false → true, true/undefined → false
+  t.updatedAt = new Date().toISOString();
+  await db.upsertTask(t);
+  renderTasks();
+  toast(t.inReport ? 'Task incluso nel report ✓' : 'Task escluso dal report', 'info');
 }
 
 /* ── cambio stato rapido dalla card ── */
@@ -438,6 +458,7 @@ function openTask(id) {
   document.getElementById('tk-stato').value = t?.stato || 'da-fare';
   document.getElementById('tk-scadenza').value = t?.scadenza || '';
   document.getElementById('tk-note').value = t?.note || '';
+  document.getElementById('tk-inreport').checked = t ? (t.inReport !== false) : true;
   modalRecips = (t?.recipients || []).slice();
   document.getElementById('tk-recip-input').value = '';
   renderRecips();
@@ -462,6 +483,7 @@ async function saveTask() {
     scadenza: document.getElementById('tk-scadenza').value || null,
     note: document.getElementById('tk-note').value.trim(),
     recipients: modalRecips.slice(),
+    inReport: document.getElementById('tk-inreport').checked,
   };
 
   const btn = document.getElementById('btn-save-task');

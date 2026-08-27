@@ -263,7 +263,7 @@ const db = {
       priorita:t.priorita||'media', stato:t.stato||'da-fare', scadenza:t.scadenza||null,
       note:t.note||null, recipients:t.recipients||[],
       created_at:_num(t.createdAt), updated_at:_num(t.updatedAt), completed_at:_num(t.completedAt),
-      notified_done:!!t.notifiedDone,
+      notified_done:!!t.notifiedDone, in_report:t.inReport!==false,
     };
   },
   _taskFromDb(r) {
@@ -273,7 +273,7 @@ const db = {
       priorita:r.priorita, stato:r.stato, scadenza:r.scadenza, note:r.note,
       recipients:r.recipients||[],
       createdAt:r.created_at, updatedAt:r.updated_at, completedAt:r.completed_at,
-      notifiedDone:r.notified_done,
+      notifiedDone:r.notified_done, inReport:r.in_report!==false,
     };
   },
   async getTasks() {
@@ -336,6 +336,20 @@ const db = {
     _initSb();
     try { const { error } = await _sb.from('tasks').delete().eq('id', id); if (error) throw error; }
     catch (e) { console.error('deleteTask', e); toast('Errore eliminazione task', 'error'); }
+  },
+
+  // lette dal report (js/report.js)
+  async getReqspec() {
+    if (DEMO_MODE) return ls(LS.reqspec) || [];
+    _initSb();
+    try { const { data, error } = await _sb.from('reqspec').select('*'); if (error) throw error; return (data||[]).map(SYNC[LS.reqspec].fromDb); }
+    catch (e) { console.warn('getReqspec', e); return ls(LS.reqspec) || []; }
+  },
+  async getMaintenance() {
+    if (DEMO_MODE) return ls(LS.maint) || [];
+    _initSb();
+    try { const { data, error } = await _sb.from('maintenance').select('*'); if (error) throw error; return (data||[]).map(SYNC[LS.maint].fromDb); }
+    catch (e) { console.warn('getMaintenance', e); return ls(LS.maint) || []; }
   },
 
   // usate da checks.html
