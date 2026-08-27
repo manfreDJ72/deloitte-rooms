@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Task Interni – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=50">
+  <style>
+    .tk-card {
+      background:var(--bg-card); border:1.5px solid var(--border);
+      border-left:3px solid var(--border); border-radius:10px;
+      padding:14px 16px; margin-bottom:10px; cursor:pointer; transition:border-color .15s;
+    }
+    .tk-card:hover { border-color:var(--text-muted); }
+    .tk-card.done { opacity:.62; }
+    .tk-top { display:flex; align-items:center; gap:8px; margin-bottom:7px; flex-wrap:wrap; }
+    .tk-id { font-size:11px; font-weight:800; color:var(--text-faint); font-variant-numeric:tabular-nums; }
+    .tk-title { font-weight:700; font-size:14px; flex:1; min-width:160px; }
+    .tk-card.done .tk-title { text-decoration:line-through; text-decoration-color:var(--text-faint); }
+    .tk-desc-text { font-size:14px; font-weight:600; margin:2px 0 8px; line-height:1.45; }
+    .tk-card.done .tk-desc-text { text-decoration:line-through; text-decoration-color:var(--text-faint); color:var(--text-muted); }
+    .tk-note { font-size:12px; color:var(--text-muted); background:var(--bg-card2); border-radius:6px; padding:6px 10px; margin-bottom:8px; }
+    .tk-note b { color:var(--text); }
+    .tk-meta b { color:var(--text); font-weight:700; }
+    .tk-done-badge { color:var(--green); font-weight:700; }
+    .tk-meta { font-size:12px; color:var(--text-muted); display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+    .app-badge { font-size:10px; font-weight:800; padding:2px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:.4px; }
+    .app-armonia { background:rgba(212,69,123,.16); color:#e06aa0; }
+    .app-solaria { background:rgba(77,166,255,.16); color:var(--blue); }
+    .app-generale{ background:rgba(255,255,255,.08); color:var(--text-muted); }
+    .dom-chip { font-size:11px; font-weight:600; color:var(--text-muted); background:var(--bg-card2); padding:2px 8px; border-radius:6px; }
+    .tk-late { color:var(--red); font-weight:700; }
+    .tk-status-sel { width:150px; flex-shrink:0; }
+    .tk-row-actions { display:flex; align-items:center; gap:10px; margin-top:10px; }
+
+    /* chips destinatari */
+    .chips-box { display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--bg-card2); min-height:42px; align-items:center; }
+    .chip { display:inline-flex; align-items:center; gap:6px; background:rgba(77,166,255,.15); color:var(--blue); font-size:12px; font-weight:600; padding:3px 8px; border-radius:20px; }
+    .chip b { font-weight:700; }
+    .chip .x { cursor:pointer; opacity:.7; }
+    .chip .x:hover { opacity:1; }
+    .chips-box input { border:none; background:transparent; outline:none; color:var(--text); font-size:13px; flex:1; min-width:120px; padding:2px; }
+    .recip-suggest { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .recip-suggest .btn { padding:3px 9px; font-size:11px; }
+
+    @media print { .header, .modal-foot, .no-print { display:none !important; } }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
+    <div class="header-sep"></div>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18"/><path d="M8 3v3"/><path d="M16 3v3"/></svg></span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9z"/><path d="m8.5 13 2 2 4-4"/></svg></span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.3 1.8 18a2 2 0 0 0 1.7 3h16.9a2 2 0 0 0 1.7-3L13.7 3.3a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span> Richieste</a>
+    <a href="task.html"      class="nav-link active"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="M4.5 6h.01"/><path d="M4.5 12h.01"/><path d="M4.5 18h.01"/></svg></span> Task</a>
+    <a href="documenti.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 12h16"/><path d="M10 7.5h4"/><path d="M10 16.5h4"/></svg></span> Documenti</a>
+    <a href="assistente.html" class="nav-link nav-assistente"><span class="nav-icon armonia-dot"></span> ArmonIA</a>
+    <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <button class="notif-btn" title="Notifiche">🔔</button>
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1 class="page-title">Task Interni</h1>
+    <p class="page-sub">Backlog Area62 — attività tecniche interne. Al completamento parte una mail ai destinatari scelti sul task.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" style="margin-bottom:18px;">
+    <div class="stat-tile"><div class="stat-val" id="tk-tot">0</div><div class="stat-label">Task totali</div></div>
+    <div class="stat-tile"><div class="stat-val" id="tk-todo" style="color:var(--red);">0</div><div class="stat-label">Da fare</div></div>
+    <div class="stat-tile"><div class="stat-val" id="tk-prog" style="color:var(--orange);">0</div><div class="stat-label">In corso</div></div>
+    <div class="stat-tile"><div class="stat-val" id="tk-done" style="color:var(--green);">0</div><div class="stat-label">Completati</div></div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;">
+    <div class="tabs" id="tk-filter">
+      <div class="tab active" data-f="all">Tutti</div>
+      <div class="tab" data-f="attivi">Attivi</div>
+      <div class="tab" data-f="da-fare">Da fare</div>
+      <div class="tab" data-f="in-corso">In corso</div>
+      <div class="tab" data-f="completato">Completati</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <select class="form-control" id="tk-app-filter" style="width:150px;">
+        <option value="all">Tutte le app</option>
+        <option value="Armonia">Armonia</option>
+        <option value="Solaria">Solaria</option>
+        <option value="Generale">Generale</option>
+      </select>
+      <button class="btn btn-primary btn-sm" id="btn-new-task">+ Nuovo task</button>
+    </div>
+  </div>
+
+  <div id="tk-list"></div>
+</main>
+
+<!-- ══════════ MODAL: TASK ══════════ -->
+<div class="overlay" id="modal-task">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-task-title">Nuovo task</div>
+      <button class="modal-x" onclick="closeModal('modal-task')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Descrizione (cosa fare)</label>
+        <input class="form-control" id="tk-title" placeholder="Es. Migrazione applicativi su Server Linux">
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Applicazione</label>
+          <input class="form-control" id="tk-app" list="dl-app" placeholder="Armonia / Solaria / Generale">
+          <datalist id="dl-app"><option>Armonia</option><option>Solaria</option><option>Generale</option><option>Network</option></datalist>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Ambito</label>
+          <input class="form-control" id="tk-domain" list="dl-domain" placeholder="Es. Audit, Docker, Rete...">
+          <datalist id="dl-domain"><option>Audit</option><option>Monitoraggio</option><option>Procedure</option><option>Email</option><option>Docker</option><option>Audio</option><option>Network</option><option>Sicurezza</option><option>Rete</option></datalist>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Richiedente</label>
+          <input class="form-control" id="tk-richiedente" placeholder="Chi ha chiesto il task">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Assegnatario
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-assign-me" style="padding:1px 8px;font-size:11px;margin-left:6px;">a me</button>
+          </label>
+          <input class="form-control" id="tk-assegnatario" list="dl-assign" placeholder="A chi è assegnato">
+          <datalist id="dl-assign"></datalist>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Priorità</label>
+          <select class="form-control" id="tk-priorita">
+            <option value="alta">Alta</option>
+            <option value="media" selected>Media</option>
+            <option value="bassa">Bassa</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Stato</label>
+          <select class="form-control" id="tk-stato">
+            <option value="da-fare">Da fare</option>
+            <option value="in-corso">In corso</option>
+            <option value="completato">Completato</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Scadenza</label>
+          <input class="form-control" type="date" id="tk-scadenza">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note</label>
+        <textarea class="form-control" id="tk-note" rows="2" placeholder="Dettagli, riferimenti, credenziali gestite a parte..."></textarea>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">📧 Avvisa al completamento — destinatari</label>
+        <div class="chips-box" id="tk-recip-box">
+          <input id="tk-recip-input" type="text" placeholder="scrivi un'email e premi Invio...">
+        </div>
+        <div class="recip-suggest" id="tk-recip-suggest"></div>
+        <div style="font-size:11px;color:var(--text-faint);margin-top:6px;">Quando il task passa a “Completato” viene inviata una mail a questi indirizzi. Lascia vuoto per non inviare nulla.</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="btn-del-task" style="display:none;margin-right:auto;">Elimina</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-task')">Annulla</button>
+      <button class="btn btn-primary" id="btn-save-task">Salva task</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=50"></script>
+<script src="js/app.js?v=50"></script>
+<script src="js/db.js?v=50"></script>
+<script src="js/tour.js?v=50"></script>
+<script>
+const PRIO_LABEL  = { alta:'Alta', media:'Media', bassa:'Bassa' };
+const PRIO_BADGE  = { alta:'badge-p1', media:'badge-p2', bassa:'badge-p3' };
+const STATO_LABEL = { 'da-fare':'Da fare', 'in-corso':'In corso', 'completato':'Completato' };
+const STATO_BADGE = { 'da-fare':'badge-open', 'in-corso':'badge-p2', 'completato':'badge-ok' };
+
+let tasks = [];
+let editTaskId = null;
+let modalRecips = [];
+let filterStato = 'all';
+let filterApp = 'all';
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!requireAuth()) return;
+  tasks = await db.refreshTasks();
+
+  document.querySelectorAll('#tk-filter .tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('#tk-filter .tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); filterStato = t.dataset.f; renderTasks();
+  }));
+  document.getElementById('tk-app-filter').addEventListener('change', e => { filterApp = e.target.value; renderTasks(); });
+
+  document.getElementById('btn-new-task').addEventListener('click', () => openTask());
+  document.getElementById('btn-save-task').addEventListener('click', saveTask);
+  document.getElementById('btn-del-task').addEventListener('click', deleteTaskFromModal);
+  document.getElementById('btn-assign-me').addEventListener('click', () => {
+    const u = currentUser(); if (u) document.getElementById('tk-assegnatario').value = u.name || u.email;
+  });
+
+  // chips destinatari: aggiungi con Invio o virgola
+  const ri = document.getElementById('tk-recip-input');
+  ri.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addRecip(ri.value); ri.value=''; }
+    else if (e.key === 'Backspace' && !ri.value && modalRecips.length) { modalRecips.pop(); renderRecips(); }
+  });
+  ri.addEventListener('blur', () => { if (ri.value.trim()) { addRecip(ri.value); ri.value=''; } });
+
+  buildAssignDatalist();
+  renderTasks();
+});
+
+/* ── suggerimenti assegnatario/destinatari dai destinatari configurati ── */
+function knownPeople() {
+  const s = (typeof getSettings === 'function') ? getSettings() : null;
+  const recs = (s?.emailRecipients || []).map(r => ({ email:r.email, label:r.label || r.email }));
+  return recs.filter(r => r.email);
+}
+function buildAssignDatalist() {
+  const dl = document.getElementById('dl-assign');
+  const names = new Set(['Area62','STS']);
+  const u = currentUser(); if (u) names.add(u.name || u.email);
+  knownPeople().forEach(p => names.add(p.label));
+  dl.innerHTML = [...names].map(n => `<option>${n}</option>`).join('');
+}
+function renderRecipSuggest() {
+  const el = document.getElementById('tk-recip-suggest');
+  const people = knownPeople();
+  const u = currentUser();
+  const quick = [];
+  if (u?.email) quick.push({ email:u.email, label:'Io ('+(u.name||u.email)+')' });
+  people.forEach(p => quick.push(p));
+  const seen = new Set(modalRecips.map(e=>e.toLowerCase()));
+  const avail = quick.filter(p => !seen.has(p.email.toLowerCase()));
+  el.innerHTML = avail.length
+    ? avail.map(p => `<button type="button" class="btn btn-outline" data-add="${p.email}">+ ${p.label}</button>`).join('')
+    : '';
+  el.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => { addRecip(b.dataset.add); }));
+}
+function isEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+function addRecip(raw) {
+  (raw||'').split(/[,;\s]+/).map(x=>x.trim()).filter(Boolean).forEach(e => {
+    if (isEmail(e) && !modalRecips.some(x=>x.toLowerCase()===e.toLowerCase())) modalRecips.push(e);
+    else if (!isEmail(e) && e) toast('Email non valida: '+e, 'error');
+  });
+  renderRecips();
+}
+function renderRecips() {
+  const box = document.getElementById('tk-recip-box');
+  const input = document.getElementById('tk-recip-input');
+  box.querySelectorAll('.chip').forEach(c => c.remove());
+  modalRecips.forEach((e,i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `<b>${e}</b> <span class="x" data-i="${i}">✕</span>`;
+    box.insertBefore(chip, input);
+  });
+  box.querySelectorAll('.chip .x').forEach(x => x.addEventListener('click', () => {
+    modalRecips.splice(parseInt(x.dataset.i),1); renderRecips();
+  }));
+  renderRecipSuggest();
+}
+
+/* ── RENDER LISTA ── */
+function daysLate(scad) {
+  if (!scad) return null;
+  const d = Math.floor((Date.now() - new Date(scad+'T23:59:59').getTime())/864e5);
+  return d;
+}
+function matchFilter(t) {
+  if (filterApp !== 'all' && (t.app||'Generale') !== filterApp) return false;
+  if (filterStato === 'all') return true;
+  if (filterStato === 'attivi') return t.stato !== 'completato';
+  return t.stato === filterStato;
+}
+function renderTasks() {
+  document.getElementById('tk-tot').textContent  = tasks.length;
+  document.getElementById('tk-todo').textContent = tasks.filter(t=>t.stato==='da-fare').length;
+  document.getElementById('tk-prog').textContent = tasks.filter(t=>t.stato==='in-corso').length;
+  document.getElementById('tk-done').textContent = tasks.filter(t=>t.stato==='completato').length;
+
+  const prioRank = { alta:0, media:1, bassa:2 };
+  const list = tasks.filter(matchFilter).sort((a,b) => {
+    if ((a.stato==='completato') !== (b.stato==='completato')) return a.stato==='completato' ? 1 : -1;
+    const pr = (prioRank[a.priorita]??1) - (prioRank[b.priorita]??1);
+    if (pr) return pr;
+    return new Date(b.createdAt||0) - new Date(a.createdAt||0);
+  });
+
+  const el = document.getElementById('tk-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">Nessun task in questa vista</div></div>';
+    return;
+  }
+  el.innerHTML = list.map(t => {
+    const appKey = (t.app||'Generale').toLowerCase();
+    const appCls = appKey==='armonia'?'app-armonia':appKey==='solaria'?'app-solaria':'app-generale';
+    const late = daysLate(t.scadenza);
+    const doneInfo = (t.stato==='completato')
+      ? `<span class="tk-done-badge">✓ Fatto${t.completedAt?` il ${formatDate(t.completedAt)}`:''}</span>`
+      : (late!==null && late>0 ? `<span class="tk-late">⏰ scaduto da ${late}g</span>` : '');
+    return `
+    <div class="tk-card ${t.stato==='completato'?'done':''}" style="border-left-color:${appKey==='armonia'?'#D4457B':appKey==='solaria'?'#4da6ff':'var(--border)'};" onclick="openTask('${t.id}')">
+      <div class="tk-top">
+        <span class="app-badge ${appCls}">${t.app||'Generale'}</span>
+        ${t.domain?`<span class="dom-chip">${t.domain}</span>`:''}
+        <span class="tk-id">${t.id}</span>
+        <span style="flex:1;"></span>
+        <span class="badge ${PRIO_BADGE[t.priorita]||'badge-p2'}">${PRIO_LABEL[t.priorita]||t.priorita}</span>
+        <span class="badge ${STATO_BADGE[t.stato]||'badge-open'}">${STATO_LABEL[t.stato]||t.stato}</span>
+      </div>
+      <div class="tk-desc-text">${esc(t.title)||'(senza descrizione)'}</div>
+      ${t.note?`<div class="tk-note">📝 <b>Note:</b> ${esc(t.note)}</div>`:''}
+      <div class="tk-meta">
+        <span>Assegnatario: <b>${t.assegnatario?esc(t.assegnatario):'—'}</b></span>
+        <span>Richiedente: <b>${t.richiedente?esc(t.richiedente):'—'}</b></span>
+        <span>Scadenza: <b>${t.scadenza?formatDate(t.scadenza):'—'}</b></span>
+        ${doneInfo}
+        ${(t.recipients&&t.recipients.length)?`<span>📧 <b>${t.recipients.length}</b> avvisi</span>`:''}
+      </div>
+      <div class="tk-row-actions" onclick="event.stopPropagation();">
+        <select class="form-control tk-status-sel" data-id="${t.id}">
+          ${Object.entries(STATO_LABEL).map(([k,v])=>`<option value="${k}" ${t.stato===k?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.tk-status-sel').forEach(sel => sel.addEventListener('change', () => quickStatus(sel.dataset.id, sel.value)));
+}
+
+/* ── cambio stato rapido dalla card ── */
+async function quickStatus(id, stato) {
+  const t = tasks.find(x => x.id === id);
+  if (!t) return;
+  const wasDone = t.stato === 'completato';
+  t.stato = stato;
+  t.updatedAt = new Date().toISOString();
+  if (stato === 'completato' && !wasDone) {
+    t.completedAt = t.completedAt || new Date().toISOString();
+    await db.upsertTask(t);
+    await maybeNotifyDone(t);
+  } else {
+    if (stato !== 'completato') { t.completedAt = null; }
+    await db.upsertTask(t);
+  }
+  renderTasks();
+}
+
+/* ── invio mail al completamento ── */
+async function maybeNotifyDone(t) {
+  if (t.notifiedDone) return;
+  const to = (t.recipients||[]).filter(Boolean);
+  if (!to.length) return;
+  try {
+    const u = currentUser();
+    const when = new Date(t.completedAt||Date.now());
+    const subject = `✅ Task completato · ${t.id} — ${t.title||''}`;
+    const html = taskEmailHtml(t, u, when);
+    await db.sendEmail(to, subject, html);
+    t.notifiedDone = true;
+    await db.upsertTask(t);
+    toast('Task completato — mail inviata a '+to.length+' destinatari ✓', 'success');
+  } catch (e) {
+    console.error('notify done', e);
+    toast('Task completato, ma invio mail non riuscito', 'error');
+  }
+}
+function esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function taskEmailHtml(t, u, when) {
+  const row = (k,v) => v ? `<tr><td style="padding:4px 12px 4px 0;color:#6b7280;white-space:nowrap;vertical-align:top;">${k}</td><td style="padding:4px 0;color:#111827;font-weight:600;">${esc(v)}</td></tr>` : '';
+  const dt = when.toLocaleDateString('it-IT',{day:'numeric',month:'long',year:'numeric'}) + ' alle ' + when.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:560px;margin:auto;color:#111827;">
+    <div style="background:#0f9d58;color:#fff;padding:16px 20px;border-radius:10px 10px 0 0;">
+      <div style="font-size:13px;opacity:.85;letter-spacing:.5px;">TASK COMPLETATO</div>
+      <div style="font-size:19px;font-weight:800;margin-top:2px;">${esc(t.title||'')}</div>
+    </div>
+    <div style="border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;padding:18px 20px;">
+      <table style="font-size:14px;border-collapse:collapse;width:100%;">
+        ${row('ID', t.id)}
+        ${row('Applicazione', t.app)}
+        ${row('Ambito', t.domain)}
+        ${row('Priorità', PRIO_LABEL[t.priorita]||t.priorita)}
+        ${row('Assegnatario', t.assegnatario)}
+        ${row('Richiedente', t.richiedente)}
+        ${row('Completato il', dt + (u?(' da '+(u.name||u.email)):''))}
+        ${row('Note', t.note)}
+      </table>
+      <div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:12px;color:#9ca3af;">
+        Area62 · Deloitte Room Management — notifica automatica di completamento task.
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ── MODALE ── */
+function openTask(id) {
+  editTaskId = id || null;
+  const t = id ? tasks.find(x => x.id === id) : null;
+  document.getElementById('modal-task-title').textContent = t ? `Task ${t.id}` : 'Nuovo task';
+  document.getElementById('btn-del-task').style.display = t ? '' : 'none';
+  document.getElementById('tk-title').value = t?.title || '';
+  document.getElementById('tk-app').value = t?.app || '';
+  document.getElementById('tk-domain').value = t?.domain || '';
+  document.getElementById('tk-richiedente').value = t?.richiedente || '';
+  document.getElementById('tk-assegnatario').value = t?.assegnatario || '';
+  document.getElementById('tk-priorita').value = t?.priorita || 'media';
+  document.getElementById('tk-stato').value = t?.stato || 'da-fare';
+  document.getElementById('tk-scadenza').value = t?.scadenza || '';
+  document.getElementById('tk-note').value = t?.note || '';
+  modalRecips = (t?.recipients || []).slice();
+  document.getElementById('tk-recip-input').value = '';
+  renderRecips();
+  openModal('modal-task');
+}
+
+async function saveTask() {
+  const title = document.getElementById('tk-title').value.trim();
+  if (!title) { toast('Inserisci la descrizione del task', 'error'); return; }
+  const ri = document.getElementById('tk-recip-input');
+  if (ri.value.trim()) { addRecip(ri.value); ri.value=''; }
+
+  const stato = document.getElementById('tk-stato').value;
+  const fields = {
+    title,
+    app: document.getElementById('tk-app').value.trim() || 'Generale',
+    domain: document.getElementById('tk-domain').value.trim(),
+    richiedente: document.getElementById('tk-richiedente').value.trim(),
+    assegnatario: document.getElementById('tk-assegnatario').value.trim(),
+    priorita: document.getElementById('tk-priorita').value,
+    stato,
+    scadenza: document.getElementById('tk-scadenza').value || null,
+    note: document.getElementById('tk-note').value.trim(),
+    recipients: modalRecips.slice(),
+  };
+
+  const btn = document.getElementById('btn-save-task');
+  btn.disabled = true;
+  try {
+    if (editTaskId) {
+      const t = tasks.find(x => x.id === editTaskId);
+      const wasDone = t.stato === 'completato';
+      Object.assign(t, fields, { updatedAt: new Date().toISOString() });
+      if (stato === 'completato' && !wasDone) { t.completedAt = t.completedAt || new Date().toISOString(); t.notifiedDone = false; }
+      if (stato !== 'completato') { t.completedAt = null; }
+      await db.upsertTask(t);
+      if (stato === 'completato' && !wasDone) await maybeNotifyDone(t);
+      toast('Task aggiornato ✓', 'success');
+    } else {
+      const t = await db.createTask(fields);
+      if (stato === 'completato') { t.completedAt = new Date().toISOString(); await db.upsertTask(t); await maybeNotifyDone(t); }
+      tasks.unshift(t);
+      toast('Task creato ✓', 'success');
+    }
+    tasks = ls(LS.tasks) || tasks;
+    closeModal('modal-task');
+    renderTasks();
+  } finally { btn.disabled = false; }
+}
+
+async function deleteTaskFromModal() {
+  if (!editTaskId) return;
+  await db.deleteTask(editTaskId);
+  tasks = tasks.filter(x => x.id !== editTaskId);
+  closeModal('modal-task');
+  renderTasks();
+  toast('Task eliminato', 'info');
+}
+
+/* apertura diretta da un link ?new=1 (usato da Richieste → genera task) */
+(function(){
+  const p = new URLSearchParams(location.search);
+  if (p.get('new') === '1') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(() => {
+      openTask();
+      const pre = k => p.get(k) ? (document.getElementById('tk-'+k).value = p.get(k)) : null;
+      pre('title'); pre('app'); pre('domain'); pre('richiedente');
+      if (p.get('priorita')) document.getElementById('tk-priorita').value = p.get('priorita');
+    }, 300));
+  }
+})();
+</script>
+</body>
+</html>

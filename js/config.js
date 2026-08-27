@@ -453,6 +453,7 @@ const LS = {
   settings: 'dlt_settings',
   meetings: 'dlt_meetings',   // call del giovedì
   reqspec:  'dlt_reqspec',    // richieste speciali software/hardware
+  tasks:    'dlt_tasks',      // backlog task interni (Area62)
 };
 
 // ── CAPABILITIES (chi può fare cosa) ──

@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 49;
+const APP_BUILD = 50;
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
 (function installCopilotBridge() {
@@ -66,7 +66,7 @@ function installCopilotReturnButton() {
 }
 
 const AREA62_ROOM_PAGES = new Set(['dashboard.html', 'booking.html', 'checks.html', 'tickets.html', 'assistente.html']);
-const AREA62_DELOITTE_PAGES = new Set(['richieste.html', 'documenti.html', 'rapporto.html']);
+const AREA62_DELOITTE_PAGES = new Set(['richieste.html', 'documenti.html', 'rapporto.html', 'task.html']);
 
 function normalizeWorkspace(value) {
   if (value === 'rooms' || value === 'viva' || value === 'viva-rooms') return 'rooms';
@@ -137,7 +137,7 @@ function applyWorkspaceChrome() {
   });
 
   const roomPages = new Set(['dashboard.html', 'booking.html', 'checks.html', 'tickets.html', 'assistente.html']);
-  const deloittePages = new Set(['richieste.html', 'documenti.html', 'rapporto.html']);
+  const deloittePages = new Set(['richieste.html', 'documenti.html', 'rapporto.html', 'task.html']);
   document.querySelectorAll('.nav-link').forEach((link) => {
     const page = (link.getAttribute('href') || '').split('?')[0];
     const deloitteLink = deloittePages.has(page);

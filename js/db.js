@@ -255,6 +255,89 @@ const db = {
     } catch (e) { console.warn('refreshTickets', e); return ls(LS.tickets) || []; }
   },
 
+  /* ── TASK INTERNI (backlog Area62) — scritture per-riga, MAI push distruttivo ── */
+  _taskToDb(t) {
+    return {
+      id:t.id, app:t.app||null, domain:t.domain||null, title:t.title||null, descr:t.descr||null,
+      richiedente:t.richiedente||null, assegnatario:t.assegnatario||null,
+      priorita:t.priorita||'media', stato:t.stato||'da-fare', scadenza:t.scadenza||null,
+      note:t.note||null, recipients:t.recipients||[],
+      created_at:_num(t.createdAt), updated_at:_num(t.updatedAt), completed_at:_num(t.completedAt),
+      notified_done:!!t.notifiedDone,
+    };
+  },
+  _taskFromDb(r) {
+    return {
+      id:r.id, app:r.app, domain:r.domain, title:r.title, descr:r.descr,
+      richiedente:r.richiedente, assegnatario:r.assegnatario,
+      priorita:r.priorita, stato:r.stato, scadenza:r.scadenza, note:r.note,
+      recipients:r.recipients||[],
+      createdAt:r.created_at, updatedAt:r.updated_at, completedAt:r.completed_at,
+      notifiedDone:r.notified_done,
+    };
+  },
+  async getTasks() {
+    if (DEMO_MODE) return ls(LS.tasks) || [];
+    _initSb();
+    const { data, error } = await _sb.from('tasks').select('*').order('created_at', { ascending: false });
+    if (error) { console.error('getTasks', error); return ls(LS.tasks) || []; }
+    return (data || []).map(this._taskFromDb);
+  },
+  async refreshTasks() {
+    if (DEMO_MODE) return ls(LS.tasks) || [];
+    try {
+      const fresh = await this.getTasks();
+      localStorage.setItem(LS.tasks, JSON.stringify(fresh));
+      return fresh;
+    } catch (e) { console.warn('refreshTasks', e); return ls(LS.tasks) || []; }
+  },
+  async createTask(fields) {
+    const now = new Date().toISOString();
+    const t = { priorita:'media', stato:'da-fare', recipients:[], createdAt:now, updatedAt:now, ...fields };
+    if (DEMO_MODE) {
+      const list = ls(LS.tasks) || [];
+      t.id = t.id || 'TSK-' + String(list.length + 1).padStart(3, '0');
+      list.unshift(t); lsSet(LS.tasks, list);
+      return t;
+    }
+    _initSb();
+    let next = 1;
+    try {
+      const { data } = await _sb.from('tasks').select('id');
+      next = 1 + (data || []).reduce((m, r) => {
+        const n = parseInt(String(r.id).replace(/\D/g, ''), 10);
+        return isNaN(n) ? m : Math.max(m, n);
+      }, 0);
+    } catch (e) { console.error('createTask count', e); }
+    t.id = 'TSK-' + String(next).padStart(3, '0');
+    const { error } = await _sb.from('tasks').insert(this._taskToDb(t));
+    if (error) throw new Error(error.message);
+    const list = ls(LS.tasks) || []; list.unshift(t);
+    localStorage.setItem(LS.tasks, JSON.stringify(list));
+    return t;
+  },
+  async upsertTask(task) {
+    const list = ls(LS.tasks) || [];
+    const i = list.findIndex(t => t.id === task.id);
+    if (i >= 0) list[i] = task; else list.unshift(task);
+    localStorage.setItem(LS.tasks, JSON.stringify(list));
+    if (DEMO_MODE) return task;
+    _initSb();
+    try {
+      const { error } = await _sb.from('tasks').upsert(this._taskToDb(task));
+      if (error) throw error;
+    } catch (e) { console.error('upsertTask', e); toast('Errore salvataggio task', 'error'); }
+    return task;
+  },
+  async deleteTask(id) {
+    const list = (ls(LS.tasks) || []).filter(t => t.id !== id);
+    localStorage.setItem(LS.tasks, JSON.stringify(list));
+    if (DEMO_MODE) return;
+    _initSb();
+    try { const { error } = await _sb.from('tasks').delete().eq('id', id); if (error) throw error; }
+    catch (e) { console.error('deleteTask', e); toast('Errore eliminazione task', 'error'); }
+  },
+
   // usate da checks.html
   async getCheckState(room, date) {
     if (DEMO_MODE) {
