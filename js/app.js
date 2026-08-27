@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 50;
+const APP_BUILD = 51;
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
 (function installCopilotBridge() {
@@ -85,6 +85,13 @@ function workspaceFromPage() {
 }
 
 function getWorkspaceContext() {
+  // Pagine a contesto FISSO: lo decide la pagina, non il parametro ?workspace ereditato dal menù.
+  // Così le pagine Deloitte (Richieste/Documenti/Rapporto/Task) mostrano SEMPRE il logo Deloitte,
+  // e le pagine sala restano "Viva Rooms". Solo la Dashboard resta duale.
+  const page = currentPageName();
+  if (AREA62_DELOITTE_PAGES.has(page)) return 'deloitte';
+  if (AREA62_ROOM_PAGES.has(page) && page !== 'dashboard.html') return 'rooms';
+
   const params = new URLSearchParams(window.location.search);
   const explicit = normalizeWorkspace(params.get('workspace') || params.get('area'));
   if (explicit) {
