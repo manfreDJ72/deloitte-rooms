@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 51;
+const APP_BUILD = 52;
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
 (function installCopilotBridge() {
@@ -133,14 +133,10 @@ function applyWorkspaceChrome() {
   rewriteWorkspaceLinks(workspace);
 
   const isRooms = workspace === 'rooms';
-  const titleSuffix = isRooms ? 'Viva Room Management' : 'Deloitte Operations';
-  document.title = document.title.replace(/Deloitte Room Management/g, titleSuffix);
-
-  document.querySelectorAll('.header-title').forEach((el) => {
-    el.textContent = isRooms ? 'Viva Room Management' : 'Deloitte Operations';
-  });
+  // Header uniforme su OGNI pagina: sempre AREA62 + logo Deloitte + "Room Management".
+  // Il contesto workspace governa solo la navigazione, NON il branding in alto a sinistra.
   document.querySelectorAll('.header-logo-deloitte').forEach((logo) => {
-    logo.style.display = isRooms ? 'none' : '';
+    logo.style.display = '';
   });
 
   const roomPages = new Set(['dashboard.html', 'booking.html', 'checks.html', 'tickets.html', 'assistente.html']);
