@@ -351,6 +351,14 @@ const db = {
     try { const { data, error } = await _sb.from('maintenance').select('*'); if (error) throw error; return (data||[]).map(SYNC[LS.maint].fromDb); }
     catch (e) { console.warn('getMaintenance', e); return ls(LS.maint) || []; }
   },
+  // Ricarica una collezione fresca dal DB nella cache locale (nessun push):
+  // evita che una cache vecchia nasconda dati nuovi o li cancelli con un push distruttivo.
+  async refreshCollection(key) {
+    if (DEMO_MODE || !SYNC[key]) return ls(key) || [];
+    _initSb();
+    try { const fresh = await _fetchCollection(key); localStorage.setItem(key, JSON.stringify(fresh)); return fresh; }
+    catch (e) { console.warn('refreshCollection', key, e); return ls(key) || []; }
+  },
 
   // usate da checks.html
   async getCheckState(room, date) {
