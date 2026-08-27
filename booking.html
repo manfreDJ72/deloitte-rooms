@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Prenotazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=54">
+  <link rel="stylesheet" href="css/style.css?v=55">
   <style>
     /* ── Supporto creativo + allegati ── */
     .creative-flag {
@@ -370,10 +370,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=54"></script>
-<script src="js/app.js?v=54"></script>
-<script src="js/db.js?v=54"></script>
-<script src="js/tour.js?v=54"></script>
+<script src="js/config.js?v=55"></script>
+<script src="js/app.js?v=55"></script>
+<script src="js/db.js?v=55"></script>
+<script src="js/tour.js?v=55"></script>
 <script>
 let weekOffset = 0;
 let monthOffset = 0;
@@ -527,7 +527,8 @@ function renderMonth() {
     const d = new Date(start); d.setDate(start.getDate() + i);
     const inMonth = d.getMonth() === first.getMonth();
     const isToday = d.getTime() === today.getTime();
-    const dayEvents = events.filter(ev => new Date(ev.start).toDateString() === d.toDateString())
+    const dayEnd = new Date(d); dayEnd.setDate(d.getDate() + 1);
+    const dayEvents = events.filter(ev => new Date(ev.start) < dayEnd && new Date(ev.end) > d)  // multi-giorno: mostra in ogni giorno coperto
       .sort((a,b) => new Date(a.start) - new Date(b.start));
     const cellISO = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9).toISOString();
     html += `<div class="cm-cell${inMonth?'':' out'}" onclick="cellClick(event,'${cellISO}','9')">
@@ -553,6 +554,43 @@ function renderCalendar() {
   const allEvents = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
   const events    = filterRoom === 'all' ? allEvents : allEvents.filter(e => e.room === filterRoom);
 
+  const HOURPX = 52, gridStart = HOURS[0], gridEnd = HOURS[HOURS.length - 1] + 1;
+  // Assegna a ogni segmento una "colonna" (lane) quando più eventi si sovrappongono (stile Calendario Mac)
+  function assignLanes(segs) {
+    segs.sort((a,b) => a.cs - b.cs || b.ce - a.ce);
+    let cluster = [], active = [], clusterEnd = null;
+    const close = () => { const n = Math.max(1, ...cluster.map(s => s.lane + 1)); cluster.forEach(s => s.lanes = n); cluster = []; active = []; clusterEnd = null; };
+    for (const seg of segs) {
+      const cs = seg.cs.getTime(), ce = seg.ce.getTime();
+      if (clusterEnd !== null && cs >= clusterEnd) close();
+      active = active.filter(a => a.end > cs);
+      const used = new Set(active.map(a => a.lane));
+      let lane = 0; while (used.has(lane)) lane++;
+      seg.lane = lane; active.push({ lane, end: ce });
+      cluster.push(seg); clusterEnd = clusterEnd === null ? ce : Math.max(clusterEnd, ce);
+    }
+    if (cluster.length) close();
+    return segs;
+  }
+  // Spezza gli eventi multi-giorno in segmenti per singolo giorno (clippati alle ore visibili)
+  const segsByDay = {};
+  days.forEach(day => {
+    const dayMid = new Date(day); dayMid.setHours(0,0,0,0);
+    const nextMid = new Date(dayMid); nextMid.setDate(dayMid.getDate() + 1);
+    const visStart = new Date(day); visStart.setHours(gridStart,0,0,0);
+    const visEnd   = new Date(day); visEnd.setHours(gridEnd,0,0,0);
+    const segs = [];
+    events.forEach(ev => {
+      const s = new Date(ev.start), e2 = new Date(ev.end);
+      if (!(s < nextMid && e2 > dayMid)) return;              // non tocca questo giorno
+      const cs = s < visStart ? new Date(visStart) : s;       // clip a inizio giornata visibile
+      const ce = e2 > visEnd  ? new Date(visEnd)  : e2;       // clip a fine giornata visibile
+      if (ce <= cs) return;                                   // fuori dalle ore mostrate
+      segs.push({ ev, cs, ce, contBefore: s < dayMid, contAfter: e2 > nextMid, lane: 0, lanes: 1 });
+    });
+    segsByDay[day.toDateString()] = assignLanes(segs);
+  });
+
   let html = `<div class="cal-grid">
     <div class="cal-head-empty" style="border-bottom:1px solid var(--border);"></div>
     ${days.map((d,i) => {
@@ -566,28 +604,23 @@ function renderCalendar() {
   HOURS.forEach(h => {
     html += `<div class="cal-time">${String(h).padStart(2,'0')}:00</div>`;
     days.forEach(day => {
-      const dayStart = new Date(day); dayStart.setHours(h,0,0,0);
-      const dayEnd   = new Date(day); dayEnd.setHours(h+1,0,0,0);
-
-      const slotEvents = events.filter(ev => {
-        const s = new Date(ev.start), e2 = new Date(ev.end);
-        return s < dayEnd && e2 > dayStart && new Date(ev.start).toDateString() === day.toDateString();
-      });
-
+      const segs = (segsByDay[day.toDateString()] || []).filter(seg => seg.cs.getHours() === h);
       let evHtml = '';
-      slotEvents.forEach(ev => {
-        const eStart = new Date(ev.start), eEnd = new Date(ev.end);
-        if (eStart.getHours() !== h) return;
-        const dur = (eEnd - eStart) / 3600000;
-        const heightPx = Math.max(20, dur * 52 - 4);
-        const cls = evClass(ev);
-        const room = ROOMS.find(r => r.id === ev.room);
-        evHtml += `<div class="cal-event ${cls}" style="height:${heightPx}px;" data-id="${ev.id}" onclick="showEvent('${ev.id}')">
+      segs.forEach(seg => {
+        const ev = seg.ev;
+        const topPx    = seg.cs.getMinutes() / 60 * HOURPX;
+        const durH     = (seg.ce - seg.cs) / 3600000;
+        const heightPx = Math.max(18, durH * HOURPX - 3);
+        const leftPct  = seg.lane / seg.lanes * 100;
+        const widthPct = 100 / seg.lanes;
+        const cls  = evClass(ev);
+        const sFmt = seg.contBefore ? '…' : new Date(ev.start).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+        const eFmt = seg.contAfter  ? '…' : new Date(ev.end).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+        evHtml += `<div class="cal-event ${cls}" style="top:${topPx}px;height:${heightPx}px;left:calc(${leftPct}% + 2px);width:calc(${widthPct}% - 4px);right:auto;" data-id="${ev.id}" onclick="showEvent('${ev.id}')" title="${(ev.title||'').replace(/"/g,'&quot;')}">
           <div class="ev-name">${ev.title}</div>
-          <div class="ev-time">${eStart.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}–${eEnd.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="ev-time">${sFmt}–${eFmt}</div>
         </div>`;
       });
-
       html += `<div class="cal-cell" onclick="cellClick(event,'${day.toISOString()}','${h}')">${evHtml}</div>`;
     });
   });
