@@ -222,7 +222,7 @@
           <td>${esc(t.id)}</td>
           <td>${esc(roomLabel(t.room))}</td>
           <td>${pill('p-' + String(t.priority || '').toLowerCase(), t.priority || '—')}</td>
-          <td>${esc(t.title || '')}</td>
+          <td>${esc(t.title || '')}${(t.desc || t.noteResidue) ? `<div style="color:#6b7685;font-size:11.5px;margin-top:3px;">${esc([t.desc, t.noteResidue].filter(Boolean).join(' · '))}</div>` : ''}</td>
           <td>${pill(t.status === 'resolved' || t.status === 'closed' ? 's-done' : t.status === 'open' ? 's-open' : 's-prog', STATO_TCK[t.status] || t.status || '—')}</td>
           <td>${itD(t.createdAt)}</td>
           <td>${t.resolvedAt ? itD(t.resolvedAt) : '—'}</td>
@@ -250,7 +250,7 @@
         ${tks.map(t => `<tr>
           <td>${esc(t.id)}</td>
           <td>${esc(t.app || '—')}${t.domain ? ' · ' + esc(t.domain) : ''}</td>
-          <td>${esc(t.title || '')}</td>
+          <td>${esc(t.title || '')}${t.note ? `<div style="color:#6b7685;font-size:11.5px;margin-top:3px;">${esc(t.note)}</div>` : ''}</td>
           <td>${esc(t.assegnatario || '—')}</td>
           <td>${pill('p-' + String(t.priorita || '').toLowerCase(), (t.priorita || '—').charAt(0).toUpperCase() + (t.priorita || '').slice(1))}</td>
           <td>${pill(t.stato === 'completato' ? 's-done' : t.stato === 'in-corso' ? 's-prog' : 's-open', STATO_TASK[t.stato] || t.stato || '—')}</td>

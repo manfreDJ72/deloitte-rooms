@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Anomalie – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=59">
+  <link rel="stylesheet" href="css/style.css?v=60">
 </head>
 <body>
 
@@ -234,11 +234,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=59"></script>
-<script src="js/app.js?v=59"></script>
-<script src="js/db.js?v=59"></script>
-<script src="js/report.js?v=59"></script>
-<script src="js/tour.js?v=59"></script>
+<script src="js/config.js?v=60"></script>
+<script src="js/app.js?v=60"></script>
+<script src="js/db.js?v=60"></script>
+<script src="js/report.js?v=60"></script>
+<script src="js/tour.js?v=60"></script>
 <script>
 let filterStatus   = 'all';
 let filterRoomVal  = 'all';
@@ -383,7 +383,7 @@ function renderAll() {
   }
 
   if (openActive.length === 0 && resolved.length === 0) {
-    listEl.innerHTML = `<div class="empty"><div class="empty-icon">✅</div>
+    listEl.innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 48 48" width="40" height="40" style="filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))"><rect x="7" y="7" width="34" height="34" rx="7" fill="#dcdcdc"/><rect x="7" y="7" width="34" height="34" rx="7" fill="none" stroke="#86BC25" stroke-width="2.4"/><path d="M15 24l6 6 12-13" stroke="#86BC25" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <div class="empty-title">Nessuna anomalia trovata</div>
       <p style="font-size:13px;color:var(--text-muted);margin-top:6px;">Tutti i sistemi operativi.</p></div>`;
   }
