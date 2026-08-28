@@ -46,8 +46,9 @@
   .guide-item.open .guide-a{display:block}
   .guide-a ol{margin:4px 0;padding-left:18px}.guide-a li{margin:5px 0}
   .guide-a b{color:var(--text,#e6e6e6)}
-  .help-btn{background:none;border:none;color:var(--text-muted,#aaa);font-size:17px;cursor:pointer;padding:4px 7px;border-radius:8px}
-  .help-btn:hover{color:var(--green,#86BC25);background:rgba(134,188,37,.1)}
+  .help-btn{position:relative;background:none;border:none;color:#fff;font-family:var(--font-ui,'Inter',system-ui,sans-serif);font-weight:800;font-size:16px;line-height:1;cursor:pointer;padding:5px 10px;border-radius:8px}
+  .help-btn:hover{background:rgba(134,188,37,.14)}
+  .help-dot{position:absolute;top:3px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--green,#86BC25);box-shadow:0 0 0 2px var(--bg,#0a0a0a)}
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
@@ -60,7 +61,7 @@
     { sel:'a[href="richieste.html"]', title:'📨 Richieste', body:'Le call del giovedì con report e task, più le richieste speciali software (webapp) e hardware (STS).' },
     { sel:'a[href="documenti.html"]', title:'🗄 Documenti', body:'Archivio di contratti, rapporti, materiali e <b>preventivi</b> (con approvazione). Visualizzi tutto dentro il portale.' },
     { sel:'a[href="assistente.html"]',title:'🟢 ArmonIA', body:'Il tuo assistente AI: legge dati e contratto, risponde anche a voce, rileva cosa manca e prepara i preventivi.' },
-    { center:true, title:'Tutto qui!', body:'Ritrovi questa guida e i tutorial quando vuoi cliccando <b>❓</b> in alto a destra. Buon lavoro con ArmonIA!' },
+    { center:true, title:'Tutto qui!', body:'Ritrovi questa guida e i tutorial quando vuoi cliccando <b>?</b> in alto a destra. Buon lavoro con ArmonIA!' },
   ];
 
   /* ── TUTORIAL (Guida) ── */
@@ -185,7 +186,7 @@
     const right = document.querySelector('.header-right');
     if (right && !document.querySelector('.help-btn')) {
       const b = document.createElement('button');
-      b.className = 'help-btn'; b.title = 'Guida e tour'; b.textContent = '❓';
+      b.className = 'help-btn'; b.title = 'Guida e tour'; b.innerHTML = '?<span class="help-dot"></span>';
       b.onclick = window.openGuida;
       right.insertBefore(b, right.firstChild);
     }
