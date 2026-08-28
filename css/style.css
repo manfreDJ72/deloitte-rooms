@@ -97,8 +97,7 @@ body {
 .nav-link:hover { color: var(--text); }
 .nav-link.active { color: var(--green); border-bottom-color: var(--green); }
 .nav-icon { font-size: 15px; display: inline-flex; align-items: center; }
-.nav-icon svg { width: 17px; height: 17px; stroke: var(--green); fill: none; }
-.nav-link:hover .nav-icon svg { stroke: #a6e05a; }
+.nav-icon svg { width: 18px; height: 18px; }
 /* Assistente: cerchio verde "Armonia" con glow interno ed esterno su fondo scuro */
 .armonia-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
   background: transparent;                       /* centro bucato (nero) */
