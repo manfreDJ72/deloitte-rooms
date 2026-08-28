@@ -46,9 +46,9 @@
   .guide-item.open .guide-a{display:block}
   .guide-a ol{margin:4px 0;padding-left:18px}.guide-a li{margin:5px 0}
   .guide-a b{color:var(--text,#e6e6e6)}
-  .help-btn{position:relative;background:none;border:none;color:#fff;font-family:var(--font-ui,'Inter',system-ui,sans-serif);font-weight:800;font-size:16px;line-height:1;cursor:pointer;padding:5px 10px;border-radius:8px}
+  .help-btn{background:none;border:none;cursor:pointer;padding:5px 8px;border-radius:8px;display:inline-flex;align-items:center}
   .help-btn:hover{background:rgba(134,188,37,.14)}
-  .help-dot{position:absolute;top:3px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--green,#86BC25);box-shadow:0 0 0 2px var(--bg,#0a0a0a)}
+  .help-btn svg{display:block}
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
@@ -186,7 +186,7 @@
     const right = document.querySelector('.header-right');
     if (right && !document.querySelector('.help-btn')) {
       const b = document.createElement('button');
-      b.className = 'help-btn'; b.title = 'Guida e tour'; b.innerHTML = '?<span class="help-dot"></span>';
+      b.className = 'help-btn'; b.title = 'Guida e tour'; b.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" aria-hidden="true"><path d="M9.1 9a2.9 2.9 0 1 1 4.3 2.5c-.9.55-1.4 1.1-1.4 2.2v.5" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="17.2" r="1.55" fill="#86BC25"/></svg>';
       b.onclick = window.openGuida;
       right.insertBefore(b, right.firstChild);
     }
