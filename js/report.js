@@ -246,12 +246,11 @@
     const secTask = !opt.task ? '' : `
       <div class="rep-sec">
         <h2>Task interni <span>(${tks.length}${opt.tagged ? ' · solo contrassegnati' : ''})</span></h2>
-        ${tks.length ? `<table class="rep-table"><thead><tr><th>ID</th><th>App / Ambito</th><th>Descrizione</th><th>Assegnatario</th><th>Priorità</th><th>Stato</th><th>Completato</th></tr></thead><tbody>
+        ${tks.length ? `<table class="rep-table"><thead><tr><th>ID</th><th>App / Ambito</th><th>Descrizione</th><th>Priorità</th><th>Stato</th><th>Completato</th></tr></thead><tbody>
         ${tks.map(t => `<tr>
           <td>${esc(t.id)}</td>
           <td>${esc(t.app || '—')}${t.domain ? ' · ' + esc(t.domain) : ''}</td>
           <td>${esc(t.title || '')}${t.note ? `<div style="color:#6b7685;font-size:11.5px;margin-top:3px;">${esc(t.note)}</div>` : ''}</td>
-          <td>${esc(t.assegnatario || '—')}</td>
           <td>${pill('p-' + String(t.priorita || '').toLowerCase(), (t.priorita || '—').charAt(0).toUpperCase() + (t.priorita || '').slice(1))}</td>
           <td>${pill(t.stato === 'completato' ? 's-done' : t.stato === 'in-corso' ? 's-prog' : 's-open', STATO_TASK[t.stato] || t.stato || '—')}</td>
           <td>${t.completedAt ? itD(t.completedAt) : '—'}</td>

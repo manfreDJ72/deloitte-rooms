@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Richieste da Cliente – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=60">
+  <link rel="stylesheet" href="css/style.css?v=61">
   <style>
     /* ── Task aperti (tracking) ── */
     .track-card {
@@ -279,11 +279,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=60"></script>
-<script src="js/app.js?v=60"></script>
-<script src="js/db.js?v=60"></script>
-<script src="js/report.js?v=60"></script>
-<script src="js/tour.js?v=60"></script>
+<script src="js/config.js?v=61"></script>
+<script src="js/app.js?v=61"></script>
+<script src="js/db.js?v=61"></script>
+<script src="js/report.js?v=61"></script>
+<script src="js/tour.js?v=61"></script>
 <script>
 const MONTHS_SHORT = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
 const TASK_STATI = { aperto:'Aperto', 'in-corso':'In corso', risolto:'Risolto' };
@@ -374,6 +374,7 @@ function renderTracking() {
       <select class="form-control task-status-sel" data-mid="${t.meetingId}" data-tid="${t.id}">
         ${Object.entries(TASK_STATI).map(([k,v]) => `<option value="${k}" ${t.stato===k?'selected':''}>${v}</option>`).join('')}
       </select>
+      <button class="btn btn-outline btn-sm" style="flex-shrink:0;" data-gen-mid="${t.meetingId}" data-gen-tid="${t.id}" title="Apri un task interno da risolvere e assegnare">➕ Task</button>
     </div>`;
   }).join('');
   el.querySelectorAll('.task-status-sel').forEach(sel => sel.addEventListener('change', () => {
@@ -381,6 +382,25 @@ function renderTracking() {
     const task = m?.tasks.find(x => x.id === sel.dataset.tid);
     if (task) { task.stato = sel.value; lsSet(LS.meetings, meetings); renderTracking(); renderMeetings(); }
   }));
+  el.querySelectorAll('[data-gen-mid]').forEach(b => b.addEventListener('click', () => callTaskToBacklog(b.dataset.genMid, b.dataset.genTid)));
+}
+
+/* Apre un task interno (backlog) da un task della call del giovedì */
+function callTaskToBacklog(mid, tid) {
+  const m = meetings.find(x => x.id === mid);
+  const t = m?.tasks.find(x => x.id === tid);
+  if (!t) return;
+  const params = new URLSearchParams({
+    new: '1',
+    title: t.desc || '',
+    app: 'Generale',
+    domain: 'Call giovedì',
+    richiedente: t.area || '',
+    assegnatario: t.assegnato || '',
+    priorita: t.tipo === 'fix' ? 'alta' : 'media',
+    note: 'Da call del giovedì ' + formatDate(m.date),
+  });
+  location.href = 'task.html?' + params.toString();
 }
 
 /* ─────────── MEETINGS ─────────── */
