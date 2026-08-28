@@ -56,8 +56,8 @@ const SYNC = {
   },
   [LS.meetings]: {
     table: 'meetings',
-    toDb: m => ({ id:m.id, date:m.date, partecipanti:m.partecipanti||null, argomenti:m.argomenti||null, tasks:m.tasks||[] }),
-    fromDb: r => ({ id:r.id, date:r.date, partecipanti:r.partecipanti, argomenti:r.argomenti, tasks:r.tasks||[] }),
+    toDb: m => ({ id:m.id, date:m.date, partecipanti:m.partecipanti||null, argomenti:m.argomenti||null, tasks:m.tasks||[], call_link:m.callLink||null, appunti:m.appunti||null }),
+    fromDb: r => ({ id:r.id, date:r.date, partecipanti:r.partecipanti, argomenti:r.argomenti, tasks:r.tasks||[], callLink:r.call_link, appunti:r.appunti }),
   },
   [LS.reqspec]: {
     table: 'reqspec',

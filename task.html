@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Task Interni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=61">
+  <link rel="stylesheet" href="css/style.css?v=62">
   <style>
     .tk-card {
       background:var(--bg-card); border:1.5px solid var(--border);
@@ -34,6 +34,15 @@
     .tk-row-actions { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
     .tk-report-tag { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:4px 10px; border-radius:20px; cursor:pointer; border:1px solid var(--border); background:var(--bg-card2); color:var(--text-muted); user-select:none; transition:all .15s; }
     .tk-report-tag.on { background:rgba(134,188,37,.15); color:var(--green); border-color:rgba(134,188,37,.4); }
+
+    /* alert task da sistemare (senza assegnatario o scadenza) */
+    .tk-alert { background:rgba(240,160,48,.07); border:1.5px solid rgba(240,160,48,.4); border-radius:12px; padding:14px 16px; margin-bottom:18px; }
+    .tk-alert-head { display:flex; align-items:center; gap:8px; font-weight:800; font-size:13px; color:var(--orange); margin-bottom:6px; }
+    .tk-alert-row { display:flex; align-items:center; gap:10px; padding:7px 0; font-size:13px; cursor:pointer; border-bottom:1px solid rgba(240,160,48,.15); }
+    .tk-alert-row:last-child { border-bottom:none; }
+    .tk-alert-row:hover .ta-title { text-decoration:underline; }
+    .ta-title { flex:1; font-weight:600; }
+    .ta-miss { font-size:11px; font-weight:700; color:var(--orange); background:rgba(240,160,48,.15); padding:2px 9px; border-radius:20px; white-space:nowrap; }
 
     /* chips destinatari */
     .chips-box { display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid var(--border); border-radius:8px; background:var(--bg-card2); min-height:42px; align-items:center; }
@@ -83,6 +92,9 @@
     <h1 class="page-title">Task Interni</h1>
     <p class="page-sub">Backlog Area62 — attività tecniche interne. Al completamento parte una mail ai destinatari scelti sul task.</p>
   </div>
+
+  <!-- Alert: task senza assegnatario o scadenza -->
+  <div id="tk-alert"></div>
 
   <!-- Stats -->
   <div class="stats-row" style="margin-bottom:18px;">
@@ -200,11 +212,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=61"></script>
-<script src="js/app.js?v=61"></script>
-<script src="js/db.js?v=61"></script>
-<script src="js/report.js?v=61"></script>
-<script src="js/tour.js?v=61"></script>
+<script src="js/config.js?v=62"></script>
+<script src="js/app.js?v=62"></script>
+<script src="js/db.js?v=62"></script>
+<script src="js/report.js?v=62"></script>
+<script src="js/tour.js?v=62"></script>
 <script>
 const PRIO_LABEL  = { alta:'Alta', media:'Media', bassa:'Bassa' };
 const PRIO_BADGE  = { alta:'badge-p1', media:'badge-p2', bassa:'badge-p3' };
@@ -309,7 +321,24 @@ function matchFilter(t) {
   if (filterStato === 'attivi') return t.stato !== 'completato';
   return t.stato === filterStato;
 }
+function renderAlert() {
+  const need = tasks.filter(t => t.stato !== 'completato' && (!t.assegnatario || !t.scadenza));
+  const al = document.getElementById('tk-alert');
+  if (!need.length) { al.innerHTML = ''; return; }
+  al.innerHTML = `
+    <div class="tk-alert">
+      <div class="tk-alert-head">⚠️ ${need.length} task da sistemare — manca assegnatario o scadenza</div>
+      ${need.map(t => `<div class="tk-alert-row" onclick="openTask('${t.id}')">
+        <span class="tk-id">${t.id}</span>
+        <span class="ta-title">${esc(t.title || '')}</span>
+        ${!t.assegnatario ? '<span class="ta-miss">da assegnare</span>' : ''}
+        ${!t.scadenza ? '<span class="ta-miss">senza scadenza</span>' : ''}
+      </div>`).join('')}
+    </div>`;
+}
+
 function renderTasks() {
+  renderAlert();
   document.getElementById('tk-tot').textContent  = tasks.length;
   document.getElementById('tk-todo').textContent = tasks.filter(t=>t.stato==='da-fare').length;
   document.getElementById('tk-prog').textContent = tasks.filter(t=>t.stato==='in-corso').length;

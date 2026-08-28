@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Richieste da Cliente – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=61">
+  <link rel="stylesheet" href="css/style.css?v=62">
   <style>
     /* ── Task aperti (tracking) ── */
     .track-card {
@@ -186,8 +186,21 @@
         </div>
       </div>
       <div class="form-group">
+        <label class="form-label">🔗 Link call (Teams / Meet)</label>
+        <div style="display:flex;gap:8px;">
+          <input class="form-control" id="mt-link" placeholder="https://teams.microsoft.com/... (resta memorizzato per le prossime)" style="flex:1;">
+          <button type="button" class="btn btn-outline" id="btn-open-call" title="Apri la call">📞 Apri</button>
+        </div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Argomenti discussi / Note</label>
         <textarea class="form-control" id="mt-argomenti" rows="3" placeholder="Necessità della sala, punti aperti, decisioni prese..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">📝 Appunti / trascrizione call
+          <button type="button" class="btn btn-outline btn-sm" id="btn-extract-tasks" style="margin-left:8px;padding:2px 10px;font-size:11px;">🤖 Estrai task dagli appunti</button>
+        </label>
+        <textarea class="form-control" id="mt-appunti" rows="4" placeholder="Incolla qui gli appunti di Granola / la trascrizione Teams: l'AI ne estrae i task."></textarea>
       </div>
 
       <div class="form-group">
@@ -279,11 +292,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=61"></script>
-<script src="js/app.js?v=61"></script>
-<script src="js/db.js?v=61"></script>
-<script src="js/report.js?v=61"></script>
-<script src="js/tour.js?v=61"></script>
+<script src="js/config.js?v=62"></script>
+<script src="js/app.js?v=62"></script>
+<script src="js/db.js?v=62"></script>
+<script src="js/report.js?v=62"></script>
+<script src="js/tour.js?v=62"></script>
 <script>
 const MONTHS_SHORT = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
 const TASK_STATI = { aperto:'Aperto', 'in-corso':'In corso', risolto:'Risolto' };
@@ -326,6 +339,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }));
 
   document.getElementById('btn-new-meeting').addEventListener('click', () => openMeeting());
+  document.getElementById('btn-open-call').addEventListener('click', () => {
+    const u = document.getElementById('mt-link').value.trim();
+    if (u) window.open(u, '_blank'); else toast('Inserisci prima il link della call', 'error');
+  });
+  document.getElementById('btn-extract-tasks').addEventListener('click', extractTasksAI);
   document.getElementById('btn-add-task').addEventListener('click', () => { modalTasks.push(newTask()); renderModalTasks(); });
   document.getElementById('btn-save-meeting').addEventListener('click', saveMeeting);
   document.getElementById('btn-del-meeting').addEventListener('click', deleteMeeting);
@@ -374,7 +392,9 @@ function renderTracking() {
       <select class="form-control task-status-sel" data-mid="${t.meetingId}" data-tid="${t.id}">
         ${Object.entries(TASK_STATI).map(([k,v]) => `<option value="${k}" ${t.stato===k?'selected':''}>${v}</option>`).join('')}
       </select>
-      <button class="btn btn-outline btn-sm" style="flex-shrink:0;" data-gen-mid="${t.meetingId}" data-gen-tid="${t.id}" title="Apri un task interno da risolvere e assegnare">➕ Task</button>
+      ${t.backlogId
+        ? `<a class="btn btn-ghost btn-sm" style="flex-shrink:0;" href="task.html" title="Registrato nel backlog: aprilo nella pagina Task">📂 ${t.backlogId}</a>`
+        : `<button class="btn btn-outline btn-sm" style="flex-shrink:0;" data-gen-mid="${t.meetingId}" data-gen-tid="${t.id}" title="Apri un task interno da risolvere e assegnare">➕ Task</button>`}
     </div>`;
   }).join('');
   el.querySelectorAll('.task-status-sel').forEach(sel => sel.addEventListener('change', () => {
@@ -383,6 +403,38 @@ function renderTracking() {
     if (task) { task.stato = sel.value; lsSet(LS.meetings, meetings); renderTracking(); renderMeetings(); }
   }));
   el.querySelectorAll('[data-gen-mid]').forEach(b => b.addEventListener('click', () => callTaskToBacklog(b.dataset.genMid, b.dataset.genTid)));
+}
+
+/* Estrae i task dagli appunti/trascrizione della call usando l'AI (Edge Function ai-assistant) */
+async function extractTasksAI() {
+  const txt = document.getElementById('mt-appunti').value.trim();
+  if (!txt) { toast('Incolla prima gli appunti della call', 'error'); return; }
+  const b = document.getElementById('btn-extract-tasks');
+  b.disabled = true; const orig = b.textContent; b.textContent = '🤖 Estraggo…';
+  try {
+    const prompt = 'Sei un assistente che estrae le azioni operative (task) dagli appunti di una call di lavoro sulla gestione delle sale immersive Deloitte (Solaria e Armonia).\n'
+      + 'Dagli appunti qui sotto estrai i task concreti da svolgere. Rispondi SOLO con un array JSON, senza alcun testo prima o dopo, nel formato:\n'
+      + '[{"desc":"cosa fare, breve e operativo","area":"chi lo richiede se noto altrimenti stringa vuota","assegnato":"a chi e\' assegnato se noto altrimenti stringa vuota","tipo":"fix se corregge un malfunzionamento, altrimenti nuova"}]\n\n'
+      + 'APPUNTI:\n' + txt;
+    const res = await db.aiChat([{ role: 'user', content: prompt }], { scopo: 'estrazione-task-call-giovedi' });
+    const match = String(res.reply || '').match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('risposta AI non riconosciuta');
+    const arr = JSON.parse(match[0]);
+    let n = 0;
+    for (const x of (Array.isArray(arr) ? arr : [])) {
+      const desc = String(x.desc || '').trim();
+      if (!desc) continue;
+      if (modalTasks.some(t => (t.desc || '').trim().toLowerCase() === desc.toLowerCase())) continue;  // niente doppioni
+      modalTasks.push({ id: genId(), desc, tipo: x.tipo === 'fix' ? 'fix' : 'nuova',
+        area: String(x.area || '').trim(), assegnato: String(x.assegnato || '').trim(), stato: 'aperto', scadenza: '' });
+      n++;
+    }
+    renderModalTasks();
+    toast(n ? `${n} task estratti dagli appunti ✓ — controllali e salva` : 'Nessun nuovo task trovato negli appunti', n ? 'success' : 'info');
+  } catch (e) {
+    console.error('extractTasksAI', e);
+    toast('Estrazione non riuscita: ' + (e.message || 'errore AI'), 'error');
+  } finally { b.disabled = false; b.textContent = orig; }
 }
 
 /* Apre un task interno (backlog) da un task della call del giovedì */
@@ -465,6 +517,8 @@ function openMeeting(id) {
   document.getElementById('mt-date').value = m ? m.date : nextThursday();
   document.getElementById('mt-part').value = m?.partecipanti || 'Area62, Referente Deloitte';
   document.getElementById('mt-argomenti').value = m?.argomenti || '';
+  document.getElementById('mt-link').value = m?.callLink || lastCallLink();
+  document.getElementById('mt-appunti').value = m?.appunti || '';
   modalTasks = m ? (m.tasks||[]).map(t => ({...t})) : [];
   renderModalTasks();
   openModal('modal-meeting');
@@ -495,7 +549,12 @@ function renderModalTasks() {
   }));
 }
 
-function saveMeeting() {
+function lastCallLink() {
+  const withLink = meetings.filter(x => x.callLink).sort((a,b) => new Date(b.date) - new Date(a.date));
+  return withLink.length ? withLink[0].callLink : '';
+}
+
+async function saveMeeting() {
   const date = document.getElementById('mt-date').value;
   if (!date) { toast('Inserisci la data della call', 'error'); return; }
   const m = {
@@ -503,14 +562,36 @@ function saveMeeting() {
     date,
     partecipanti: document.getElementById('mt-part').value.trim(),
     argomenti: document.getElementById('mt-argomenti').value.trim(),
+    callLink: document.getElementById('mt-link').value.trim(),
+    appunti: document.getElementById('mt-appunti').value.trim(),
     tasks: modalTasks.filter(t => t.desc.trim()),
   };
+  // ogni task della call viene registrato anche nel backlog (task.html),
+  // così ha un flusso di lavorazione vero: assegnabile, con scadenza, chiudibile.
+  const btn = document.getElementById('btn-save-meeting');
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Salvo…';
+  let registered = 0;
+  try {
+    for (const t of m.tasks) {
+      if (t.backlogId) continue;   // già collegato
+      try {
+        const created = await db.createTask({
+          title: t.desc.trim(), app: 'Generale', domain: 'Call giovedì',
+          richiedente: t.area || '', assegnatario: t.assegnato || '',
+          priorita: t.tipo === 'fix' ? 'alta' : 'media',
+          scadenza: t.scadenza || null,
+          note: 'Da call del giovedì ' + formatDate(date),
+        });
+        t.backlogId = created.id; registered++;
+      } catch (e) { console.error('registra task backlog', e); }
+    }
+  } finally { btn.disabled = false; btn.textContent = orig; }
   if (editMeetingId) meetings = meetings.map(x => x.id === editMeetingId ? m : x);
   else meetings.push(m);
   lsSet(LS.meetings, meetings);
   closeModal('modal-meeting');
   renderTracking(); renderMeetings();
-  toast(editMeetingId ? 'Call aggiornata ✓' : 'Call registrata ✓', 'success');
+  toast((editMeetingId ? 'Call aggiornata ✓' : 'Call registrata ✓') + (registered ? ` · ${registered} task nel backlog` : ''), 'success');
 }
 
 function deleteMeeting() {
