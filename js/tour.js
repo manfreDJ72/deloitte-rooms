@@ -186,7 +186,7 @@
     const right = document.querySelector('.header-right');
     if (right && !document.querySelector('.help-btn')) {
       const b = document.createElement('button');
-      b.className = 'help-btn'; b.title = 'Guida e tour'; b.innerHTML = '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" aria-hidden="true"><path d="M9.1 9a2.9 2.9 0 1 1 4.3 2.5c-.9.55-1.4 1.1-1.4 2.2v.5" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="17.2" r="1.55" fill="#86BC25"/></svg>';
+      b.className = 'help-btn'; b.title = 'Guida e tour'; b.innerHTML = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" aria-hidden="true"><path d="M9.1 9a2.9 2.9 0 1 1 4.3 2.5c-.9.55-1.4 1.1-1.4 2.2v.5" stroke="#ffffff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="17.2" r="1.55" fill="#86BC25"/></svg>';
       b.onclick = window.openGuida;
       right.insertBefore(b, right.firstChild);
     }
