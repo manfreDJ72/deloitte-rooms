@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=62">
+  <link rel="stylesheet" href="css/style.css?v=63">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -284,11 +284,12 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=62"></script>
-<script src="js/app.js?v=62"></script>
-<script src="js/db.js?v=62"></script>
-<script src="js/tour.js?v=62"></script>
-<script src="js/storico-solaria.js?v=62"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="js/config.js?v=63"></script>
+<script src="js/app.js?v=63"></script>
+<script src="js/db.js?v=63"></script>
+<script src="js/tour.js?v=63"></script>
+<script src="js/storico-solaria.js?v=63"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -385,11 +386,12 @@ function showSession(n) {
 // anomalia e invia il report (completo per il mattutino, mirato per i successivi).
 async function saveSession() {
   const allItems = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
-  const done = allItems.filter(i => checkState[i.id]?.state).length;
+  // coerente col gating del bottone: le voci con ticket APERTO sono già gestite
+  // e non bloccano la chiusura (il ticket è parte della segnalazione)
+  const handled = allItems.filter(i => checkState[i.id]?.state || lockedTicket(i)).length;
   const koItems = allItems.filter(i => checkState[i.id]?.state === 'ko');
-  // guardie coerenti col gating del bottone
-  if (currentSession === 1 && done < allItems.length) {
-    toast(`Completa tutti i controlli prima di chiudere (${allItems.length - done} rimasti)`, 'error');
+  if (currentSession === 1 && handled < allItems.length) {
+    toast(`Completa i controlli non ancora eseguiti (${allItems.length - handled} rimasti — le voci a ticket sono escluse)`, 'error');
     return;
   }
   if (currentSession > 1 && koItems.length === 0) {
@@ -538,6 +540,43 @@ function buildInterventoDoc(item, s, roomLabel, dateStr, status) {
   </div></body></html>`;
 }
 
+// PDF del ticket (allegato al report del check): documento autoconsistente con
+// id, sala, priorità, stato e descrizione. Ritorna base64 (null se jsPDF assente).
+function ticketPdfB64(tk, roomLabel) {
+  try {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) return null;
+    const doc = new jsPDF();
+    const W = doc.internal.pageSize.getWidth();
+    doc.setFillColor(134, 188, 37); doc.rect(0, 0, W, 4, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(20, 25, 35);
+    doc.text(`Ticket ${tk.id} — Segnalazione anomalia`, 14, 20);
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(110, 118, 133);
+    doc.text('Area62 Srl · Deloitte Room Management', 14, 27);
+    let y = 42;
+    const row = (k, v) => {
+      if (!v) return;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(90, 98, 110); doc.text(k, 14, y);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(25, 30, 40);
+      const lines = doc.splitTextToSize(String(v), W - 74);
+      doc.text(lines, 60, y); y += lines.length * 5.5 + 3;
+    };
+    row('Voce check', tk.title);
+    row('Sala', roomLabel);
+    row('Priorità', tk.priority || 'P1');
+    row('Stato', tk.status === 'in-progress' ? 'In lavorazione' : (tk.status === 'open' || !tk.status ? 'Aperto' : tk.status));
+    row('Segnalatore', tk.segnalatore);
+    row('Aperto il', tk.createdAt ? new Date(tk.createdAt).toLocaleString('it-IT') : new Date().toLocaleString('it-IT'));
+    y += 5;
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 98, 110); doc.text('Descrizione', 14, y); y += 6.5;
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(25, 30, 40);
+    doc.splitTextToSize(tk.desc || 'Anomalia rilevata durante il check.', W - 28).forEach(l => { doc.text(l, 14, y); y += 5.5; });
+    doc.setFontSize(9); doc.setTextColor(150, 156, 166);
+    doc.text('Documento generato automaticamente dal report del check — rooms.area62.it', 14, 287);
+    return doc.output('datauristring').split(',')[1];
+  } catch (e) { console.warn('ticketPdf', e); return null; }
+}
+
 async function sendCheckReport() {
   if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) return;
   try {
@@ -647,6 +686,29 @@ async function sendCheckReport() {
       content: btoa(unescape(encodeURIComponent(buildInterventoDoc(i, checkState[i.id] || {}, roomLabel, dateStr)))),
       mimetype: 'text/html',
     }));
+
+    // ── PDF dei ticket in allegato: sia quelli APPENA aperti da questo check,
+    //    sia quelli ANCORA aperti da giorni precedenti (in attesa di chiusura) ──
+    for (const i of kos) {
+      const tkId = getCheckTicket(currentRoom, todayStr(), currentSession, i.id);
+      if (!tkId) continue;
+      const s = checkState[i.id] || {};
+      const pdf = ticketPdfB64({
+        id: tkId, title: i.name, priority: 'P1', status: 'open',
+        segnalatore: u?.name, createdAt: new Date().toISOString(),
+        desc: [
+          s.note ? 'Note presidio: ' + s.note : '',
+          s.fixApplied ? 'Soluzione tentata: ' + s.fixApplied : '',
+        ].filter(Boolean).join('\n') || 'Anomalia rilevata durante il check.',
+      }, roomLabel);
+      if (pdf) attachments.push({ filename: `ticket-${tkId}.pdf`, content: pdf, mimetype: 'application/pdf' });
+    }
+    for (const i of waiting) {
+      const tk = lockedTicket(i);
+      if (!tk) continue;
+      const pdf = ticketPdfB64(tk, roomLabel);
+      if (pdf) attachments.push({ filename: `ticket-${tk.id}.pdf`, content: pdf, mimetype: 'application/pdf' });
+    }
 
     await db.sendEmail(to, subject, html, attachments);
     toast(`Report check inviato a ${to.length} destinatari ✓`, 'info');
