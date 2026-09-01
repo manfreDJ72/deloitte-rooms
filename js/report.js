@@ -80,13 +80,17 @@
   .rep-empty { font-size:12.5px; color:#9aa4b2; font-style:italic; padding:4px 0; }
   .rep-foot { margin-top:26px; padding-top:12px; border-top:1px solid #e2e7ee; font-size:11px; color:#9aa4b2; display:flex; justify-content:space-between; }
 
+  /* contenitore di stampa: il foglio viene clonato QUI (in flusso normale, fuori
+     dall'overlay fixed) così la stampa può scorrere su più pagine */
+  .rep-print-root { display:none; }
   @media print {
     @page { margin:12mm; }
     body { background:#fff !important; }
-    body * { visibility:hidden !important; }
-    .rep-sheet, .rep-sheet * { visibility:visible !important; }
-    .rep-sheet { position:absolute; left:0; top:0; width:100%; box-shadow:none !important; border-radius:0; padding:0; }
-    .rep-noprint { display:none !important; }
+    body.rep-printing > *:not(.rep-print-root) { display:none !important; }
+    .rep-print-root { display:block !important; }
+    .rep-print-root .rep-sheet { box-shadow:none !important; border-radius:0; padding:0; }
+    .rep-sec { break-inside:auto; }
+    table.rep-table tr { break-inside:avoid; }
   }`;
 
   /* ---------- markup (iniettato una volta) ---------- */
@@ -175,6 +179,9 @@
       const rq = (opt.req ? reqs : []).filter(r => inP(r.createdAt));
       const mt = (opt.maint ? maints : []).filter(m => inP(m.start));
       document.getElementById('rep-sheet').innerHTML = buildHTML({ from, to, tk, tks, rq, mt, opt });
+      // nome file per il salvataggio PDF: "Report attività <inizio> - <fine> (generato <oggi>)"
+      const fmtF = d => pad(d.getDate()) + '-' + pad(d.getMonth() + 1) + '-' + d.getFullYear();
+      _printTitle = `Report attività ${fmtF(from)} - ${fmtF(to)} (generato ${fmtF(new Date())})`;
       closeP(); document.getElementById('rep-view').classList.add('open');
     } catch (e) {
       console.error('report', e); toast('Errore nella generazione del report', 'error');
@@ -275,6 +282,23 @@
       <div class="rep-foot"><span>Area62 Srl · Deloitte Room Management</span><span>Solaria &amp; Armonia · documento riepilogativo</span></div>`;
   }
 
+  /* ---------- stampa (multi-pagina + nome file) ---------- */
+  let _printTitle = 'Report attività';
+  function printReport() {
+    // clona il foglio in un contenitore in flusso normale: dentro l'overlay
+    // (position:fixed) il browser stamperebbe UNA sola pagina tagliando il resto
+    let root = document.querySelector('.rep-print-root');
+    if (!root) { root = document.createElement('div'); root.className = 'rep-print-root'; document.body.appendChild(root); }
+    root.innerHTML = '<div class="rep-sheet">' + document.getElementById('rep-sheet').innerHTML + '</div>';
+    const origTitle = document.title;
+    document.title = _printTitle;                 // il browser lo propone come nome del PDF
+    document.body.classList.add('rep-printing');
+    const cleanup = () => { document.body.classList.remove('rep-printing'); document.title = origTitle; window.removeEventListener('afterprint', cleanup); };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+    setTimeout(cleanup, 2000);                    // rete di sicurezza se afterprint non scatta
+  }
+
   /* ---------- wiring ---------- */
   function openP() { setPreset('week'); document.getElementById('rep-period').classList.add('open'); }
   function closeP() { document.getElementById('rep-period').classList.remove('open'); }
@@ -295,7 +319,7 @@
     document.getElementById('rep-pcancel').addEventListener('click', closeP);
     document.getElementById('rep-gen').addEventListener('click', generate);
     document.getElementById('rep-vclose').addEventListener('click', () => document.getElementById('rep-view').classList.remove('open'));
-    document.getElementById('rep-print').addEventListener('click', () => window.print());
+    document.getElementById('rep-print').addEventListener('click', printReport);
     document.querySelectorAll('#rep-presets .rep-preset').forEach(p => p.addEventListener('click', () => {
       document.querySelectorAll('#rep-presets .rep-preset').forEach(x => x.classList.remove('active'));
       p.classList.add('active'); setPreset(p.dataset.p);
