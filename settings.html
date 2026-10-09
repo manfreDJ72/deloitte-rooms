@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Impostazioni – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=66">
+  <style>
+    .settings-grid { display: flex; flex-direction: column; gap: 18px; max-width: 900px; }
+    .set-card {
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    .set-card-head {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .set-card-head .sc-icon { font-size: 20px; }
+    .set-card-head .sc-title { font-weight: 800; font-size: 15px; }
+    .set-card-head .sc-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .set-card-body { padding: 20px; }
+
+    .backend-badge {
+      margin-left: auto; font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .5px; padding: 4px 9px; border-radius: 20px;
+      background: rgba(240,160,48,.14); color: var(--orange); border: 1px solid rgba(240,160,48,.3);
+    }
+    .backend-note {
+      font-size: 12px; color: var(--text-muted); background: var(--bg-card2);
+      border: 1px dashed var(--border); border-radius: 8px; padding: 12px 14px; margin-top: 12px;
+    }
+
+    /* Perm matrix */
+    .perm-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .perm-table th, .perm-table td { padding: 9px 10px; text-align: center; border-bottom: 1px solid var(--border); }
+    .perm-table th:first-child, .perm-table td:first-child { text-align: left; }
+    .perm-table thead th { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); }
+    .perm-group td { font-weight: 700; background: var(--bg-card2); font-size: 12px; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); }
+    .perm-check { width: 20px; height: 20px; accent-color: var(--green); cursor: pointer; }
+    .role-col { min-width: 90px; }
+
+    /* Users */
+    .user-row {
+      display: flex; align-items: center; gap: 12px; padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .user-row .ur-avatar {
+      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+      background: var(--green); color: #000; display: flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 13px;
+    }
+    .ur-info { flex: 1; min-width: 0; }
+    .ur-name { font-weight: 700; font-size: 14px; }
+    .ur-email { font-size: 12px; color: var(--text-muted); }
+    .ur-role { min-width: 130px; }
+    .role-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+    .rb-admin    { background: rgba(134,188,37,.15); color: var(--green); }
+    .rb-operator { background: rgba(77,166,255,.15); color: var(--blue); }
+    .rb-viewer   { background: rgba(139,148,158,.15); color: var(--text-muted); }
+
+    /* Email recipients */
+    .recip-row {
+      display: flex; align-items: flex-start; gap: 12px; padding: 14px;
+      border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;
+    }
+    .recip-events { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ev-chip {
+      font-size: 11px; padding: 4px 10px; border-radius: 20px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--bg-card2); color: var(--text-muted);
+      user-select: none; transition: all .12s; min-height: 30px; display: inline-flex; align-items: center;
+    }
+    .ev-chip.on { background: rgba(134,188,37,.15); border-color: var(--green); color: var(--green); }
+
+    .num-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .num-preview {
+      font-family: monospace; font-size: 15px; font-weight: 700; color: var(--green);
+      background: var(--bg-card2); border-radius: 8px; padding: 8px 12px; display: inline-block; margin-top: 6px;
+    }
+
+    .no-access {
+      max-width: 440px; margin: 80px auto; text-align: center;
+      background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 16px; padding: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
+    <div class="header-sep"></div>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="3" width="8" height="8" rx="2" fill="#86BC25"/><rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor"/></svg></span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor"/><path d="M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v1H3z" fill="#86BC25"/><rect x="6.5" y="12" width="3" height="3" rx="1" fill="#0a0a0a"/><rect x="14.5" y="12" width="3" height="3" rx="1" fill="#86BC25"/></svg></span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3" fill="currentColor"/><rect x="9" y="2.5" width="6" height="4" rx="1.6" fill="#86BC25"/><path d="M9 13.4l2.1 2.1 4-4.3" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3.4c.72 0 1.38.39 1.74 1.02l8.03 13.9A2 2 0 0 1 20.03 21H3.97a2 2 0 0 1-1.74-2.68l8.03-13.9A2 2 0 0 1 12 3.4z" fill="currentColor"/><rect x="11" y="8.6" width="2" height="5.6" rx="1" fill="#0a0a0a"/><circle cx="12" cy="17.3" r="1.25" fill="#86BC25"/></svg></span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="3" fill="currentColor"/><path d="M4 7.5l8 5.4 8-5.4" fill="none" stroke="#86BC25" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Richieste</a>
+    <a href="task.html"      class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="currentColor"/><circle cx="8" cy="9" r="1.5" fill="#86BC25"/><rect x="10.6" y="8" width="6.4" height="2" rx="1" fill="#0a0a0a"/><circle cx="8" cy="14.5" r="1.5" fill="#0a0a0a"/><rect x="10.6" y="13.5" width="6.4" height="2" rx="1" fill="#0a0a0a"/></svg></span> Task</a>
+    <a href="documenti.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 3h7.2L19 8.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor"/><path d="M13 3.2V8h4.6z" fill="#86BC25"/><rect x="7.5" y="12" width="8" height="1.8" rx=".9" fill="#0a0a0a"/><rect x="7.5" y="15.6" width="8" height="1.8" rx=".9" fill="#0a0a0a"/></svg></span> Documenti</a>
+    <a href="assistente.html" class="nav-link nav-assistente"><span class="nav-icon armonia-dot"></span> ArmonIA</a>
+    <a href="settings.html"  class="nav-link active"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M13.3 2.2l.5 2.1c.5.16.97.38 1.4.66l2-.86 1.7 1.7-.86 2c.28.43.5.9.66 1.4l2.1.5v2.4l-2.1.5c-.16.5-.38.97-.66 1.4l.86 2-1.7 1.7-2-.86c-.43.28-.9.5-1.4.66l-.5 2.1h-2.4l-.5-2.1c-.5-.16-.97-.38-1.4-.66l-2 .86-1.7-1.7.86-2c-.28-.43-.5-.9-.66-1.4l-2.1-.5v-2.4l2.1-.5c.16-.5.38-.97.66-1.4l-.86-2 1.7-1.7 2 .86c.43-.28.9-.5 1.4-.66l.5-2.1z" fill="currentColor"/><circle cx="12" cy="12" r="3.4" fill="#0a0a0a"/><circle cx="12" cy="12" r="1.7" fill="#86BC25"/></svg></span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page" id="main-content">
+  <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title">Impostazioni</h1>
+      <p class="page-sub">Utenti, permessi, notifiche email e configurazioni di sistema</p>
+    </div>
+    <button class="btn btn-primary" id="btn-save-settings">💾 Salva impostazioni</button>
+  </div>
+
+  <div class="settings-grid">
+
+    <!-- 1. UTENTI -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <span class="sc-icon">👥</span>
+        <div>
+          <div class="sc-title">Utenti &amp; Ruoli</div>
+          <div class="sc-sub">Chi accede al sistema e con quale ruolo</div>
+        </div>
+        <button class="btn btn-outline btn-sm" id="btn-add-user" style="margin-left:auto;">+ Aggiungi utente</button>
+      </div>
+      <div class="set-card-body">
+        <div id="users-list"></div>
+      </div>
+    </div>
+
+    <!-- 2. PERMESSI -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <span class="sc-icon">🔐</span>
+        <div>
+          <div class="sc-title">Permessi per ruolo</div>
+          <div class="sc-sub">Chi può fare cosa — flagga le singole attività</div>
+        </div>
+      </div>
+      <div class="set-card-body" style="overflow-x:auto;">
+        <table class="perm-table" id="perm-table"></table>
+      </div>
+    </div>
+
+    <!-- 3. DESTINATARI EMAIL -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <span class="sc-icon">📧</span>
+        <div>
+          <div class="sc-title">Destinatari notifiche</div>
+          <div class="sc-sub">A quali email inviare ogni tipo di evento</div>
+        </div>
+      </div>
+      <div class="set-card-body">
+        <div id="recip-list"></div>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" id="btn-add-recip" style="flex:1;min-width:180px;">+ Aggiungi destinatario</button>
+          <button class="btn btn-ghost btn-sm" id="btn-test-email">✉️ Invia email di prova</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. NUMERAZIONE -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <span class="sc-icon">🔢</span>
+        <div>
+          <div class="sc-title">Numerazione progressiva</div>
+          <div class="sc-sub">Formato ID per ticket anomalie e rapporti di intervento</div>
+        </div>
+      </div>
+      <div class="set-card-body">
+        <div class="num-grid">
+          <div>
+            <div class="form-label">Ticket anomalie</div>
+            <div class="form-row" style="margin-top:6px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Prefisso</label>
+                <input class="form-control" id="num-tk-prefix" value="TCK-">
+              </div>
+              <div class="form-group" style="margin:0;max-width:110px;">
+                <label class="form-label">Cifre</label>
+                <input class="form-control" id="num-tk-pad" type="number" min="1" max="6" value="3">
+              </div>
+            </div>
+            <div class="form-group" style="margin:8px 0 0;max-width:150px;">
+              <label class="form-label">Prossimo numero</label>
+              <input class="form-control" id="num-tk-next" type="number" min="1" value="4">
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Anteprima prossimo ID:</div>
+            <div class="num-preview" id="num-tk-preview">TCK-004</div>
+          </div>
+          <div>
+            <div class="form-label">Rapporti intervento</div>
+            <div class="form-row" style="margin-top:6px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Prefisso</label>
+                <input class="form-control" id="num-rp-prefix" value="RAP-">
+              </div>
+              <div class="form-group" style="margin:0;max-width:110px;">
+                <label class="form-label">Cifre</label>
+                <input class="form-control" id="num-rp-pad" type="number" min="1" max="6" value="3">
+              </div>
+            </div>
+            <div class="form-group" style="margin:8px 0 0;max-width:150px;">
+              <label class="form-label">Prossimo numero</label>
+              <input class="form-control" id="num-rp-next" type="number" min="1" value="1">
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">Anteprima prossimo ID:</div>
+            <div class="num-preview" id="num-rp-preview">RAP-001</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. EMAIL IN INGRESSO -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <span class="sc-icon">📥</span>
+        <div>
+          <div class="sc-title">Prenotazione via email</div>
+          <div class="sc-sub">Un indirizzo che riceve le richieste e crea la prenotazione automaticamente</div>
+        </div>
+      </div>
+      <div class="set-card-body">
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:14px;">
+          <input type="checkbox" id="inbound-enabled" style="width:18px;height:18px;accent-color:var(--green);">
+          <span style="font-size:13px;font-weight:600;">Abilita ricezione prenotazioni via email</span>
+        </label>
+        <div class="form-group" style="margin:0;max-width:360px;">
+          <label class="form-label">Indirizzo dedicato</label>
+          <input class="form-control" id="inbound-address" placeholder="deloitte.room@area62.it">
+        </div>
+      </div>
+    </div>
+
+    <!-- 5b. REMINDER & ASSISTENTE AI -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <span class="sc-icon">🤖</span>
+        <div>
+          <div class="sc-title">Reminder &amp; Assistente AI</div>
+          <div class="sc-sub">Promemoria pre-evento e modello della "stanza di Claude"</div>
+        </div>
+        <a href="assistente.html" class="btn btn-outline btn-sm" style="margin-left:auto;">Apri Assistente →</a>
+      </div>
+      <div class="set-card-body">
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:16px;">
+          <input type="checkbox" id="rem-enabled" style="width:18px;height:18px;accent-color:var(--green);">
+          <span style="font-size:13px;font-weight:600;">Invia reminder automatici prima di riunioni e interventi</span>
+        </label>
+        <div class="form-row">
+          <div class="form-group" style="margin:0;max-width:220px;">
+            <label class="form-label">Anticipo reminder (ore)</label>
+            <input class="form-control" id="rem-offsets" placeholder="24,2">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Ore prima dell'evento, separate da virgola. Es. <code>48,24,2</code></div>
+          </div>
+          <div class="form-group" style="margin:0;max-width:260px;">
+            <label class="form-label">Modello AI</label>
+            <select class="form-control" id="ai-model">
+              <option value="claude-haiku-4-5">Claude Haiku 4.5 (veloce, economico)</option>
+              <option value="claude-sonnet-5">Claude Sonnet 5 (più elaborato)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin:14px 0 0;max-width:480px;">
+          <label class="form-label">Destinatari extra dei reminder</label>
+          <input class="form-control" id="rem-recip" placeholder="mario.rossi@area62.it, tecnico@sts.it">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Oltre a <code>marco.manfredini@area62.it</code>, all'organizzatore e al referente. Separati da virgola.</div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">
+
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:14px;">
+          <input type="checkbox" id="ai-autoreply" style="width:18px;height:18px;accent-color:var(--green);">
+          <span style="font-size:13px;font-weight:600;">Rispondi automaticamente alle email (l'assistente risponde dalla casella <code>deloitte.room@area62.it</code>)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:14px;">
+          <input type="checkbox" id="ai-digest" style="width:18px;height:18px;accent-color:var(--green);">
+          <span style="font-size:13px;font-weight:600;">Invia il riepilogo giornaliero (cosa fatto / da fare)</span>
+        </label>
+        <div class="form-row">
+          <div class="form-group" style="margin:0;max-width:150px;">
+            <label class="form-label">Ora invio riepilogo</label>
+            <input class="form-control" id="ai-digest-hour" type="number" min="0" max="23" value="18">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Ora locale (Italia)</div>
+          </div>
+          <div class="form-group" style="margin:0;max-width:320px;">
+            <label class="form-label">Riepilogo inviato a</label>
+            <input class="form-control" id="ai-digest-to" placeholder="marco.manfredini@area62.it">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Solo questo indirizzo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. REPOSITORY -->
+    <div class="set-card">
+      <div class="set-card-head">
+        <span class="sc-icon">🗄️</span>
+        <div>
+          <div class="sc-title">Repository documenti</div>
+          <div class="sc-sub">Archivio di rapporti, contratti e allegati — chiusura riservata agli admin</div>
+        </div>
+        <a href="documenti.html" class="btn btn-outline btn-sm" style="margin-left:auto;">Apri Documenti →</a>
+      </div>
+      <div class="set-card-body">
+        <div style="font-size:13px;color:var(--text-muted);">
+          Tutti gli utenti autorizzati possono consultare e scaricare; solo gli <strong>amministratori</strong>
+          caricano ed eliminano. Gestisci l'archivio nella pagina <a href="documenti.html" style="color:var(--green);">Documenti</a>.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- No access -->
+<div id="no-access" style="display:none;">
+  <div class="no-access">
+    <div style="font-size:40px;margin-bottom:16px;">🔒</div>
+    <h2 style="font-size:18px;margin-bottom:8px;">Accesso riservato</h2>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">
+      La pagina Impostazioni è accessibile solo agli amministratori.
+    </p>
+    <a href="dashboard.html" class="btn btn-primary">← Torna alla Dashboard</a>
+  </div>
+</div>
+
+<!-- Modal aggiungi/modifica utente -->
+<div class="overlay" id="modal-user">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-user-title">Nuovo utente</div>
+      <button class="modal-x" onclick="closeModal('modal-user')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome e cognome</label>
+        <input class="form-control" id="u-name" placeholder="Es. Mario Rossi">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-control" id="u-email" type="email" placeholder="mario.rossi@area62.it">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ruolo</label>
+        <select class="form-control" id="u-role">
+          <option value="admin">Amministratore</option>
+          <option value="operatore_agenzia">Operatore · Agenzia</option>
+          <option value="operatore_cliente">Operatore · Cliente</option>
+          <option value="visualizzatore_agenzia">Visualizzatore · Agenzia</option>
+          <option value="visualizzatore_cliente">Visualizzatore · Cliente</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Password di accesso</label>
+        <div style="display:flex;gap:8px;">
+          <input class="form-control" id="u-password" placeholder="Password" autocomplete="new-password">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-toggle-pw" title="Mostra/nascondi" style="flex-shrink:0;">👁</button>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-gen-pw" style="flex-shrink:0;white-space:nowrap;">🎲 Genera</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">
+          La password la decidi tu e la comunichi all'utente. L'utente <strong>non può cambiarla</strong>.
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="btn-del-user" style="display:none;margin-right:auto;">Elimina</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-user')">Annulla</button>
+      <button class="btn btn-primary" id="btn-save-user">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=66"></script>
+<script src="js/app.js?v=66"></script>
+<script src="js/db.js?v=66"></script>
+<script src="js/tour.js?v=66"></script>
+<script>
+let S = null;         // settings correnti
+let users = [];       // roster utenti
+let editUserId = null;
+const ROLE_LABELS = {
+  admin:'Amministratore',
+  operatore_agenzia:'Operatore · Agenzia', operatore_cliente:'Operatore · Cliente',
+  visualizzatore_agenzia:'Visualizzatore · Agenzia', visualizzatore_cliente:'Visualizzatore · Cliente',
+  operator:'Operatore', viewer:'Visualizzatore',   // legacy
+};
+const ROLE_BADGE  = {
+  admin:'rb-admin',
+  operatore_agenzia:'rb-operator', operatore_cliente:'rb-operator',
+  visualizzatore_agenzia:'rb-viewer', visualizzatore_cliente:'rb-viewer',
+  operator:'rb-operator', viewer:'rb-viewer',
+};
+const _roleLabel = r => ROLE_LABELS[r] || r;
+const _roleBadge = r => ROLE_BADGE[r] || 'rb-viewer';
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireAuth()) return;
+  const u = currentUser();
+
+  // Guardia admin
+  if (u.role !== 'admin') {
+    document.getElementById('main-content').style.display = 'none';
+    document.getElementById('no-access').style.display = '';
+    return;
+  }
+
+  S = getSettings();
+  users = getUsers();
+
+  renderUsers();
+  if (!DEMO_MODE) loadUsersFromServer();  // online: elenco reale dagli utenti Supabase
+  renderPermTable();
+  renderRecipients();
+  loadNumbering();
+  if (!DEMO_MODE) loadSettingsFromDb();   // online: destinatari/impostazioni dal database (condivisi)
+
+  // Numerazione live preview
+  ['num-tk-prefix','num-tk-pad','num-tk-next','num-rp-prefix','num-rp-pad','num-rp-next']
+    .forEach(id => document.getElementById(id).addEventListener('input', updateNumPreview));
+
+  document.getElementById('inbound-enabled').checked = !!S.inboundEmail.enabled;
+  document.getElementById('inbound-address').value   = S.inboundEmail.address || '';
+  loadReminders();
+
+  document.getElementById('btn-save-settings').addEventListener('click', saveAll);
+  document.getElementById('btn-add-user').addEventListener('click', () => openUserModal());
+  document.getElementById('btn-add-recip').addEventListener('click', addRecipient);
+  document.getElementById('btn-test-email').addEventListener('click', sendTestEmail);
+  document.getElementById('btn-save-user').addEventListener('click', saveUser);
+  document.getElementById('btn-del-user').addEventListener('click', deleteUser);
+  document.getElementById('btn-gen-pw').addEventListener('click', () => {
+    document.getElementById('u-password').value = generatePassword();
+    document.getElementById('u-password').type = 'text';
+  });
+  document.getElementById('btn-toggle-pw').addEventListener('click', () => {
+    const p = document.getElementById('u-password');
+    p.type = p.type === 'password' ? 'text' : 'password';
+  });
+});
+
+/* ── UTENTI ── */
+function renderUsers() {
+  document.getElementById('users-list').innerHTML = users.map(u => `
+    <div class="user-row">
+      <div class="ur-avatar">${u.avatar || u.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</div>
+      <div class="ur-info">
+        <div class="ur-name">${u.name}</div>
+        <div class="ur-email">${u.email}</div>
+      </div>
+      <div class="ur-role"><span class="role-badge ${_roleBadge(u.role)}">${_roleLabel(u.role)}</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">Modifica</button>
+    </div>`).join('');
+}
+
+async function loadUsersFromServer() {
+  try {
+    const res = await db.adminUsers('list');
+    if (res?.users) { users = res.users; renderUsers(); }
+  } catch (e) {
+    console.error(e);
+    toast('Utenti: ' + e.message, 'error');
+  }
+}
+
+function openUserModal(id) {
+  editUserId = id || null;
+  const u = id ? users.find(x => x.id === id) : null;
+  document.getElementById('modal-user-title').textContent = u ? 'Modifica utente' : 'Nuovo utente';
+  document.getElementById('u-name').value  = u?.name  || '';
+  document.getElementById('u-email').value = u?.email || '';
+  document.getElementById('u-role').value  = (ROLE_ALIAS[u?.role] || u?.role) || 'operatore_agenzia';
+  const pw = document.getElementById('u-password');
+  if (!DEMO_MODE) {
+    // online: in modifica lascia vuoto (= password invariata); in creazione ne genera una
+    pw.value = u ? '' : generatePassword();
+    pw.placeholder = u ? 'Lascia vuoto per non cambiarla' : 'Password';
+  } else {
+    pw.value = u ? (u.password || '') : generatePassword();
+  }
+  pw.type = 'text';
+  document.getElementById('btn-del-user').style.display = u ? '' : 'none';
+  openModal('modal-user');
+}
+
+async function saveUser() {
+  const name  = document.getElementById('u-name').value.trim();
+  const email = document.getElementById('u-email').value.trim().toLowerCase();
+  const role  = document.getElementById('u-role').value;
+  const password = document.getElementById('u-password').value.trim();
+  if (!name || !email) { toast('Compila nome ed email', 'error'); return; }
+  const avatar = name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+
+  if (!DEMO_MODE) {
+    // ── ONLINE: via Edge Function ──
+    if (!editUserId && !password) { toast('Imposta una password (o generala)', 'error'); return; }
+    const btn = document.getElementById('btn-save-user');
+    const old = btn.textContent; btn.disabled = true; btn.textContent = 'Salvataggio…';
+    try {
+      if (editUserId) {
+        await db.adminUsers('update', { id: editUserId, name, email, role, avatar, password: password || undefined });
+        toast('Utente aggiornato ✓', 'success');
+      } else {
+        await db.adminUsers('create', { name, email, role, avatar, password });
+        // email di benvenuto con le credenziali (best-effort)
+        const loginUrl = 'https://rooms.area62.it/';
+        db.sendEmail(email, 'Il tuo accesso — Deloitte Room Management',
+          emailTemplate('Benvenuto/a nel portale',
+            `<p>Ciao <strong>${name}</strong>, è stato creato il tuo accesso al sistema di gestione sale Solaria &amp; Armonia.</p>
+             <table style="font-size:14px;margin:14px 0;border-collapse:collapse;">
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Indirizzo</td><td><a href="${loginUrl}" style="color:#5a8a00;">${loginUrl}</a></td></tr>
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Email</td><td><strong>${email}</strong></td></tr>
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Password</td><td><strong>${password}</strong></td></tr>
+               <tr><td style="padding:3px 14px 3px 0;color:#666;">Ruolo</td><td>${_roleLabel(role)}</td></tr>
+             </table>
+             <p style="font-size:13px;color:#666;">Conserva queste credenziali in un luogo sicuro.</p>`)
+        ).catch(e => console.error('welcome email', e));
+        toast(`Utente creato ✓ — email di benvenuto inviata a ${email}`, 'success');
+      }
+      closeModal('modal-user');
+      await loadUsersFromServer();
+    } catch (e) {
+      toast('Errore: ' + e.message, 'error');
+    }
+    btn.disabled = false; btn.textContent = old;
+    return;
+  }
+
+  // ── DEMO: localStorage ──
+  if (!password) { toast('Imposta una password (o generala)', 'error'); return; }
+  if (editUserId) {
+    users = users.map(u => u.id === editUserId ? { ...u, name, email, role, avatar, password } : u);
+  } else {
+    users.push({ id: 'u' + Date.now().toString(36), name, email, role, avatar, password });
+  }
+  saveUsers(users);
+  renderUsers();
+  closeModal('modal-user');
+  toast(`Utente salvato ✓ — password: ${password}`, 'success');
+}
+
+async function deleteUser() {
+  if (!editUserId) return;
+  if (!DEMO_MODE) {
+    if (!confirm('Eliminare questo utente? Perderà l\'accesso.')) return;
+    try {
+      await db.adminUsers('delete', { id: editUserId });
+      toast('Utente rimosso', 'info');
+      closeModal('modal-user');
+      await loadUsersFromServer();
+    } catch (e) { toast('Errore: ' + e.message, 'error'); }
+    return;
+  }
+  users = users.filter(u => u.id !== editUserId);
+  saveUsers(users);
+  renderUsers();
+  closeModal('modal-user');
+  toast('Utente rimosso', 'info');
+}
+
+/* ── PERMESSI ── */
+function renderPermTable() {
+  const roles = ['admin','operatore_agenzia','operatore_cliente','visualizzatore_agenzia','visualizzatore_cliente'];
+  let html = `<thead><tr><th>Attività</th>${roles.map(r => `<th class="role-col">${ROLE_LABELS[r]}</th>`).join('')}</tr></thead><tbody>`;
+  CAPABILITIES.forEach(cap => {
+    html += `<tr class="perm-group"><td colspan="${roles.length + 1}">${cap.label}</td></tr>`;
+    cap.actions.forEach(act => {
+      html += `<tr><td>${act.label}</td>${roles.map(r => {
+        const checked = S.roles[r]?.[cap.key]?.[act.key] ? 'checked' : '';
+        const disabled = (r === 'admin' && cap.key === 'settings') ? 'disabled' : '';
+        return `<td><input type="checkbox" class="perm-check" data-role="${r}" data-cap="${cap.key}" data-act="${act.key}" ${checked} ${disabled}></td>`;
+      }).join('')}</tr>`;
+    });
+  });
+  html += '</tbody>';
+  document.getElementById('perm-table').innerHTML = html;
+
+  document.querySelectorAll('.perm-check').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const { role, cap, act } = chk.dataset;
+      S.roles[role] = S.roles[role] || {};
+      S.roles[role][cap] = S.roles[role][cap] || {};
+      S.roles[role][cap][act] = chk.checked ? 1 : 0;
+    });
+  });
+}
+
+/* ── DESTINATARI EMAIL ── */
+function renderRecipients() {
+  document.getElementById('recip-list').innerHTML = S.emailRecipients.map(r => `
+    <div class="recip-row">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <input class="form-control" style="flex:1;min-width:140px;" value="${r.name}" data-rid="${r.id}" data-field="name" placeholder="Nome">
+          <input class="form-control" style="flex:2;min-width:180px;" value="${r.email}" data-rid="${r.id}" data-field="email" placeholder="email@...">
+        </div>
+        <div class="recip-events">
+          ${EMAIL_EVENTS.map(ev => `<span class="ev-chip ${r.events.includes(ev.key)?'on':''}" data-rid="${r.id}" data-ev="${ev.key}">${ev.label}</span>`).join('')}
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" data-del="${r.id}">✕</button>
+    </div>`).join('');
+
+  document.querySelectorAll('#recip-list input[data-field]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const r = S.emailRecipients.find(x => x.id === inp.dataset.rid);
+      if (r) r[inp.dataset.field] = inp.value;
+    });
+  });
+  document.querySelectorAll('#recip-list .ev-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const r = S.emailRecipients.find(x => x.id === chip.dataset.rid);
+      if (!r) return;
+      const k = chip.dataset.ev;
+      if (r.events.includes(k)) r.events = r.events.filter(e => e !== k);
+      else r.events.push(k);
+      chip.classList.toggle('on');
+    });
+  });
+  document.querySelectorAll('#recip-list [data-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      S.emailRecipients = S.emailRecipients.filter(x => x.id !== btn.dataset.del);
+      renderRecipients();
+    });
+  });
+}
+
+function addRecipient() {
+  S.emailRecipients.push({ id: 'r' + Date.now().toString(36), name: '', email: '', events: [] });
+  renderRecipients();
+}
+
+async function sendTestEmail() {
+  if (DEMO_MODE) { toast('Disponibile solo nella versione online', 'error'); return; }
+  const me = currentUser();
+  const btn = document.getElementById('btn-test-email');
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Invio…';
+  try {
+    await db.sendEmail(me.email,
+      'Email di prova — Deloitte Room Management',
+      emailTemplate('✓ Email configurata correttamente',
+        `<p>Ciao <strong>${me.name}</strong>,</p>
+         <p>questa è un'email di prova del sistema di gestione sale Solaria &amp; Armonia.</p>
+         <p>Se la stai leggendo, l'invio automatico di notifiche e rapporti è <strong style="color:#86BC25;">attivo</strong>.</p>`));
+    toast('Email di prova in coda → arriva a ' + me.email + ' entro pochi minuti ✓', 'success');
+  } catch (e) {
+    toast('Errore: ' + e.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = old;
+}
+
+/* ── NUMERAZIONE ── */
+function loadNumbering() {
+  const n = S.numbering;
+  document.getElementById('num-tk-prefix').value = n.ticketPrefix;
+  document.getElementById('num-tk-pad').value    = n.ticketPad;
+  document.getElementById('num-tk-next').value   = n.ticketNext;
+  document.getElementById('num-rp-prefix').value = n.rapportoPrefix;
+  document.getElementById('num-rp-pad').value    = n.rapportoPad;
+  document.getElementById('num-rp-next').value   = n.rapportoNext;
+  updateNumPreview();
+}
+function updateNumPreview() {
+  const tkP = document.getElementById('num-tk-prefix').value;
+  const tkPad = parseInt(document.getElementById('num-tk-pad').value) || 3;
+  const tkN = parseInt(document.getElementById('num-tk-next').value) || 1;
+  document.getElementById('num-tk-preview').textContent = tkP + String(tkN).padStart(tkPad, '0');
+  const rpP = document.getElementById('num-rp-prefix').value;
+  const rpPad = parseInt(document.getElementById('num-rp-pad').value) || 3;
+  const rpN = parseInt(document.getElementById('num-rp-next').value) || 1;
+  document.getElementById('num-rp-preview').textContent = rpP + String(rpN).padStart(rpPad, '0');
+}
+
+function loadReminders() {
+  const r = S.reminders || { enabled: true, offsets_h: [24, 2], recipients_extra: [] };
+  document.getElementById('rem-enabled').checked = r.enabled !== false;
+  document.getElementById('rem-offsets').value = (r.offsets_h || []).join(',');
+  document.getElementById('rem-recip').value = (r.recipients_extra || []).join(', ');
+  document.getElementById('ai-model').value = (S.ai && S.ai.model) || 'claude-haiku-4-5';
+  const a = S.assistant || { autoReply: true, digest: true, digestHour: 18, digestTo: 'marco.manfredini@area62.it' };
+  document.getElementById('ai-autoreply').checked = a.autoReply !== false;
+  document.getElementById('ai-digest').checked = a.digest !== false;
+  document.getElementById('ai-digest-hour').value = (a.digestHour != null ? a.digestHour : 18);
+  document.getElementById('ai-digest-to').value = a.digestTo || 'marco.manfredini@area62.it';
+}
+
+/* ── SALVA TUTTO ── */
+function saveAll() {
+  S.numbering = {
+    ticketPrefix: document.getElementById('num-tk-prefix').value,
+    ticketPad:    parseInt(document.getElementById('num-tk-pad').value) || 3,
+    ticketNext:   parseInt(document.getElementById('num-tk-next').value) || 1,
+    rapportoPrefix: document.getElementById('num-rp-prefix').value,
+    rapportoPad:    parseInt(document.getElementById('num-rp-pad').value) || 3,
+    rapportoNext:   parseInt(document.getElementById('num-rp-next').value) || 1,
+  };
+  S.inboundEmail = {
+    enabled: document.getElementById('inbound-enabled').checked,
+    address: document.getElementById('inbound-address').value.trim(),
+  };
+  S.reminders = {
+    enabled: document.getElementById('rem-enabled').checked,
+    offsets_h: document.getElementById('rem-offsets').value.split(',').map(x => parseInt(x.trim())).filter(x => x > 0),
+    recipients_extra: document.getElementById('rem-recip').value.split(',').map(x => x.trim()).filter(Boolean),
+  };
+  S.ai = { model: document.getElementById('ai-model').value };
+  S.assistant = {
+    autoReply: document.getElementById('ai-autoreply').checked,
+    digest:    document.getElementById('ai-digest').checked,
+    digestHour: parseInt(document.getElementById('ai-digest-hour').value),
+    digestTo:  document.getElementById('ai-digest-to').value.trim() || 'marco.manfredini@area62.it',
+  };
+  if (isNaN(S.assistant.digestHour)) S.assistant.digestHour = 18;
+  saveSettings(S);
+  saveUsers(users);
+  if (!DEMO_MODE) {
+    db.saveAppSettings(S)
+      .then(() => toast('Impostazioni salvate nel database ✓', 'success'))
+      .catch(e => toast('Salvato in locale, ma errore sul database: ' + e.message, 'error'));
+  } else {
+    toast('Impostazioni salvate ✓', 'success');
+  }
+}
+
+// carica le impostazioni condivise dal database (destinatari, ruoli, numerazione)
+async function loadSettingsFromDb() {
+  try {
+    const remote = await db.getAppSettings();
+    if (remote) {
+      S = remote;
+      S.roles = _mergeRoles(S.roles);   // porta i settings salvati ai 5 ruoli + nuovi permessi
+      saveSettings(S);
+      renderRecipients();
+      renderPermTable();
+      loadNumbering();
+      document.getElementById('inbound-enabled').checked = !!(S.inboundEmail && S.inboundEmail.enabled);
+      document.getElementById('inbound-address').value   = (S.inboundEmail && S.inboundEmail.address) || '';
+      loadReminders();
+    } else {
+      // primo avvio: nel database non c'è ancora nulla → salvo le impostazioni attuali
+      // (inclusi i destinatari che hai inserito a mano)
+      await db.saveAppSettings(S);
+    }
+  } catch (e) { console.error('loadSettingsFromDb', e); }
+}
+</script>
+</body>
+</html>

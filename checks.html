@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Check Mattutini – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=66">
+  <style>
+    /* ── CHECK CARD (nuovo flow) ── */
+    .check-card {
+      background: var(--bg-card);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .check-card.done-ok   { border-color: rgba(134,188,37,.4); }
+    .check-card.done-ko   { border-color: rgba(255,77,77,.35); }
+    .check-card.done-fixed { border-color: rgba(134,188,37,.4); }
+
+    .check-card-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 18px; cursor: pointer;
+      user-select: none; -webkit-user-select: none;
+      transition: background .15s;
+    }
+    .check-card-header:hover { background: rgba(255,255,255,.03); }
+    .check-card-header:active { background: rgba(255,255,255,.05); }
+
+    .check-status-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      flex-shrink: 0; transition: background .2s;
+      background: var(--border);
+    }
+    .check-card.done-ok    .check-status-dot { background: var(--green); box-shadow: 0 0 6px rgba(134,188,37,.5); }
+    .check-card.done-ko    .check-status-dot { background: var(--red);   box-shadow: 0 0 6px rgba(255,77,77,.5); }
+    .check-card.done-fixed .check-status-dot { background: var(--green); box-shadow: 0 0 6px rgba(134,188,37,.5); }
+
+    .check-card-name  { flex: 1; font-size: 14px; font-weight: 600; }
+    .check-card-meta  { font-size: 12px; color: var(--text-muted); }
+    .check-card-arrow { color: var(--text-faint); font-size: 12px; transition: transform .2s; flex-shrink: 0; }
+    .check-card.open  .check-card-arrow { transform: rotate(180deg); }
+
+    .check-card-body {
+      display: none; padding: 0 18px 18px;
+      border-top: 1px solid var(--border);
+    }
+    .check-card.open .check-card-body { display: block; }
+
+    .check-body-desc {
+      font-size: 13px; color: var(--text-muted); line-height: 1.6;
+      padding: 14px 0;
+    }
+
+    .check-action-btns {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .btn-check-ok {
+      flex: 1; min-width: 160px;
+      background: rgba(134,188,37,.15); color: var(--green);
+      border: 1.5px solid rgba(134,188,37,.4);
+      border-radius: 10px; padding: 14px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all .15s; font-family: var(--font-ui);
+      min-height: 52px;
+    }
+    .btn-check-ok:hover { background: rgba(134,188,37,.25); border-color: var(--green); }
+    .btn-check-ok:active { transform: scale(.97); }
+
+    .btn-check-ko {
+      flex: 1; min-width: 160px;
+      background: rgba(255,77,77,.1); color: var(--red);
+      border: 1.5px solid rgba(255,77,77,.3);
+      border-radius: 10px; padding: 14px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all .15s; font-family: var(--font-ui);
+      min-height: 52px;
+    }
+    .btn-check-ko:hover { background: rgba(255,77,77,.2); border-color: var(--red); }
+    .btn-check-ko:active { transform: scale(.97); }
+
+    /* ── RESOLUTION PANEL ── */
+    .resolution-panel {
+      display: none;
+      margin-top: 16px;
+      background: var(--bg-card2);
+      border: 1.5px solid rgba(255,77,77,.3);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .resolution-panel.open { display: block; }
+
+    .res-header {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; font-weight: 700; color: var(--red);
+      margin-bottom: 12px;
+    }
+    .res-time { font-size: 11px; color: var(--text-faint); font-weight: 400; margin-left: auto; }
+
+    .res-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-muted); margin-bottom: 8px; }
+
+    .quick-fixes { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .fix-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg-card);
+      cursor: pointer; font-size: 13px; font-family: var(--font-ui);
+      color: var(--text); text-align: left; transition: all .15s;
+      min-height: 44px;
+    }
+    .fix-btn:hover { border-color: var(--orange); background: rgba(240,160,48,.06); }
+    .fix-btn.applied { border-color: var(--green); background: rgba(134,188,37,.06); color: var(--green); }
+    .fix-icon { font-size: 14px; flex-shrink: 0; }
+
+    .res-note { margin-bottom: 14px; }
+    .res-note textarea {
+      width: 100%; padding: 9px 12px;
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 13px;
+      font-family: var(--font-ui); resize: none; min-height: 70px;
+    }
+    .res-note textarea:focus { outline: none; border-color: var(--orange); }
+
+    .res-outcome-btns { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .btn-resolved {
+      flex: 1; min-width: 120px; min-height: 44px;
+      background: rgba(134,188,37,.15); color: var(--green);
+      border: 1.5px solid rgba(134,188,37,.4); border-radius: 8px;
+      font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--font-ui);
+      transition: all .15s;
+    }
+    .btn-resolved:hover { background: rgba(134,188,37,.25); }
+
+    .res-divider { height: 1px; background: rgba(255,77,77,.2); margin: 14px 0; }
+
+    .btn-intervento {
+      width: 100%; min-height: 48px;
+      background: rgba(255,77,77,.08);
+      border: 1.5px dashed rgba(255,77,77,.4);
+      border-radius: 8px; color: var(--red);
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      font-family: var(--font-ui);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all .15s;
+    }
+    .btn-intervento:hover { background: rgba(255,77,77,.15); border-style: solid; }
+    .btn-intervento:active { transform: scale(.98); }
+
+    /* ── SECTION HEADER ── */
+    .section-block { margin-bottom: 20px; }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 10px; padding: 0 2px;
+    }
+    .section-icon { font-size: 16px; }
+    .section-label {
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: .8px; color: var(--text-muted);
+    }
+    .section-line { flex: 1; height: 1px; background: var(--border); }
+    .section-count { font-size: 11px; color: var(--text-faint); }
+    .section-ok-count { font-size: 11px; color: var(--green); font-weight: 700; }
+
+    /* ── SUMMARY BAR ── */
+    .summary-bar {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 16px;
+      padding: 14px 18px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 20px;
+    }
+    .sb-item { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700; }
+    .sb-dot  { width: 10px; height: 10px; border-radius: 50%; }
+    .sb-spacer { flex: 1; }
+    .sb-progress {
+      display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted);
+    }
+    .sb-progress-bar {
+      width: 120px; height: 6px; background: var(--bg-card2);
+      border-radius: 3px; overflow: hidden;
+    }
+    .sb-progress-fill { height: 100%; border-radius: 3px; background: var(--green); transition: width .4s; }
+
+    /* State: done overlay */
+    .check-card.done-ok .check-action-btns,
+    .check-card.done-fixed .check-action-btns { display: none; }
+    .done-stamp {
+      display: none; font-size: 12px; font-weight: 700;
+      padding: 10px 0 2px;
+    }
+    .check-card.done-ok    .done-stamp { display: block; color: var(--green); }
+    .check-card.done-fixed .done-stamp { display: block; color: var(--green); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
+    <div class="header-sep"></div>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="3" width="8" height="8" rx="2" fill="#86BC25"/><rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor"/></svg></span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor"/><path d="M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v1H3z" fill="#86BC25"/><rect x="6.5" y="12" width="3" height="3" rx="1" fill="#0a0a0a"/><rect x="14.5" y="12" width="3" height="3" rx="1" fill="#86BC25"/></svg></span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link active"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3" fill="currentColor"/><rect x="9" y="2.5" width="6" height="4" rx="1.6" fill="#86BC25"/><path d="M9 13.4l2.1 2.1 4-4.3" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3.4c.72 0 1.38.39 1.74 1.02l8.03 13.9A2 2 0 0 1 20.03 21H3.97a2 2 0 0 1-1.74-2.68l8.03-13.9A2 2 0 0 1 12 3.4z" fill="currentColor"/><rect x="11" y="8.6" width="2" height="5.6" rx="1" fill="#0a0a0a"/><circle cx="12" cy="17.3" r="1.25" fill="#86BC25"/></svg></span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="3" fill="currentColor"/><path d="M4 7.5l8 5.4 8-5.4" fill="none" stroke="#86BC25" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Richieste</a>
+    <a href="task.html"      class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="currentColor"/><circle cx="8" cy="9" r="1.5" fill="#86BC25"/><rect x="10.6" y="8" width="6.4" height="2" rx="1" fill="#0a0a0a"/><circle cx="8" cy="14.5" r="1.5" fill="#0a0a0a"/><rect x="10.6" y="13.5" width="6.4" height="2" rx="1" fill="#0a0a0a"/></svg></span> Task</a>
+    <a href="documenti.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 3h7.2L19 8.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor"/><path d="M13 3.2V8h4.6z" fill="#86BC25"/><rect x="7.5" y="12" width="8" height="1.8" rx=".9" fill="#0a0a0a"/><rect x="7.5" y="15.6" width="8" height="1.8" rx=".9" fill="#0a0a0a"/></svg></span> Documenti</a>
+    <a href="assistente.html" class="nav-link nav-assistente"><span class="nav-icon armonia-dot"></span> ArmonIA</a>
+    <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M13.3 2.2l.5 2.1c.5.16.97.38 1.4.66l2-.86 1.7 1.7-.86 2c.28.43.5.9.66 1.4l2.1.5v2.4l-2.1.5c-.16.5-.38.97-.66 1.4l.86 2-1.7 1.7-2-.86c-.43.28-.9.5-1.4.66l-.5 2.1h-2.4l-.5-2.1c-.5-.16-.97-.38-1.4-.66l-2 .86-1.7-1.7.86-2c-.28-.43-.5-.9-.66-1.4l-2.1-.5v-2.4l2.1-.5c.16-.5.38-.97.66-1.4l-.86-2 1.7-1.7 2 .86c.43-.28.9-.5 1.4-.66l.5-2.1z" fill="currentColor"/><circle cx="12" cy="12" r="3.4" fill="#0a0a0a"/><circle cx="12" cy="12" r="1.7" fill="#86BC25"/></svg></span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title" id="page-title">Check Mattutini</h1>
+      <p class="page-sub" id="check-date">–</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span id="autosave-badge" style="font-size:12px;color:var(--green);opacity:0;transition:opacity .3s;white-space:nowrap;">✓ Salvato</span>
+      <span id="save-hint" style="font-size:11.5px;color:var(--text-faint);white-space:nowrap;"></span>
+      <button class="btn btn-outline btn-sm" id="btn-storico">📋 Storico</button>
+      <button class="btn btn-primary" id="btn-salva" title="Chiudi il check e invia il report / segnala le anomalie">🔒 Chiudi e segnala</button>
+    </div>
+  </div>
+
+  <!-- Room tabs -->
+  <div class="tabs" id="room-tabs">
+    <div class="tab active" data-room="solaria-roma">
+      <span class="room-tag tag-solaria" style="pointer-events:none;">Solaria</span>&nbsp;Roma
+    </div>
+    <div class="tab" data-room="solaria-milano">
+      <span class="room-tag tag-solaria" style="pointer-events:none;">Solaria</span>&nbsp;Milano
+    </div>
+    <div class="tab" data-room="armonia-roma">
+      <span class="room-tag tag-armonia" style="pointer-events:none;">Armonia</span>&nbsp;Roma
+    </div>
+  </div>
+
+  <!-- Barra sessioni: più check nella stessa giornata (es. mattutino + pre-evento) -->
+  <div id="session-bar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px;"></div>
+
+  <!-- Summary bar -->
+  <div class="summary-bar">
+    <div class="sb-item"><div class="sb-dot" style="background:var(--text-faint)"></div> <span id="sb-total">–</span> totali</div>
+    <div class="sb-item"><div class="sb-dot" style="background:var(--green)"></div> <span id="sb-ok">0</span> OK</div>
+    <div class="sb-item"><div class="sb-dot" style="background:var(--red)"></div> <span id="sb-ko">0</span> Anomalie</div>
+    <div class="sb-item"><div class="sb-dot" style="background:var(--border)"></div> <span id="sb-nd">–</span> Da fare</div>
+    <div class="sb-spacer"></div>
+    <div class="sb-progress">
+      Completamento
+      <div class="sb-progress-bar"><div class="sb-progress-fill" id="sb-fill" style="width:0%"></div></div>
+      <strong id="sb-pct">0%</strong>
+    </div>
+  </div>
+
+  <!-- Checks container -->
+  <div id="checks-container"></div>
+</main>
+
+<!-- Modal: storico -->
+<div class="overlay" id="modal-storico">
+  <div class="modal" style="max-width:660px;">
+    <div class="modal-head">
+      <div class="modal-title">📋 Storico Check</div>
+      <button class="modal-x" onclick="closeModal('modal-storico')">✕</button>
+    </div>
+    <div class="modal-body" id="storico-body"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="js/config.js?v=66"></script>
+<script src="js/app.js?v=66"></script>
+<script src="js/db.js?v=66"></script>
+<script src="js/tour.js?v=66"></script>
+<script src="js/storico-solaria.js?v=66"></script>
+<script>
+/* ─────────────────────────────────────
+   STATE
+───────────────────────────────────── */
+let currentRoom = 'solaria-roma';
+// checkState[id] = { state: 'ok'|'ko'|'fixed'|null, ts: ISO, note:'', fixApplied:'' }
+let checkState  = {};
+// ── SESSIONI: più check nella stessa giornata (mattutino, pre-evento, ...) ──
+let currentSession = 1;            // sessione attiva
+let daySessions    = [1];          // sessioni esistenti oggi per la sala
+let allSessionsData = { 1: {} };   // { sessione: { id: stato } }
+const todayStr = () => new Date().toISOString().slice(0, 10);
+// il check_id salvato su DB porta il prefisso della sessione (la #1 resta senza prefisso, per compatibilità)
+function sessionKey(id) { return currentSession === 1 ? id : `s${currentSession}::${id}`; }
+function parseSession(key) { const m = key.match(/^s(\d+)::([\s\S]+)$/); return m ? { s: +m[1], id: m[2] } : { s: 1, id: key }; }
+
+/* ─────────────────────────────────────
+   INIT
+───────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  if (!requireAuth()) return;
+
+  const now = new Date();
+  document.getElementById('check-date').textContent =
+    now.toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  document.querySelectorAll('#room-tabs .tab').forEach(tab => {
+    tab.addEventListener('click', async () => {
+      await flushSave();   // salva la sala corrente PRIMA di cambiare (niente perdite)
+      document.querySelectorAll('#room-tabs .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentRoom = tab.dataset.room;
+      await loadState(); renderAll();
+    });
+  });
+
+  document.getElementById('btn-salva').addEventListener('click', saveSession);
+  document.getElementById('btn-storico').addEventListener('click', () => {
+    renderStorico();
+    openModal('modal-storico');
+  });
+
+  loadState().then(() => renderAll());
+});
+
+async function loadState() {
+  const all = await db.getCheckState(currentRoom, todayStr());   // { check_id(eventualmente prefissato): stato }
+  allSessionsData = {};
+  for (const [k, v] of Object.entries(all)) {
+    const { s, id } = parseSession(k);
+    (allSessionsData[s] = allSessionsData[s] || {})[id] = v;
+  }
+  daySessions = Object.keys(allSessionsData).map(Number).sort((a, b) => a - b);
+  if (!daySessions.length) { daySessions = [1]; allSessionsData[1] = {}; }
+  currentSession = daySessions[daySessions.length - 1];   // apri l'ultima sessione del giorno
+  checkState = allSessionsData[currentSession];
+  await loadOpenTickets();
+}
+
+// ── Ticket ancora APERTI per questa sala: le voci corrispondenti restano
+//    "in attesa di chiusura" e non vanno rifatte finché il ticket non si chiude ──
+let openTickets = {};
+const _normName = s => (s || '').trim().toLowerCase();
+function lockedTicket(item) { return openTickets[_normName(item.name)] || null; }
+async function loadOpenTickets() {
+  openTickets = {};
+  try {
+    const tks = await db.getTickets();
+    (tks || [])
+      .filter(t => t.room === currentRoom && !['resolved', 'closed'].includes(t.status))
+      .forEach(t => { openTickets[_normName(t.title)] = t; });
+  } catch (e) { console.warn('loadOpenTickets', e); }
+}
+
+// apre una NUOVA sessione di check nella giornata (es. pre-evento / pre-partita)
+function newCheck() {
+  const next = Math.max(...daySessions) + 1;
+  daySessions.push(next);
+  allSessionsData[next] = {};
+  currentSession = next;
+  checkState = allSessionsData[next];
+  document.getElementById('btn-salva').disabled = true;
+  renderAll();
+  toast(`Nuovo check aperto — Check #${next} ✓`, 'success');
+}
+// passa a una sessione già esistente del giorno
+function showSession(n) {
+  currentSession = n;
+  checkState = allSessionsData[n] || (allSessionsData[n] = {});
+  renderAll();
+}
+
+// "Chiudi e segnala": salva la sessione, apre i ticket in Anomalie per ogni
+// anomalia e invia il report (completo per il mattutino, mirato per i successivi).
+async function saveSession() {
+  const allItems = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
+  // coerente col gating del bottone: le voci con ticket APERTO sono già gestite
+  // e non bloccano la chiusura (il ticket è parte della segnalazione)
+  const handled = allItems.filter(i => checkState[i.id]?.state || lockedTicket(i)).length;
+  const koItems = allItems.filter(i => checkState[i.id]?.state === 'ko');
+  if (currentSession === 1 && handled < allItems.length) {
+    toast(`Completa i controlli non ancora eseguiti (${allItems.length - handled} rimasti — le voci a ticket sono escluse)`, 'error');
+    return;
+  }
+  if (currentSession > 1 && koItems.length === 0) {
+    toast('In un check successivo segnala almeno un\'anomalia sopraggiunta', 'error');
+    return;
+  }
+  const t = todayStr();
+  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(currentRoom, t, sessionKey(id), s)));
+  document.getElementById('btn-salva').disabled = true;
+  const created = await createTicketsForSession(koItems); // apre i ticket lato Anomalie
+  await sendCheckReport();
+  toast(created > 0
+    ? `Chiuso e segnalato ✓ — ${created} ticket ${created === 1 ? 'aperto' : 'aperti'} in Anomalie`
+    : 'Check chiuso e report inviato ✓', 'success');
+}
+
+// Apre un ticket in Anomalie per ogni anomalia del check (idempotente: una sola
+// volta per voce/sessione grazie alla mappa check→ticket in localStorage).
+async function createTicketsForSession(koItems) {
+  if ((typeof DEMO_MODE !== 'undefined' && DEMO_MODE) || !koItems.length) return 0;
+  const room = ROOMS.find(r => r.id === currentRoom);
+  const roomLabel = room ? `${room.name} – ${room.city}` : currentRoom;
+  const dateStr = new Date().toLocaleDateString('it-IT');
+  const t = todayStr();
+  const u = currentUser();
+  const origine = currentSession > 1 ? `Check #${currentSession} (durante la giornata)` : 'Check mattutino';
+  let created = 0;
+  for (const item of koItems) {
+    if (lockedTicket(item)) continue;                                      // ha già un ticket aperto: non duplicare
+    if (getCheckTicket(currentRoom, t, currentSession, item.id)) continue; // già segnalato
+    const s = checkState[item.id] || {};
+    const desc = [
+      `Rilevata durante: ${origine} — ${roomLabel} del ${dateStr}.`,
+      s.note ? `Note presidio: ${s.note}` : '',
+      s.fixApplied ? `Soluzione tentata: ${s.fixApplied}` : '',
+    ].filter(Boolean).join('\n');
+    try {
+      const tk = await db.createTicket({
+        room: currentRoom, priority: 'P1', category: 'altro',
+        title: item.name, desc, segnalatore: u?.name || 'Presidio',
+      });
+      setCheckTicket(currentRoom, t, currentSession, item.id, tk.id);
+      created++;
+    } catch (e) { console.error('createTicket', item.id, e); }
+  }
+  return created;
+}
+
+// ── AUTOSAVE: ogni azione salva subito il singolo check (con prefisso sessione) ──
+function autosave(id) {
+  db.saveCheckState(currentRoom, todayStr(), sessionKey(id), checkState[id]).catch(e => console.warn('autosave', id, e));
+  showAutosaved();
+}
+let _noteTimers = {};
+function autosaveNote(id) {
+  const room = currentRoom, t = todayStr(), key = sessionKey(id), data = { ...checkState[id] };
+  clearTimeout(_noteTimers[key]);
+  _noteTimers[key] = setTimeout(() => {
+    db.saveCheckState(room, t, key, data).catch(e => console.warn('autosaveNote', id, e));
+    showAutosaved();
+  }, 600);
+}
+// salva TUTTA la sessione corrente (rete di sicurezza prima di cambiare sala)
+async function flushSave() {
+  const t = todayStr(), room = currentRoom, sess = currentSession;
+  const keyFor = id => sess === 1 ? id : `s${sess}::${id}`;
+  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(room, t, keyFor(id), s).catch(() => {})));
+}
+let _autosaveT;
+function showAutosaved() {
+  const el = document.getElementById('autosave-badge');
+  if (!el) return;
+  el.style.opacity = '1';
+  clearTimeout(_autosaveT);
+  _autosaveT = setTimeout(() => { el.style.opacity = '0'; }, 1500);
+}
+
+// ── Documento rapporto di intervento (allegato) — struttura ufficiale Solaria/Armonia ──
+function buildInterventoDoc(item, s, roomLabel, dateStr, status) {
+  const PORTAL = 'https://rooms.area62.it';
+  const ora = s.failTs ? new Date(s.failTs).toLocaleTimeString('it-IT', { hour:'2-digit', minute:'2-digit' }) : '';
+  const dataOgg = new Date().toLocaleDateString('it-IT');
+  const stato = status || 'Apertura rapporto';
+  return `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Rapporto di Intervento — ${item.name}</title>
+  <style>
+    *{box-sizing:border-box;}
+    body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;margin:0;background:#eee;}
+    .doc{max-width:740px;margin:22px auto;background:#fff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;}
+    .hd{background:#0d0d0d;padding:16px 26px;display:flex;align-items:center;justify-content:space-between;}
+    .hd .a62{color:#86BC25;font-weight:800;font-size:22px;letter-spacing:1px;}
+    .hd .dl{color:#e8e8e8;font-size:12px;}
+    .bar{height:5px;background:#ff4d4d;}
+    .bd{padding:26px;}
+    h1{font-size:18px;margin:0 0 18px;text-transform:uppercase;letter-spacing:.4px;}
+    table.info{width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:6px;}
+    table.info td{padding:8px 10px;border:1px solid #e2e2e2;}
+    table.info td.k{color:#555;background:#f7f7f7;width:210px;font-weight:600;}
+    .sec{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#0d0d0d;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #86BC25;}
+    .box{border:1px solid #e2e2e2;border-radius:6px;padding:12px;min-height:54px;font-size:14px;}
+    .fill{border:1px dashed #c8c8c8;background:#fcfcfc;}
+    .esito span{display:inline-block;border:1px solid #ccc;border-radius:6px;padding:8px 16px;margin:0 8px 8px 0;font-size:13px;}
+    .sign{display:flex;gap:16px;margin-top:8px;}
+    .sign>div{flex:1;border:1px solid #e2e2e2;border-radius:6px;padding:12px;font-size:13px;color:#555;min-height:90px;}
+    .link{display:inline-block;margin-top:18px;background:#86BC25;color:#0d0d0d;text-decoration:none;font-weight:700;padding:11px 20px;border-radius:8px;font-size:13px;}
+    .ft{padding:14px 26px;background:#0d0d0d;color:#9a9a9a;font-size:11px;}
+    @media print{body{background:#fff;}.doc{border:none;margin:0;border-radius:0;}.link{display:none;}}
+  </style></head>
+  <body><div class="doc">
+    <div class="hd"><span class="a62">AREA62</span><span class="dl">Deloitte · Room Management</span></div>
+    <div class="bar"></div>
+    <div class="bd">
+      <h1>Rapporto di Intervento per Malfunzionamento — ${roomLabel}</h1>
+      <table class="info">
+        <tr><td class="k">Data intervento</td><td>${dataOgg}</td></tr>
+        <tr><td class="k">Ora intervento</td><td>${ora || '&nbsp;'}</td></tr>
+        <tr><td class="k">Area / Spazio</td><td><b>${roomLabel}</b></td></tr>
+        <tr><td class="k">Componente / Voce check</td><td><b>${item.name}</b></td></tr>
+        <tr><td class="k">Stato del rapporto</td><td><b style="color:#c0392b;">${stato}</b></td></tr>
+        <tr><td class="k">Tecnico intervenuto</td><td>&nbsp;</td></tr>
+        <tr><td class="k">Società</td><td>&nbsp;</td></tr>
+        <tr><td class="k">Presenti durante l'intervento</td><td>&nbsp;</td></tr>
+      </table>
+
+      <div class="sec">1. Rilevazione del malfunzionamento</div>
+      <div class="box">${item.desc ? item.desc + '<br><br>' : ''}${s.note ? '<b>Note presidio:</b> ' + s.note : ''}${s.fixApplied ? '<br><b>Soluzione rapida tentata:</b> ' + s.fixApplied : ''}</div>
+
+      <div class="sec">2. Descrizione dell'intervento</div>
+      <div class="box fill">&nbsp;</div>
+
+      <div class="sec">3. Esito</div>
+      <div class="esito"><span>☐ Risolto</span><span>☐ Parzialmente risolto</span><span>☐ Non risolto</span></div>
+      <div style="font-size:13px;color:#555;margin:4px 0;">Note residue:</div>
+      <div class="box fill" style="min-height:40px;">&nbsp;</div>
+
+      <div class="sec">Firme</div>
+      <div class="sign">
+        <div>Firma referente area<br><br>Nome:<br>Data:<br>Firma:</div>
+        <div>Firma tecnico<br><br>Nome:<br>Società:<br>Data:<br>Firma:</div>
+      </div>
+
+      <a class="link" href="${PORTAL}/checks.html">Apri nel portale →</a>
+    </div>
+    <div class="ft">Area62 Srl · Gestione sale immersive Solaria &amp; Armonia · Deloitte · ${PORTAL}</div>
+  </div></body></html>`;
+}
+
+// PDF del ticket (allegato al report del check): documento autoconsistente con
+// id, sala, priorità, stato e descrizione. Ritorna base64 (null se jsPDF assente).
+function ticketPdfB64(tk, roomLabel) {
+  try {
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) return null;
+    const doc = new jsPDF();
+    const W = doc.internal.pageSize.getWidth();
+    doc.setFillColor(134, 188, 37); doc.rect(0, 0, W, 4, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(20, 25, 35);
+    doc.text(`Ticket ${tk.id} — Segnalazione anomalia`, 14, 20);
+    doc.setFontSize(10); doc.setFont('helvetica', 'normal'); doc.setTextColor(110, 118, 133);
+    doc.text('Area62 Srl · Deloitte Room Management', 14, 27);
+    let y = 42;
+    const row = (k, v) => {
+      if (!v) return;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(90, 98, 110); doc.text(k, 14, y);
+      doc.setFont('helvetica', 'normal'); doc.setTextColor(25, 30, 40);
+      const lines = doc.splitTextToSize(String(v), W - 74);
+      doc.text(lines, 60, y); y += lines.length * 5.5 + 3;
+    };
+    row('Voce check', tk.title);
+    row('Sala', roomLabel);
+    row('Priorità', tk.priority || 'P1');
+    row('Stato', tk.status === 'in-progress' ? 'In lavorazione' : (tk.status === 'open' || !tk.status ? 'Aperto' : tk.status));
+    row('Segnalatore', tk.segnalatore);
+    row('Aperto il', tk.createdAt ? new Date(tk.createdAt).toLocaleString('it-IT') : new Date().toLocaleString('it-IT'));
+    y += 5;
+    doc.setFont('helvetica', 'bold'); doc.setTextColor(90, 98, 110); doc.text('Descrizione', 14, y); y += 6.5;
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(25, 30, 40);
+    doc.splitTextToSize(tk.desc || 'Anomalia rilevata durante il check.', W - 28).forEach(l => { doc.text(l, 14, y); y += 5.5; });
+    doc.setFontSize(9); doc.setTextColor(150, 156, 166);
+    doc.text('Documento generato automaticamente dal report del check — rooms.area62.it', 14, 287);
+    return doc.output('datauristring').split(',')[1];
+  } catch (e) { console.warn('ticketPdf', e); return null; }
+}
+
+async function sendCheckReport() {
+  if (typeof DEMO_MODE !== 'undefined' && DEMO_MODE) return;
+  try {
+    const sections = CHECK_ITEMS[currentRoom] || [];
+    const allItems = sections.flatMap(s => s.items);
+    const room = ROOMS.find(r => r.id === currentRoom);
+    const roomLabel = room ? `${room.name} – ${room.city}` : currentRoom;
+    const dateStr = new Date().toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+    const done    = allItems.filter(i => checkState[i.id]?.state);
+    const ok      = allItems.filter(i => ['ok','fixed'].includes(checkState[i.id]?.state));
+    const kos     = allItems.filter(i => checkState[i.id]?.state === 'ko');
+    const fixed   = allItems.filter(i => checkState[i.id]?.state === 'fixed');
+    const waiting = allItems.filter(i => lockedTicket(i));   // voci con ticket ancora aperto
+
+    const recips = (getSettings().emailRecipients || [])
+      .filter(r => r.email && (r.events || []).includes('check-report')).map(r => r.email);
+    const to = [...new Set(recips)];
+    if (!to.length) return; // nessun destinatario configurato per il report
+
+    const u = currentUser();
+    // barra/tag in alto a 3 stati: rosso = anomalie persistenti o in attesa, arancione = solo risolte sul momento, verde = tutto ok
+    const accent = (kos.length || waiting.length) ? '#ff4d4d' : (fixed.length ? '#f0a030' : '#86BC25');
+    const PORTAL = 'https://rooms.area62.it';
+    const portalBtn = `<p style="margin-top:18px;"><a href="${PORTAL}/checks.html" style="display:inline-block;background:#86BC25;color:#0d0d0d;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:8px;">Apri il portale →</a></p>`;
+    // ── Anomalie RISOLTE SUL MOMENTO (stato 'fixed'): vanno sempre segnalate nel report ──
+    const resolvedHtml = fixed.length
+      ? `<h3 style="color:#b9770e;margin:18px 0 6px;">🔧 Anomalie risolte sul momento (${fixed.length})</h3>
+         <ul style="margin:0 0 6px;padding-left:18px;">${fixed.map(i => {
+            const st = checkState[i.id] || {};
+            const extra = [st.fixApplied ? 'soluzione: ' + st.fixApplied : '', st.note].filter(Boolean).join(' · ');
+            return `<li><b>${i.name}</b>${extra ? ' — ' + extra : ''}</li>`;
+         }).join('')}</ul>
+         <p style="font-size:13px;color:#666;">Rilevate durante il check e <b>risolte in autonomia</b> dal presidio: nessun intervento necessario.</p>`
+      : '';
+
+    // ── Anomalie che PERSISTONO: richiedono rapporto di intervento (allegato con stato) ──
+    const anomListHtml = kos.length
+      ? `<h3 style="color:#c00;margin:18px 0 6px;">⚠ Anomalie da gestire — richiedono rapporto di intervento (${kos.length})</h3>
+         <ul style="margin:0 0 6px;padding-left:18px;">${kos.map(i => {
+            const tk = getCheckTicket(currentRoom, todayStr(), currentSession, i.id);
+            const note = checkState[i.id]?.note ? ' — ' + checkState[i.id].note : '';
+            const tag = tk
+              ? ` <span style="background:#ffe3e3;color:#a11;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:700;">Ticket ${tk} · Apertura rapporto</span>`
+              : ` <span style="color:#c00;font-size:12px;">(ticket in apertura)</span>`;
+            return `<li style="margin-bottom:4px;"><b>${i.name}</b>${note}${tag}</li>`;
+         }).join('')}</ul>`
+      : '';
+    const ticketNote = kos.length
+      ? `<p style="font-size:13px;color:#666;">Per ogni anomalia è <b>aperto il ticket in Anomalie</b> (vedi codice qui sopra) e il <b>rapporto di intervento</b> è in stato <b>Apertura rapporto</b>; il documento è anche in allegato. Gli aggiornamenti di stato proseguono sul portale.</p>`
+      : '';
+    // ── Voci ancora IN ATTESA di chiusura (ticket aperti da giorni precedenti) ──
+    const waitingHtml = waiting.length
+      ? `<h3 style="color:#c0392b;margin:18px 0 6px;">⏳ In attesa di chiusura (ticket già aperti) (${waiting.length})</h3>
+         <ul style="margin:0 0 6px;padding-left:18px;">${waiting.map(i => {
+            const tk = lockedTicket(i);
+            return `<li style="margin-bottom:4px;"><b>${i.name}</b> <span style="background:#ffe3e3;color:#a11;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:700;">Ticket ${tk.id}${tk.priority ? ' · ' + tk.priority : ''}</span></li>`;
+         }).join('')}</ul>
+         <p style="font-size:13px;color:#666;">Anomalie <b>già segnalate</b> e in gestione: il relativo controllo resta bloccato finché il ticket / rapporto di intervento non viene chiuso.</p>`
+      : '';
+
+    const allClearHtml = (!kos.length && !fixed.length && !waiting.length)
+      ? `<p style="color:#5a8a00;font-size:15px;"><b>✓ Tutto a posto.</b> Nessuna anomalia rilevata durante il check.</p>` : '';
+
+    // Banner di stato in cima: l'esito è chiaro al primo sguardo (coerente col colore della barra)
+    const statusBanner = (kos.length || waiting.length)
+      ? `<div style="background:rgba(255,77,77,.10);border-left:4px solid #ff4d4d;color:#c0392b;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">⚠ Anomalie ancora presenti${waiting.length ? ' / in attesa di chiusura' : ''} — rapporto di intervento</div>`
+      : fixed.length
+      ? `<div style="background:rgba(240,160,48,.14);border-left:4px solid #f0a030;color:#b9770e;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">🔧 Anomalie rilevate ma risolte sul momento — nessun intervento necessario</div>`
+      : `<div style="background:rgba(134,188,37,.14);border-left:4px solid #86BC25;color:#5a8a00;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 14px;">✓ Tutto a posto — nessuna anomalia</div>`;
+
+    // Oggetto leggibile: si capisce l'esito senza aprire la mail
+    const subjBits = [];
+    if (kos.length)     subjBits.push(`${kos.length} da gestire ⚠`);
+    if (waiting.length) subjBits.push(`${waiting.length} in attesa`);
+    if (fixed.length)   subjBits.push(`${fixed.length} risolte sul momento`);
+    const subjTail = subjBits.length ? subjBits.join(' · ') : 'tutto ok ✓';
+
+    let heading, bodyInner, subject;
+    if (currentSession > 1) {
+      // check successivo: report MIRATO agli eventi sopraggiunti durante la giornata
+      heading = `Segnalazione durante la giornata — ${roomLabel}`;
+      bodyInner =
+        `${statusBanner}<p style="color:#666;text-transform:capitalize;">${dateStr} · Check #${currentSession}</p>
+         ${resolvedHtml}${anomListHtml}${ticketNote}${waitingHtml}${allClearHtml}${portalBtn}`;
+      subject = `Check #${currentSession} ${roomLabel} — ${subjTail}`;
+    } else {
+      // primo check mattutino: report COMPLETO, autoconsistente (leggibile senza portale)
+      heading = `Check mattutino — ${roomLabel}`;
+      bodyInner =
+        `${statusBanner}<p style="color:#666;text-transform:capitalize;">${dateStr}</p>
+         <table style="font-size:14px;border-collapse:collapse;margin:12px 0;">
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Eseguiti</td><td>${done.length}/${allItems.length}</td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">OK</td><td style="color:#5a8a00;"><b>${ok.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Risolte sul momento</td><td style="color:#b9770e;"><b>${fixed.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Da gestire</td><td style="color:#c00;"><b>${kos.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">In attesa (ticket aperti)</td><td style="color:#c0392b;"><b>${waiting.length}</b></td></tr>
+           <tr><td style="color:#666;padding:3px 18px 3px 0;">Presidio</td><td>${u?.name || '—'}</td></tr>
+         </table>
+         ${resolvedHtml}${anomListHtml}${ticketNote}${waitingHtml}${allClearHtml}${portalBtn}`;
+      subject = `Check mattutino ${roomLabel} — ${subjTail}`;
+    }
+    const html = emailTemplate(heading, bodyInner, accent);
+
+    const attachments = kos.map(i => ({
+      filename: `rapporto-intervento-${i.id}.html`,
+      content: btoa(unescape(encodeURIComponent(buildInterventoDoc(i, checkState[i.id] || {}, roomLabel, dateStr)))),
+      mimetype: 'text/html',
+    }));
+
+    // ── PDF dei ticket in allegato: sia quelli APPENA aperti da questo check,
+    //    sia quelli ANCORA aperti da giorni precedenti (in attesa di chiusura) ──
+    for (const i of kos) {
+      const tkId = getCheckTicket(currentRoom, todayStr(), currentSession, i.id);
+      if (!tkId) continue;
+      const s = checkState[i.id] || {};
+      const pdf = ticketPdfB64({
+        id: tkId, title: i.name, priority: 'P1', status: 'open',
+        segnalatore: u?.name, createdAt: new Date().toISOString(),
+        desc: [
+          s.note ? 'Note presidio: ' + s.note : '',
+          s.fixApplied ? 'Soluzione tentata: ' + s.fixApplied : '',
+        ].filter(Boolean).join('\n') || 'Anomalia rilevata durante il check.',
+      }, roomLabel);
+      if (pdf) attachments.push({ filename: `ticket-${tkId}.pdf`, content: pdf, mimetype: 'application/pdf' });
+    }
+    for (const i of waiting) {
+      const tk = lockedTicket(i);
+      if (!tk) continue;
+      const pdf = ticketPdfB64(tk, roomLabel);
+      if (pdf) attachments.push({ filename: `ticket-${tk.id}.pdf`, content: pdf, mimetype: 'application/pdf' });
+    }
+
+    await db.sendEmail(to, subject, html, attachments);
+    toast(`Report check inviato a ${to.length} destinatari ✓`, 'info');
+  } catch (e) { console.error('report check', e); }
+}
+
+/* ─────────────────────────────────────
+   RENDER ALL
+───────────────────────────────────── */
+function renderSessionBar() {
+  const bar = document.getElementById('session-bar');
+  if (!bar) return;
+  const label = (n) => {
+    const ts = Object.values(allSessionsData[n] || {}).map(s => s && s.ts).filter(Boolean).sort()[0];
+    const t = ts ? new Date(ts).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
+    return `Check ${n}${t ? ' · ' + t : ''}`;
+  };
+  const chips = daySessions.map(n => {
+    const on = n === currentSession;
+    return `<button onclick="showSession(${n})" style="font-size:12.5px;font-weight:700;border:1.5px solid ${on ? 'var(--green)' : 'var(--border)'};background:${on ? 'rgba(134,188,37,.15)' : 'var(--bg-card)'};color:${on ? 'var(--green)' : 'var(--text-muted)'};border-radius:20px;padding:6px 14px;cursor:pointer;">${label(n)}</button>`;
+  }).join('');
+  bar.innerHTML =
+    `<span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-right:2px;">Check del giorno</span>${chips}` +
+    `<button onclick="newCheck()" title="Apri un nuovo check nella giornata (es. pre-evento)" style="font-size:12.5px;font-weight:700;border:1.5px dashed var(--green);background:transparent;color:var(--green);border-radius:20px;padding:6px 14px;cursor:pointer;">+ Nuovo check</button>`;
+}
+
+function renderAll() {
+  renderSessionBar();
+  const sections  = CHECK_ITEMS[currentRoom] || [];
+  const isArmonia = currentRoom.includes('armonia');
+  const container = document.getElementById('checks-container');
+
+  container.className = `checks-wrap ${isArmonia ? 'armonia' : 'solaria'}`;
+
+  const allItems = sections.flatMap(s => s.items);
+  const locked = allItems.filter(i => lockedTicket(i)).length;               // voci con ticket aperto
+  const marked = allItems.filter(i => checkState[i.id]?.state).length;
+  const ok     = allItems.filter(i => ['ok','fixed'].includes(checkState[i.id]?.state)).length;
+  const ko     = allItems.filter(i => checkState[i.id]?.state === 'ko').length + locked; // le voci in attesa contano come anomalie
+  const handled = marked + locked;
+  const pct    = allItems.length ? Math.round(handled / allItems.length * 100) : 0;
+
+  document.getElementById('sb-total').textContent = allItems.length;
+  document.getElementById('sb-ok').textContent    = ok;
+  document.getElementById('sb-ko').textContent    = ko;
+  document.getElementById('sb-nd').textContent    = allItems.length - handled;
+  document.getElementById('sb-fill').style.width  = pct + '%';
+  document.getElementById('sb-pct').textContent   = pct + '%';
+
+  container.innerHTML = sections.map(sec => {
+    const secOk  = sec.items.filter(i => ['ok','fixed'].includes(checkState[i.id]?.state)).length;
+    const secDone = sec.items.filter(i => checkState[i.id]?.state || lockedTicket(i)).length;
+    return `
+    <div class="section-block">
+      <div class="section-header">
+        <span class="section-icon">${sec.icon}</span>
+        <span class="section-label">${sec.section}</span>
+        <div class="section-line"></div>
+        ${secDone > 0
+          ? `<span class="section-ok-count">${secOk}/${sec.items.length}</span>`
+          : `<span class="section-count">${sec.items.length} voci</span>`
+        }
+      </div>
+      ${sec.items.map(item => renderCard(item)).join('')}
+    </div>`;
+  }).join('');
+
+  // Bind events
+  container.querySelectorAll('.check-card-header').forEach(hdr => {
+    hdr.addEventListener('click', () => toggleCard(hdr.dataset.id));
+  });
+  container.querySelectorAll('.btn-check-ok').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); markOk(btn.dataset.id); });
+  });
+  container.querySelectorAll('.btn-check-ko').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); markKo(btn.dataset.id); });
+  });
+  container.querySelectorAll('.fix-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); applyFix(btn.dataset.id, btn.dataset.fix); });
+  });
+  container.querySelectorAll('.btn-resolved').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); markFixed(btn.dataset.id); });
+  });
+  container.querySelectorAll('.btn-intervento').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); goToIntervento(btn.dataset.id); });
+  });
+  container.querySelectorAll('.res-note-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const id = inp.dataset.id;
+      if (!checkState[id]) checkState[id] = {};
+      checkState[id].note = e.target.value;
+      updateSaveButton();
+      autosaveNote(id);
+    });
+  });
+
+  updateSaveButton();
+}
+
+// Gating del bottone "Chiudi e segnala":
+//  • primo check (mattutino): abilitato solo a check COMPLETO (tutti i controlli marcati)
+//  • check successivi (durante la giornata): abilitato appena c'è ≥1 anomalia da segnalare
+function updateSaveButton() {
+  const btn = document.getElementById('btn-salva');
+  const hint = document.getElementById('save-hint');
+  if (!btn) return;
+  const allItems  = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
+  const locked    = allItems.filter(i => lockedTicket(i)).length;                              // già a ticket: fuori dal conteggio
+  const handled   = allItems.filter(i => checkState[i.id]?.state || lockedTicket(i)).length;   // marcati o già a ticket
+  const ko        = allItems.filter(i => checkState[i.id]?.state === 'ko').length;
+  const remaining = allItems.length - handled;
+  const attesaTxt = locked ? ` · ${locked} in attesa di chiusura (a ticket, escluse)` : '';
+  if (currentSession === 1) {
+    const complete = allItems.length > 0 && remaining === 0;
+    btn.disabled = !complete;
+    btn.title = complete
+      ? 'Chiudi il check mattutino e invia il report a tutti'
+      : `Completa i controlli non ancora eseguiti (${remaining} rimasti — le voci a ticket sono escluse)`;
+    if (hint) hint.textContent = complete
+      ? (ko ? `${ko} ${ko === 1 ? 'anomalia' : 'anomalie'} da segnalare${attesaTxt}` : `Pronto per la chiusura${attesaTxt}`)
+      : `Check mattutino · ${remaining} da eseguire${attesaTxt}`;
+  } else {
+    btn.disabled = ko === 0;
+    btn.title = ko
+      ? 'Segnala le anomalie di questo check e invia il report'
+      : 'Segna almeno un\'anomalia sopraggiunta da segnalare';
+    if (hint) hint.textContent = ko
+      ? `Check #${currentSession} · ${ko} ${ko === 1 ? 'anomalia' : 'anomalie'} da segnalare`
+      : `Check #${currentSession} · segnala le anomalie sopraggiunte`;
+  }
+}
+
+/* ─────────────────────────────────────
+   RENDER CARD
+───────────────────────────────────── */
+// Voce con TICKET APERTO: bloccata in rosso "in attesa di chiusura", non rifattibile
+function renderLockedCard(item, tk) {
+  const pr = tk.priority ? ' · ' + tk.priority : '';
+  const st = tk.status === 'in-progress' ? ' · in lavorazione' : (tk.status === 'open' ? ' · aperto' : '');
+  return `
+  <div class="check-card done-ko" id="card-${item.id}">
+    <div style="display:flex;align-items:center;gap:14px;padding:16px 18px;">
+      <div class="check-status-dot"></div>
+      <div class="check-card-name">${item.name}</div>
+      <div class="check-card-meta"><span style="color:var(--red);font-weight:700;">⏳ In attesa di chiusura</span> · Ticket ${tk.id}${pr}${st}</div>
+    </div>
+    <div style="padding:0 18px 16px;border-top:1px solid var(--border);">
+      <div style="font-size:13px;color:var(--red);line-height:1.6;padding:12px 0;">
+        Anomalia già segnalata e <b>in gestione</b> (Ticket ${tk.id}${pr}). Il controllo resta bloccato in attesa della <b>chiusura del rapporto di intervento</b> e si riabilita da solo quando il ticket viene risolto.
+      </div>
+      <a class="btn btn-outline btn-sm" href="tickets.html" style="text-decoration:none;">Vai al ticket ${tk.id} →</a>
+    </div>
+  </div>`;
+}
+
+function renderCard(item) {
+  const lk = lockedTicket(item);
+  if (lk) return renderLockedCard(item, lk);
+  const s     = checkState[item.id] || {};
+  const state = s.state || null;
+  const isOpen  = s.open || false;
+
+  let cardCls = '';
+  if (state === 'ok')    cardCls = 'done-ok';
+  if (state === 'ko')    cardCls = 'done-ko';
+  if (state === 'fixed') cardCls = 'done-fixed';
+  if (isOpen)            cardCls += ' open';
+
+  const stateLabel = state === 'ok'
+    ? `<span style="color:var(--green);">✓ Check OK</span> · ${formatTime(s.ts)}`
+    : state === 'fixed'
+    ? `<span style="color:var(--green);">✓ Risolto in autonomia</span> · ${formatTime(s.ts)}`
+    : state === 'ko'
+    ? `<span style="color:var(--red);">✕ Anomalia</span> · ${formatTime(s.ts)}`
+    : '';
+
+  return `
+  <div class="check-card ${cardCls}" id="card-${item.id}">
+    <div class="check-card-header" data-id="${item.id}">
+      <div class="check-status-dot"></div>
+      <div class="check-card-name">${item.name}</div>
+      ${stateLabel ? `<div class="check-card-meta">${stateLabel}</div>` : ''}
+      <div class="check-card-arrow">▼</div>
+    </div>
+    <div class="check-card-body">
+      <div class="check-body-desc">${item.desc}</div>
+
+      <div class="check-action-btns">
+        <button class="btn-check-ok" data-id="${item.id}">
+          ✓ Check fatto, tutto bene
+        </button>
+        <button class="btn-check-ko" data-id="${item.id}">
+          ✕ Check fallito
+        </button>
+      </div>
+
+      <div class="done-stamp">
+        ${state === 'ok' ? '✓ Completato alle ' + formatTime(s.ts) : ''}
+        ${state === 'fixed' ? '✓ Anomalia risolta alle ' + formatTime(s.ts) : ''}
+      </div>
+
+      ${renderResolutionPanel(item, s)}
+    </div>
+  </div>`;
+}
+
+function renderResolutionPanel(item, s) {
+  const isKo   = s.state === 'ko' || s.showPanel;
+  const panelCls = isKo ? 'open' : '';
+  const failTs = s.failTs ? formatTime(s.failTs) : '';
+
+  const fixes = (item.quickFixes || []).map(fix => {
+    const applied = s.fixApplied === fix;
+    return `<button class="fix-btn ${applied ? 'applied' : ''}" data-id="${item.id}" data-fix="${fix}">
+      <span class="fix-icon">${applied ? '✓' : '🔧'}</span>${fix}
+    </button>`;
+  }).join('');
+
+  return `
+  <div class="resolution-panel ${panelCls}" id="panel-${item.id}">
+    <div class="res-header">
+      ✕ Anomalia rilevata
+      <span class="res-time">${failTs ? 'ore ' + failTs : ''}</span>
+    </div>
+
+    ${fixes ? `
+    <div class="res-label">Soluzioni rapide</div>
+    <div class="quick-fixes">${fixes}</div>` : ''}
+
+    <div class="res-note">
+      <div class="res-label" style="margin-bottom:6px;">Note intervento</div>
+      <textarea class="res-note-input" data-id="${item.id}"
+        placeholder="Descrivi il problema e le azioni intraprese...">${s.note || ''}</textarea>
+    </div>
+
+    <div class="res-outcome-btns">
+      <button class="btn-resolved" data-id="${item.id}">✓ Problema risolto</button>
+    </div>
+
+    <div class="res-divider"></div>
+
+    <button class="btn-intervento" data-id="${item.id}" data-name="${item.name}">
+      ⚠ Necessita di intervento → Apri rapporto di intervento
+    </button>
+  </div>`;
+}
+
+/* ─────────────────────────────────────
+   ACTIONS
+───────────────────────────────────── */
+function toggleCard(id) {
+  if (!checkState[id]) checkState[id] = {};
+  checkState[id].open = !checkState[id].open;
+  renderAll();
+}
+
+function markOk(id) {
+  checkState[id] = { ...checkState[id], state: 'ok', ts: new Date().toISOString(), open: false };
+  autosave(id);
+  updateSaveButton();
+  renderAll();
+  toast('Check completato ✓', 'success');
+}
+
+function markKo(id) {
+  checkState[id] = { ...checkState[id], state: 'ko', ts: new Date().toISOString(), failTs: new Date().toISOString(), showPanel: true, open: true };
+  autosave(id);
+  updateSaveButton();
+  renderAll();
+  // scroll to panel
+  setTimeout(() => {
+    const panel = document.getElementById(`panel-${id}`);
+    panel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 100);
+}
+
+function applyFix(id, fix) {
+  if (!checkState[id]) checkState[id] = {};
+  checkState[id].fixApplied = fix;
+  autosave(id);
+  updateSaveButton();
+  // Re-render just the fixes
+  const allItems = Object.values(CHECK_ITEMS).flat().flatMap(s => s?.items || []);
+  renderAll();
+  toast(`Soluzione applicata: ${fix}`, 'info');
+}
+
+function markFixed(id) {
+  if (!checkState[id]) checkState[id] = {};
+  const note = document.querySelector(`.res-note-input[data-id="${id}"]`)?.value || checkState[id].note || '';
+  checkState[id] = { ...checkState[id], state: 'fixed', ts: new Date().toISOString(), note, open: false, showPanel: false };
+  autosave(id);
+  updateSaveButton();
+  renderAll();
+  toast('Anomalia risolta ✓', 'success');
+}
+
+function goToIntervento(id) {
+  const sections = CHECK_ITEMS[currentRoom] || [];
+  const allItems  = sections.flatMap(s => s.items);
+  const item      = allItems.find(i => i.id === id);
+  const note      = document.querySelector(`.res-note-input[data-id="${id}"]`)?.value || '';
+  if (!checkState[id]) checkState[id] = {};
+  checkState[id].note = note;
+
+  // salva SOLO questa voce (non chiudere l'intero check: potrebbe non essere completo)
+  const t = todayStr();
+  db.saveCheckState(currentRoom, t, sessionKey(id), checkState[id]).catch(() => {});
+
+  // Passa i dati alla pagina rapporto tramite sessionStorage (incluso il riferimento
+  // per collegare/riusare l'eventuale ticket già aperto per questa voce)
+  const room = ROOMS.find(r => r.id === currentRoom);
+  sessionStorage.setItem('rapporto_prefill', JSON.stringify({
+    fromCheck: id,
+    checkName: item?.name || id,
+    room: currentRoom,
+    roomLabel: `${room?.name} ${room?.city}`,
+    note,
+    fixApplied: checkState[id]?.fixApplied || '',
+    ts: checkState[id]?.failTs || new Date().toISOString(),
+    date: t,
+    session: currentSession,
+    ticketId: getCheckTicket(currentRoom, t, currentSession, id) || '',
+  }));
+
+  window.location.href = 'rapporto.html';
+}
+
+/* ─────────────────────────────────────
+   STORICO
+───────────────────────────────────── */
+const MONTH_NAMES = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+
+async function getStoricoSessions() {
+  // 1. Storico importato (Solaria Roma/Milano condividono lo storico di riferimento)
+  let historical = [];
+  if (currentRoom.startsWith('solaria') && typeof STORICO_SOLARIA_ROMA !== 'undefined') {
+    historical = STORICO_SOLARIA_ROMA.map(s => ({ ...s, source: 'import' }));
+  }
+  const allItems = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
+  // 2. Sessioni live dal DATABASE, raggruppate per (data, sessione) → più report nella stessa giornata
+  const rows = await db.getRoomChecks(currentRoom);
+  const groups = {};
+  for (const r of (rows || [])) {
+    const { s, id } = parseSession(r.check_id);
+    const gk = `${r.date}#${s}`;
+    (groups[gk] = groups[gk] || { date: r.date, session: s, items: {} }).items[id] = r;
+  }
+  const live = Object.values(groups).map(g => {
+    const ok = allItems.filter(i => ['ok','fixed'].includes(g.items[i.id]?.state)).length;
+    const fails = allItems.filter(i => g.items[i.id]?.state === 'ko')
+      .map(i => ({ area: '', comp: i.name, note: g.items[i.id]?.note || '' }));
+    return { date: g.date, session: g.session, moment: g.session > 1 ? `Check ${g.session}` : '', ok, ko: fails.length, total: ok + fails.length, fails, source: 'live' };
+  });
+  return [...live, ...historical];
+}
+
+async function renderStorico() {
+  const el = document.getElementById('storico-body');
+  el.innerHTML = '<div class="empty"><div class="empty-icon"><svg viewBox="0 0 48 48" width="40" height="40" style="filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))"><rect x="12" y="7" width="24" height="3.6" rx="1.8" fill="#86BC25"/><rect x="12" y="37.4" width="24" height="3.6" rx="1.8" fill="#86BC25"/><path d="M15 10.6h18c0 7.5-9 9.4-9 13.4s9 5.9 9 13.4H15c0-7.5 9-9.4 9-13.4s-9-5.9-9-13.4z" fill="#dcdcdc"/><path d="M18.5 34.4h11c0-3.5-5.5-4.6-5.5-6.6s5.5-3.1 5.5-6.6" fill="#86BC25"/></svg></div><div class="empty-title">Carico lo storico…</div></div>';
+  const sessions = await getStoricoSessions();
+
+  if (!sessions.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon"><svg viewBox="0 0 48 48" width="40" height="40" style="filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))"><rect x="9" y="8" width="30" height="35" rx="5" fill="#dcdcdc"/><rect x="16" y="4" width="16" height="8" rx="4" fill="#86BC25"/><rect x="14" y="19" width="20" height="2.6" rx="1.3" fill="#b3b3b3"/><rect x="14" y="26" width="20" height="2.6" rx="1.3" fill="#b3b3b3"/><rect x="14" y="33" width="13" height="2.6" rx="1.3" fill="#b3b3b3"/></svg></div><div class="empty-title">Nessuno storico per questa sala</div><div class="empty-sub">Lo storico si popolerà con i check salvati.</div></div>';
+    return;
+  }
+
+  // ── STATISTICHE ──
+  const total    = sessions.length;
+  const perfect  = sessions.filter(s => s.ko === 0).length;
+  const withAnom = sessions.filter(s => s.ko > 0).length;
+  const totAnom  = sessions.reduce((a,s) => a + s.ko, 0);
+  const perfectPct = Math.round(perfect / total * 100);
+
+  // ── ANOMALIE RICORRENTI ──
+  const compCount = {};
+  sessions.forEach(s => s.fails.forEach(f => { compCount[f.comp] = (compCount[f.comp]||0) + 1; }));
+  const recurring = Object.entries(compCount).sort((a,b) => b[1]-a[1]).slice(0, 6);
+  const maxRec = recurring.length ? recurring[0][1] : 1;
+
+  // ── HEATMAP per mese ──
+  const byMonth = {};
+  sessions.forEach(s => {
+    if (s.moment === 'live' || !/^\d{4}-\d{2}-\d{2}$/.test(s.date)) return;
+    const [y,m,d] = s.date.split('-').map(Number);
+    const key = `${y}-${m}`;
+    (byMonth[key] = byMonth[key] || {}) ;
+    const day = byMonth[key][d] = byMonth[key][d] || { ko:0, ok:0, sessions:0 };
+    day.ko += s.ko; day.ok += s.ok; day.sessions++;
+  });
+  const monthKeys = Object.keys(byMonth).sort((a,b) => {
+    const [ay,am]=a.split('-').map(Number), [by,bm]=b.split('-').map(Number);
+    return ay-by || am-bm;
+  });
+
+  function dayColor(day) {
+    if (!day || !day.sessions) return 'rgba(255,255,255,.05)';
+    if (day.ko === 0) return 'rgba(134,188,37,.55)';
+    if (day.ko <= 2)  return 'rgba(240,160,48,.75)';
+    return 'rgba(255,77,77,.8)';
+  }
+
+  const heatmapHtml = monthKeys.map(mk => {
+    const [y,m] = mk.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    let cells = '';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const day = byMonth[mk][d];
+      const tip = day ? `${d} ${MONTH_NAMES[m-1]}: ${day.ok} ok, ${day.ko} anomalie` : `${d} ${MONTH_NAMES[m-1]}: nessun check`;
+      cells += `<div title="${tip}" style="width:15px;height:15px;border-radius:3px;background:${dayColor(day)};"></div>`;
+    }
+    return `<div style="margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:5px;">${MONTH_NAMES[m-1]} ${y}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:3px;">${cells}</div>
+    </div>`;
+  }).join('');
+
+  // ── ELENCO SESSIONI (più recenti prima) ──
+  const listHtml = sessions
+    .slice()
+    .sort((a,b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : ((b.session||1) - (a.session||1))))
+    .slice(0, 60)
+    .map(s => {
+      const momentBadge = (s.session > 1) ? `<span style="font-size:10px;color:var(--orange);font-weight:700;">● Check ${s.session}</span>`
+        : s.moment === 'morning' ? '<span style="font-size:10px;color:#4da6ff;">🌅 Mattino</span>'
+        : s.moment === 'evening' ? '<span style="font-size:10px;color:var(--orange);">🌆 Sera</span>'
+        : '<span style="font-size:10px;color:var(--green);">● Live</span>';
+      const dateFmt = /^\d{4}-\d{2}-\d{2}$/.test(s.date)
+        ? new Date(s.date).toLocaleDateString('it-IT', { weekday:'short', day:'numeric', month:'short' })
+        : s.date;
+      return `
+      <div style="border:1px solid var(--border);border-radius:9px;padding:11px 14px;margin-bottom:8px;${s.ko>0?'border-left:3px solid var(--red);':''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="font-weight:700;font-size:13px;text-transform:capitalize;">${dateFmt} ${momentBadge}</div>
+          <div style="display:flex;gap:12px;font-size:12px;">
+            <span style="color:var(--green);">✓ ${s.ok}</span>
+            <span style="color:${s.ko?'var(--red)':'var(--text-muted)'};">✕ ${s.ko}</span>
+          </div>
+        </div>
+        ${s.fails.length ? `<div style="margin-top:6px;font-size:12px;color:var(--text-muted);">
+          ${s.fails.map(f => `<span style="color:var(--red);font-weight:600;">${f.comp}</span>${f.note ? ' — '+f.note : ''}`).join(' · ')}
+        </div>` : ''}
+      </div>`;
+    }).join('');
+
+  el.innerHTML = `
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;">
+      <div style="background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;">${total}</div>
+        <div style="font-size:11px;color:var(--text-muted);">Sessioni</div>
+      </div>
+      <div style="background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:var(--green);">${perfectPct}%</div>
+        <div style="font-size:11px;color:var(--text-muted);">Giornate perfette</div>
+      </div>
+      <div style="background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:${withAnom?'var(--orange)':'var(--text-muted)'};">${withAnom}</div>
+        <div style="font-size:11px;color:var(--text-muted);">Con anomalie</div>
+      </div>
+      <div style="background:var(--bg-card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
+        <div style="font-size:22px;font-weight:800;color:${totAnom?'var(--red)':'var(--text-muted)'};">${totAnom}</div>
+        <div style="font-size:11px;color:var(--text-muted);">Anomalie totali</div>
+      </div>
+    </div>
+
+    ${recurring.length ? `
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:10px;">⚠ Anomalie ricorrenti</div>
+      ${recurring.map(([comp,n]) => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <div style="width:130px;font-size:12px;font-weight:600;flex-shrink:0;">${comp}</div>
+          <div style="flex:1;height:8px;background:var(--bg-card2);border-radius:4px;overflow:hidden;">
+            <div style="width:${Math.round(n/maxRec*100)}%;height:100%;background:var(--red);"></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);width:36px;text-align:right;">${n}×</div>
+        </div>`).join('')}
+    </div>` : ''}
+
+    ${heatmapHtml ? `
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:10px;">📅 Calendario check</div>
+      ${heatmapHtml}
+      <div style="display:flex;gap:14px;font-size:11px;color:var(--text-muted);margin-top:6px;">
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:11px;height:11px;border-radius:3px;background:rgba(134,188,37,.55);display:inline-block;"></span>Tutto ok</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:11px;height:11px;border-radius:3px;background:rgba(240,160,48,.75);display:inline-block;"></span>1-2 anomalie</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:11px;height:11px;border-radius:3px;background:rgba(255,77,77,.8);display:inline-block;"></span>3+ anomalie</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="width:11px;height:11px;border-radius:3px;background:rgba(255,255,255,.05);display:inline-block;"></span>Nessun check</span>
+      </div>
+    </div>` : ''}
+
+    <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:10px;">🗒 Sessioni recenti</div>
+    ${listHtml}`;
+}
+</script>
+</body>
+</html>

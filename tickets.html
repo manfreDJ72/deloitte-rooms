@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Anomalie – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=66">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
+    <div class="header-sep"></div>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="3" width="8" height="8" rx="2" fill="#86BC25"/><rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor"/></svg></span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor"/><path d="M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v1H3z" fill="#86BC25"/><rect x="6.5" y="12" width="3" height="3" rx="1" fill="#0a0a0a"/><rect x="14.5" y="12" width="3" height="3" rx="1" fill="#86BC25"/></svg></span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3" fill="currentColor"/><rect x="9" y="2.5" width="6" height="4" rx="1.6" fill="#86BC25"/><path d="M9 13.4l2.1 2.1 4-4.3" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link active"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3.4c.72 0 1.38.39 1.74 1.02l8.03 13.9A2 2 0 0 1 20.03 21H3.97a2 2 0 0 1-1.74-2.68l8.03-13.9A2 2 0 0 1 12 3.4z" fill="currentColor"/><rect x="11" y="8.6" width="2" height="5.6" rx="1" fill="#0a0a0a"/><circle cx="12" cy="17.3" r="1.25" fill="#86BC25"/></svg></span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="3" fill="currentColor"/><path d="M4 7.5l8 5.4 8-5.4" fill="none" stroke="#86BC25" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Richieste</a>
+    <a href="task.html"      class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="currentColor"/><circle cx="8" cy="9" r="1.5" fill="#86BC25"/><rect x="10.6" y="8" width="6.4" height="2" rx="1" fill="#0a0a0a"/><circle cx="8" cy="14.5" r="1.5" fill="#0a0a0a"/><rect x="10.6" y="13.5" width="6.4" height="2" rx="1" fill="#0a0a0a"/></svg></span> Task</a>
+    <a href="documenti.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 3h7.2L19 8.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor"/><path d="M13 3.2V8h4.6z" fill="#86BC25"/><rect x="7.5" y="12" width="8" height="1.8" rx=".9" fill="#0a0a0a"/><rect x="7.5" y="15.6" width="8" height="1.8" rx=".9" fill="#0a0a0a"/></svg></span> Documenti</a>
+    <a href="assistente.html" class="nav-link nav-assistente"><span class="nav-icon armonia-dot"></span> ArmonIA</a>
+    <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M13.3 2.2l.5 2.1c.5.16.97.38 1.4.66l2-.86 1.7 1.7-.86 2c.28.43.5.9.66 1.4l2.1.5v2.4l-2.1.5c-.16.5-.38.97-.66 1.4l.86 2-1.7 1.7-2-.86c-.43.28-.9.5-1.4.66l-.5 2.1h-2.4l-.5-2.1c-.5-.16-.97-.38-1.4-.66l-2 .86-1.7-1.7.86-2c-.28-.43-.5-.9-.66-1.4l-2.1-.5v-2.4l2.1-.5c.16-.5.38-.97.66-1.4l-.86-2 1.7-1.7 2 .86c.43-.28.9-.5 1.4-.66l.5-2.1z" fill="currentColor"/><circle cx="12" cy="12" r="3.4" fill="#0a0a0a"/><circle cx="12" cy="12" r="1.7" fill="#86BC25"/></svg></span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title">Gestione Anomalie</h1>
+      <p class="page-sub">Segnalazione, tracciamento interventi e monitoraggio SLA contrattuali</p>
+    </div>
+    <button class="btn btn-danger" id="btn-nuovo-ticket">⚠ Nuova segnalazione</button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row" style="margin-bottom:20px;">
+    <div class="stat-tile">
+      <div class="stat-val" id="st-open" style="color:var(--red);">0</div>
+      <div class="stat-label">Aperti</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-val" id="st-prog" style="color:var(--orange);">0</div>
+      <div class="stat-label">In lavorazione</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-val" id="st-res" style="color:var(--green);">0</div>
+      <div class="stat-label">Risolti (30gg)</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-val" id="st-sla" style="color:var(--text);">–</div>
+      <div class="stat-label">SLA Rispettati</div>
+      <div class="stat-sub">Ultimi 30 giorni</div>
+    </div>
+  </div>
+
+  <!-- Filters + tabs -->
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+    <div class="tabs" style="margin:0;border:none;flex:1;min-width:300px;">
+      <div class="tab active" data-filter="all">Tutti <span class="tab-count" id="cnt-all">0</span></div>
+      <div class="tab" data-filter="open">Aperti <span class="tab-count" id="cnt-open">0</span></div>
+      <div class="tab" data-filter="in-progress">In corso <span class="tab-count" id="cnt-prog">0</span></div>
+      <div class="tab" data-filter="resolved">Risolti <span class="tab-count" id="cnt-res">0</span></div>
+    </div>
+    <select class="form-control" id="filter-room" style="max-width:200px;min-height:36px;">
+      <option value="all">Tutte le sale</option>
+      <option value="solaria-roma">Solaria – Roma</option>
+      <option value="solaria-milano">Solaria – Milano</option>
+      <option value="armonia-roma">Armonia – Roma</option>
+    </select>
+    <select class="form-control" id="filter-priority" style="max-width:160px;min-height:36px;">
+      <option value="all">Tutte le priorità</option>
+      <option value="P1">P1 – Critico</option>
+      <option value="P2">P2 – Alto</option>
+      <option value="P3">P3 – Medio</option>
+      <option value="P4">P4 – Basso</option>
+    </select>
+  </div>
+
+  <!-- Ticket list -->
+  <div id="ticket-list" class="ticket-list"></div>
+
+  <!-- Table view (storico risolti) -->
+  <div id="resolved-table" style="display:none;margin-top:24px;">
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">Storico risolti</h3>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr>
+          <th>ID</th><th>Titolo</th><th>Sala</th><th>Priorità</th>
+          <th>Apertura</th><th>Chiusura</th><th>SLA</th>
+        </tr></thead>
+        <tbody id="resolved-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- Modal nuovo ticket -->
+<div class="overlay" id="modal-ticket">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="tk-modal-title">Nuova Segnalazione</div>
+      <button class="modal-x" onclick="closeModal('modal-ticket')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Titolo anomalia</label>
+        <input class="form-control" id="tk-title" placeholder="Es. LED Wall spento, Audio non funzionante...">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sala</label>
+          <select class="form-control" id="tk-room">
+            <option value="solaria-roma">Solaria – Roma</option>
+            <option value="solaria-milano">Solaria – Milano</option>
+            <option value="armonia-roma">Armonia – Roma</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priorità</label>
+          <select class="form-control" id="tk-priority">
+            <option value="P1">P1 – Critico</option>
+            <option value="P2" selected>P2 – Alto</option>
+            <option value="P3">P3 – Medio</option>
+            <option value="P4">P4 – Basso</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Categoria</label>
+          <select class="form-control" id="tk-cat">
+            <option value="hardware">Hardware</option>
+            <option value="software">Software</option>
+            <option value="connettivita">Connettività</option>
+            <option value="presidio">Presidio</option>
+            <option value="contenuto">Contenuto</option>
+            <option value="altro">Altro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Segnalato da</label>
+          <input class="form-control" id="tk-segnalatore">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrizione</label>
+        <textarea class="form-control" id="tk-desc" rows="4"
+          placeholder="Descrizione dettagliata del problema. Quando si è verificato, cosa non funziona, cosa è stato già tentato..."></textarea>
+      </div>
+
+      <!-- SLA preview -->
+      <div style="background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:14px;" id="sla-preview">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:.5px;margin-bottom:10px;">SLA applicabili (da contratto)</div>
+        <div id="sla-preview-content"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-ticket')">Annulla</button>
+      <button class="btn btn-danger" id="btn-salva-ticket">Apri Ticket</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal dettaglio ticket -->
+<div class="overlay" id="modal-detail">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="det-title">–</div>
+        <div id="det-badges" style="margin-top:6px;display:flex;gap:6px;"></div>
+      </div>
+      <button class="modal-x" onclick="closeModal('modal-detail')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Info -->
+      <div id="det-info" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;"></div>
+
+      <!-- SLA box -->
+      <div id="det-sla-box" style="background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:20px;"></div>
+
+      <!-- Description -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:.5px;margin-bottom:8px;">Descrizione</div>
+        <div id="det-desc" style="font-size:13px;line-height:1.6;"></div>
+      </div>
+
+      <!-- Actions log -->
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:.5px;margin-bottom:10px;">Log interventi</div>
+        <div id="det-actions"></div>
+      </div>
+
+      <!-- Add action -->
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <textarea class="form-control" id="action-text" rows="2" placeholder="Aggiungi aggiornamento intervento..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+          <select class="form-control" id="action-room" style="max-width:180px;min-height:36px;" title="Correggi la sala del ticket">
+            <option value="solaria-roma">Sala: Solaria – Roma</option>
+            <option value="solaria-milano">Sala: Solaria – Milano</option>
+            <option value="armonia-roma">Sala: Armonia – Roma</option>
+          </select>
+          <select class="form-control" id="action-priority" style="max-width:190px;min-height:36px;" title="Sposta la priorità del ticket">
+            <option value="P1">Priorità: P1 – Critico</option>
+            <option value="P2">Priorità: P2 – Alto</option>
+            <option value="P3">Priorità: P3 – Medio</option>
+            <option value="P4">Priorità: P4 – Basso</option>
+          </select>
+          <select class="form-control" id="action-status" style="max-width:200px;min-height:36px;">
+            <option value="">— Mantieni stato attuale —</option>
+            <option value="in-progress">→ Imposta: In lavorazione</option>
+            <option value="resolved">✓ Imposta: Risolto</option>
+            <option value="open">↩ Riapri</option>
+          </select>
+          <button class="btn btn-primary btn-sm" id="btn-add-action">Aggiungi</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=66"></script>
+<script src="js/app.js?v=66"></script>
+<script src="js/db.js?v=66"></script>
+<script src="js/report.js?v=66"></script>
+<script src="js/tour.js?v=66"></script>
+<script>
+let filterStatus   = 'all';
+let filterRoomVal  = 'all';
+let filterPriorityVal = 'all';
+let detailId       = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!requireAuth()) return;
+  const u = currentUser();
+  document.getElementById('tk-segnalatore').value = u?.name || '';
+
+  await db.refreshTickets();   // stato fresco dal DB: tutti vedono lo stesso
+  renderAll();
+
+  // Tabs
+  document.querySelectorAll('[data-filter]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('[data-filter]').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      filterStatus = tab.dataset.filter;
+      renderAll();
+    });
+  });
+
+  // Filters
+  document.getElementById('filter-room').addEventListener('change', e => { filterRoomVal = e.target.value; renderAll(); });
+  document.getElementById('filter-priority').addEventListener('change', e => { filterPriorityVal = e.target.value; renderAll(); });
+
+  // New ticket button
+  document.getElementById('btn-nuovo-ticket').addEventListener('click', () => {
+    document.getElementById('tk-modal-title').textContent = 'Nuova Segnalazione';
+    document.getElementById('btn-salva-ticket').textContent = 'Apri Ticket';
+    openModal('modal-ticket');
+  });
+
+  // SLA preview on priority change
+  document.getElementById('tk-priority').addEventListener('change', updateSLAPreview);
+  updateSLAPreview();
+
+  // Save ticket
+  document.getElementById('btn-salva-ticket').addEventListener('click', saveTicket);
+
+  // Add action in detail
+  document.getElementById('btn-add-action').addEventListener('click', addAction);
+});
+
+function updateSLAPreview() {
+  const p = document.getElementById('tk-priority').value;
+  const s = SLA[p];
+  if (!s) return;
+  const rows = [
+    ['Primo contatto', `Entro ${s.contact_h}h lavorativa`, '1% canone'],
+    ['Assistenza remota', `Entro ${s.remote_h}h`, '1% canone'],
+  ];
+  if (p === 'P1') {
+    rows.push(['Ripristino prov. SW', 'Entro 12h dalla diagnosi', '3% canone']);
+    rows.push(['Ripristino prov. HW', 'Entro 24h (materiali disponibili)', '3% canone']);
+  } else if (p === 'P2') {
+    rows.push(['Ripristino prov. SW', 'Entro 1 giorno lavorativo', '1% canone']);
+    rows.push(['Ripristino prov. HW', 'Entro 2 giorni lavorativi', '1% canone']);
+  }
+  document.getElementById('sla-preview-content').innerHTML =
+    rows.map(r => `<div style="display:flex;gap:12px;font-size:12px;margin-bottom:6px;">
+      <div style="min-width:160px;color:var(--text-muted);">${r[0]}</div>
+      <div style="flex:1;font-weight:600;">${r[1]}</div>
+      <div style="color:var(--orange);font-size:11px;">${r[2]}</div>
+    </div>`).join('');
+}
+
+async function saveTicket() {
+  const title = document.getElementById('tk-title').value.trim();
+  const desc  = document.getElementById('tk-desc').value.trim();
+  if (!title) { toast('Inserisci un titolo', 'error'); return; }
+
+  // INSERT mirato sul DB (niente push distruttivo dell'intera collezione)
+  const ticket = await db.createTicket({
+    room: document.getElementById('tk-room').value,
+    priority: document.getElementById('tk-priority').value,
+    title, desc,
+    category: document.getElementById('tk-cat').value,
+    status: 'open',
+    segnalatore: document.getElementById('tk-segnalatore').value,
+  });
+  closeModal('modal-ticket');
+  renderAll();
+  toast(`Ticket ${ticket.id} aperto (${ticket.priority})`, 'error');
+}
+
+function renderAll() {
+  const tickets = ls(LS.tickets)||[];
+  const filtered = tickets.filter(t => {
+    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
+    if (filterRoomVal !== 'all' && t.room !== filterRoomVal) return false;
+    if (filterPriorityVal !== 'all' && t.priority !== filterPriorityVal) return false;
+    return true;
+  });
+
+  // Update counts
+  document.getElementById('cnt-all').textContent   = tickets.length;
+  document.getElementById('cnt-open').textContent  = tickets.filter(t=>t.status==='open').length;
+  document.getElementById('cnt-prog').textContent  = tickets.filter(t=>t.status==='in-progress').length;
+  document.getElementById('cnt-res').textContent   = tickets.filter(t=>t.status==='resolved').length;
+
+  const open = tickets.filter(t=>t.status==='open').length;
+  const prog = tickets.filter(t=>t.status==='in-progress').length;
+  const res  = tickets.filter(t=>t.status==='resolved').length;
+  document.getElementById('st-open').textContent = open;
+  document.getElementById('st-prog').textContent = prog;
+  document.getElementById('st-res').textContent  = res;
+  const total = open + prog + res;
+  document.getElementById('st-sla').textContent = total ? Math.round((res/(res+open))*100)+'%' : '–';
+
+  // Ticket cards
+  const openActive = filtered.filter(t => t.status !== 'resolved');
+  const resolved   = filtered.filter(t => t.status === 'resolved');
+
+  const listEl = document.getElementById('ticket-list');
+  listEl.innerHTML = openActive.map(t => renderTicketCard(t)).join('');
+  listEl.querySelectorAll('.ticket-card').forEach(el => {
+    el.addEventListener('click', () => openDetail(el.dataset.id));
+  });
+
+  // Resolved table
+  const resEl = document.getElementById('resolved-table');
+  if (resolved.length && (filterStatus === 'all' || filterStatus === 'resolved')) {
+    resEl.style.display = '';
+    document.getElementById('resolved-tbody').innerHTML = resolved.map(t => {
+      const room = ROOMS.find(r => r.id === t.room);
+      const slaOk = t.slaRespected !== false;
+      return `<tr onclick="openDetail('${t.id}')" style="cursor:pointer;">
+        <td style="font-weight:700;">${t.id}</td>
+        <td>${t.title}</td>
+        <td><span class="room-tag ${t.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span></td>
+        <td><span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span></td>
+        <td>${formatDateTime(t.createdAt)}</td>
+        <td>${t.resolvedAt ? formatDateTime(t.resolvedAt) : '–'}</td>
+        <td><span class="badge ${slaOk?'badge-ok':'badge-ko'}">${slaOk?'✓ OK':'✕ Breach'}</span></td>
+      </tr>`;
+    }).join('');
+  } else {
+    resEl.style.display = 'none';
+  }
+
+  if (openActive.length === 0 && resolved.length === 0) {
+    listEl.innerHTML = `<div class="empty"><div class="empty-icon"><svg viewBox="0 0 48 48" width="40" height="40" style="filter:drop-shadow(0 2px 2px rgba(0,0,0,.5))"><rect x="7" y="7" width="34" height="34" rx="7" fill="#dcdcdc"/><rect x="7" y="7" width="34" height="34" rx="7" fill="none" stroke="#86BC25" stroke-width="2.4"/><path d="M15 24l6 6 12-13" stroke="#86BC25" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="empty-title">Nessuna anomalia trovata</div>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:6px;">Tutti i sistemi operativi.</p></div>`;
+  }
+}
+
+function renderTicketCard(t) {
+  const room = ROOMS.find(r => r.id === t.room);
+  const s    = SLA[t.priority];
+  const targetH = s?.contact_h || 1;
+  const sla  = slaLabel(t.createdAt, targetH);
+  const { pct } = slaHoursLeft(t.createdAt, targetH * 4); // 4x window for bar
+
+  return `<div class="ticket-card ${t.priority.toLowerCase()}" data-id="${t.id}" style="cursor:pointer;">
+    <div class="ticket-body">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:11px;font-weight:700;color:var(--text-faint);">${t.id}</span>
+        <span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span>
+        <span class="badge ${t.status==='open'?'badge-open':'badge-p3'}">${t.status==='open'?'Aperto':'In corso'}</span>
+        <span class="room-tag ${t.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span>
+      </div>
+      <div class="ticket-title">${t.title}</div>
+      <div class="ticket-meta">
+        <span>📅 ${formatDateTime(t.createdAt)}</span>
+        <span>👤 ${t.segnalatore}</span>
+        <span>📂 ${t.category}</span>
+        ${t.actions?.length ? `<span>💬 ${t.actions.length} aggiornamenti</span>` : ''}
+      </div>
+    </div>
+    <div class="sla-block ${sla.cls}">
+      <div class="sla-label">SLA contatto</div>
+      <div class="sla-time">${sla.text}</div>
+      <div class="sla-bar"><div class="sla-fill" style="width:${pct}%"></div></div>
+    </div>
+  </div>`;
+}
+
+function openDetail(id) {
+  const tickets = ls(LS.tickets)||[];
+  const t = tickets.find(tk => tk.id === id);
+  if (!t) return;
+  detailId = id;
+
+  const room = ROOMS.find(r => r.id === t.room);
+
+  document.getElementById('det-title').textContent = t.title;
+  document.getElementById('det-badges').innerHTML = `
+    <span class="badge badge-${t.priority.toLowerCase()}">${t.priority} – ${SLA[t.priority]?.label||t.priority}</span>
+    <span class="badge ${t.status==='resolved'?'badge-closed':t.status==='open'?'badge-open':'badge-p3'}">
+      ${t.status==='open'?'Aperto':t.status==='in-progress'?'In lavorazione':'Risolto'}
+    </span>
+    <span class="room-tag ${t.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span>`;
+
+  document.getElementById('det-info').innerHTML = `
+    <div><div style="font-size:11px;color:var(--text-muted);">ID</div><div style="font-weight:700;">${t.id}</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);">Categoria</div><div style="font-weight:600;">${t.category}</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);">Segnalato da</div><div style="font-weight:600;">${t.segnalatore}</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);">Apertura</div><div style="font-weight:600;">${formatDateTime(t.createdAt)}</div></div>
+    ${t.resolvedAt ? `<div><div style="font-size:11px;color:var(--text-muted);">Risolto</div><div style="font-weight:600;color:var(--green);">${formatDateTime(t.resolvedAt)}</div></div>` : ''}
+  `;
+
+  // SLA box
+  const s = SLA[t.priority];
+  if (s && t.status !== 'resolved') {
+    const sla1 = slaLabel(t.createdAt, s.contact_h || 1);
+    const sla2 = slaLabel(t.createdAt, (s.remote_h || 2));
+    document.getElementById('det-sla-box').innerHTML = `
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Monitor SLA</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="${sla1.cls}"><div class="sla-label">1° Contatto (${s.contact_h}h)</div><div class="sla-time">${sla1.text}</div><div class="sla-bar"><div class="sla-fill" style="width:${slaHoursLeft(t.createdAt,s.contact_h).pct}%"></div></div></div>
+        <div class="${sla2.cls}"><div class="sla-label">Assistenza remota (${s.remote_h}h)</div><div class="sla-time">${sla2.text}</div><div class="sla-bar"><div class="sla-fill" style="width:${slaHoursLeft(t.createdAt,s.remote_h).pct}%"></div></div></div>
+      </div>`;
+  } else if (t.status === 'resolved') {
+    document.getElementById('det-sla-box').innerHTML = `<div style="color:var(--green);font-weight:700;font-size:13px;">✓ Ticket risolto</div>`;
+  } else {
+    document.getElementById('det-sla-box').innerHTML = '';
+  }
+
+  document.getElementById('det-desc').textContent = t.desc || '–';
+
+  // Actions log
+  const actEl = document.getElementById('det-actions');
+  if (!t.actions?.length) {
+    actEl.innerHTML = '<div style="font-size:13px;color:var(--text-muted);">Nessun aggiornamento registrato.</div>';
+  } else {
+    actEl.innerHTML = t.actions.map(a => `
+      <div style="display:flex;gap:10px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--green);margin-top:5px;flex-shrink:0;"></div>
+        <div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:3px;">${formatDateTime(a.ts)} · ${a.user}</div>
+          <div style="font-size:13px;">${a.text}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  document.getElementById('action-text').value = '';
+  document.getElementById('action-status').value = '';
+  document.getElementById('action-priority').value = t.priority;
+  document.getElementById('action-room').value = t.room;
+  openModal('modal-detail');
+}
+
+async function addAction() {
+  const text    = document.getElementById('action-text').value.trim();
+  const status  = document.getElementById('action-status').value;
+  const newPrio = document.getElementById('action-priority').value;
+  const newRoom = document.getElementById('action-room').value;
+
+  const tickets = ls(LS.tickets)||[];
+  const idx = tickets.findIndex(t => t.id === detailId);
+  if (idx < 0) return;
+  const t = tickets[idx];
+  const prioChanged = newPrio && newPrio !== t.priority;
+  const roomChanged = newRoom && newRoom !== t.room;
+
+  if (!text && !status && !prioChanged && !roomChanged) {
+    toast('Scrivi un aggiornamento o sposta stato/priorità/sala', 'error');
+    return;
+  }
+
+  const user = currentUser();
+  const now = new Date().toISOString();
+  const roomLabel = id => { const r = ROOMS.find(x => x.id === id); return r ? `${r.name} – ${r.city}` : id; };
+
+  // Le NUOVE azioni vengono raccolte per essere aggiunte in APPEND (mai perse).
+  const newActs = [];
+  const addAct = txt => { const a = { ts: now, user: user?.name || 'Operatore', text: txt }; t.actions.push(a); newActs.push(a); };
+
+  if (roomChanged) { const old = t.room;     t.room = newRoom;     addAct(`Sala corretta: ${roomLabel(old)} → ${roomLabel(newRoom)}`); }
+  if (prioChanged) { const old = t.priority; t.priority = newPrio; addAct(`Priorità spostata: ${old} → ${newPrio}`); }
+  if (text) addAct(text);
+  t.updatedAt = now;
+  const wasResolved = t.status === 'resolved';
+  if (status) {
+    t.status = status;
+    if (status === 'resolved') t.resolvedAt = now;
+  }
+
+  // Salvataggio MIRATO: aggiorna solo questo ticket + azioni in append (niente
+  // sovrascrittura dell'intera collezione → lo stato resta comune a tutti gli utenti).
+  await db.upsertTicket(t, newActs);
+  // Alla RISOLUZIONE del ticket → notifica di chiusura ai destinatari (rapporto + Deloitte).
+  if (status === 'resolved' && !wasResolved) notifyTicketClosed(t);
+  closeModal('modal-detail');
+  renderAll();
+  toast(status === 'resolved' && !wasResolved ? `Ticket ${t.id} risolto ✓ — chiusura inviata`
+    : roomChanged ? `Ticket ${t.id} → ${roomLabel(newRoom)} ✓`
+    : prioChanged ? `Ticket ${t.id} spostato a ${newPrio} ✓` : 'Aggiornamento salvato ✓', 'success');
+}
+
+// Notifica di CHIUSURA intervento — con storico, ai destinatari rapporto + check-report (Deloitte incluso)
+function notifyTicketClosed(t) {
+  try {
+    const room = ROOMS.find(r => r.id === t.room);
+    const roomLabel = room ? `${room.name} – ${room.city}` : t.room;
+    const storico = (t.actions || []).length
+      ? `<h3 style="font-size:14px;margin:16px 0 6px;">Storico intervento</h3>
+         <ul style="margin:0;padding-left:18px;font-size:13px;color:#444;line-height:1.6;">${
+            t.actions.slice().sort((a,b)=>new Date(a.ts)-new Date(b.ts)).map(a =>
+              `<li>${formatDateTime(a.ts)} · <b>${a.user||'—'}</b> — ${a.text}</li>`).join('')}</ul>`
+      : '';
+    const html = emailTemplate(`Intervento chiuso — ${t.title} (${t.id})`,
+      `<div style="background:rgba(134,188,37,.14);border-left:4px solid #86BC25;color:#3b6d11;font-weight:800;padding:11px 14px;border-radius:6px;margin:0 0 12px;">✓ Intervento risolto e chiuso</div>
+       <p><b>Componente:</b> ${t.title}<br><b>Sala:</b> ${roomLabel}<br><b>Priorità:</b> ${t.priority}<br><b>Ticket:</b> ${t.id}</p>
+       ${t.desc ? `<p><b>Rilevazione:</b><br>${String(t.desc).replace(/\n/g,'<br>')}</p>` : ''}
+       ${storico}
+       <p style="color:#666;font-size:13px;">Chiusura registrata da ${currentUser()?.name || 'Presidio'} il ${formatDate(new Date())}. Il ticket risulta risolto sul portale.</p>`,
+      '#86BC25');
+    // Destinatari: unione eventi 'rapporto' + 'check-report' → include anche i referenti Deloitte
+    const s = (typeof getSettings === 'function') ? getSettings() : null;
+    const to = [...new Set((s?.emailRecipients || [])
+      .filter(r => r.email && ((r.events || []).includes('rapporto') || (r.events || []).includes('check-report')))
+      .map(r => r.email))];
+    if (to.length) db.sendEmail(to, `Intervento chiuso — ${t.title} (${t.id}) ✓`, html);
+  } catch (e) { console.error('notifyTicketClosed', e); }
+}
+</script>
+</body>
+</html>

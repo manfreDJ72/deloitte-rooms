@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rapporto di Intervento – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=66">
+  <style>
+    .rap-wrap { max-width: 780px; margin: 0 auto; }
+    .rap-card { background: var(--bg-card); border: 1.5px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .rap-head {
+      background: linear-gradient(135deg, rgba(255,77,77,.08) 0%, var(--bg-card2) 100%);
+      border-bottom: 1px solid var(--border); padding: 20px 26px;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .rap-head .rh-title { font-size: 17px; font-weight: 800; }
+    .rap-head .rh-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .rap-status { margin-left: auto; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; padding: 5px 12px; border-radius: 20px; }
+    .st-open { background: rgba(240,160,48,.15); color: var(--orange); }
+    .st-closed { background: rgba(134,188,37,.15); color: var(--green); }
+    .rap-body { padding: 24px 26px; }
+    .rp-section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); margin: 22px 0 12px; display: flex; align-items: center; gap: 8px; }
+    .rp-section-title:first-child { margin-top: 0; }
+    .rp-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    .priority-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .priority-btn { min-height: 40px; padding: 0 16px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--bg-card2); color: var(--text-muted); font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font-ui); }
+    .priority-btn.sel { color: var(--text); }
+    .priority-btn[data-p="P1"].sel { background: rgba(255,77,77,.15); border-color: var(--red); color: var(--red); }
+    .priority-btn[data-p="P2"].sel { background: rgba(240,160,48,.15); border-color: var(--orange); color: var(--orange); }
+    .priority-btn[data-p="P3"].sel { background: rgba(77,166,255,.15); border-color: var(--blue); color: var(--blue); }
+    .priority-btn[data-p="P4"].sel { background: rgba(139,148,158,.15); border-color: var(--text-muted); color: var(--text-muted); }
+
+    .stage { border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 12px; overflow: hidden; }
+    .stage.on { border-color: rgba(77,166,255,.4); }
+    .stage.done { border-color: rgba(134,188,37,.4); }
+    .stage-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-card2); }
+    .stage-num { width: 26px; height: 26px; border-radius: 50%; background: var(--border); color: var(--text); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; }
+    .stage.on .stage-num { background: var(--blue); color: #fff; }
+    .stage.done .stage-num { background: var(--green); color: #000; }
+    .stage-title { font-weight: 700; font-size: 14px; }
+    .stage-sla { margin-left: auto; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+    .sla-ok { background: rgba(134,188,37,.15); color: var(--green); }
+    .sla-warn { background: rgba(240,160,48,.15); color: var(--orange); }
+    .sla-ko { background: rgba(255,77,77,.15); color: var(--red); }
+    .stage-body { padding: 16px; }
+    .stage-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
+    .stage-collapsed { padding: 14px 16px; }
+
+    .esito-mini { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .esito-mini button { flex: 1; min-width: 130px; min-height: 40px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--bg-card2); color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; font-family: var(--font-ui); }
+    .esito-mini button.sel-ok { border-color: var(--green); color: var(--green); background: rgba(134,188,37,.12); }
+    .esito-mini button.sel-esc { border-color: var(--orange); color: var(--orange); background: rgba(240,160,48,.12); }
+
+    .rap-foot { padding: 18px 26px; border-top: 1px solid var(--border); display: flex; gap: 12px; justify-content: space-between; flex-wrap: wrap; background: var(--bg-card2); }
+    .archived-box { display:none; margin:16px 0 0; background: rgba(134,188,37,.08); border: 1.5px solid rgba(134,188,37,.3); border-radius: 10px; padding: 16px; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
+    <div class="header-sep"></div>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="3" width="8" height="8" rx="2" fill="#86BC25"/><rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor"/></svg></span> Dashboard</a>
+    <a href="booking.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor"/><path d="M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v1H3z" fill="#86BC25"/><rect x="6.5" y="12" width="3" height="3" rx="1" fill="#0a0a0a"/><rect x="14.5" y="12" width="3" height="3" rx="1" fill="#86BC25"/></svg></span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3" fill="currentColor"/><rect x="9" y="2.5" width="6" height="4" rx="1.6" fill="#86BC25"/><path d="M9 13.4l2.1 2.1 4-4.3" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link active"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3.4c.72 0 1.38.39 1.74 1.02l8.03 13.9A2 2 0 0 1 20.03 21H3.97a2 2 0 0 1-1.74-2.68l8.03-13.9A2 2 0 0 1 12 3.4z" fill="currentColor"/><rect x="11" y="8.6" width="2" height="5.6" rx="1" fill="#0a0a0a"/><circle cx="12" cy="17.3" r="1.25" fill="#86BC25"/></svg></span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="3" fill="currentColor"/><path d="M4 7.5l8 5.4 8-5.4" fill="none" stroke="#86BC25" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Richieste</a>
+    <a href="task.html"      class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="currentColor"/><circle cx="8" cy="9" r="1.5" fill="#86BC25"/><rect x="10.6" y="8" width="6.4" height="2" rx="1" fill="#0a0a0a"/><circle cx="8" cy="14.5" r="1.5" fill="#0a0a0a"/><rect x="10.6" y="13.5" width="6.4" height="2" rx="1" fill="#0a0a0a"/></svg></span> Task</a>
+    <a href="documenti.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 3h7.2L19 8.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor"/><path d="M13 3.2V8h4.6z" fill="#86BC25"/><rect x="7.5" y="12" width="8" height="1.8" rx=".9" fill="#0a0a0a"/><rect x="7.5" y="15.6" width="8" height="1.8" rx=".9" fill="#0a0a0a"/></svg></span> Documenti</a>
+    <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M13.3 2.2l.5 2.1c.5.16.97.38 1.4.66l2-.86 1.7 1.7-.86 2c.28.43.5.9.66 1.4l2.1.5v2.4l-2.1.5c-.16.5-.38.97-.66 1.4l.86 2-1.7 1.7-2-.86c-.43.28-.9.5-1.4.66l-.5 2.1h-2.4l-.5-2.1c-.5-.16-.97-.38-1.4-.66l-2 .86-1.7-1.7.86-2c-.28-.43-.5-.9-.66-1.4l-2.1-.5v-2.4l2.1-.5c.16-.5.38-.97.66-1.4l-.86-2 1.7-1.7 2 .86c.43-.28.9-.5 1.4-.66l.5-2.1z" fill="currentColor"/><circle cx="12" cy="12" r="3.4" fill="#0a0a0a"/><circle cx="12" cy="12" r="1.7" fill="#86BC25"/></svg></span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <div class="user-pill"><div class="user-avatar" id="user-avatar">?</div><span class="user-name" id="user-name">Utente</span></div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head" style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+    <a href="checks.html" class="btn btn-ghost btn-sm">← Torna ai check</a>
+    <div>
+      <h1 class="page-title">Rapporto di Intervento</h1>
+      <p class="page-sub">Analisi → Intervento remoto → Intervento fisico · SLA da contratto</p>
+    </div>
+  </div>
+
+  <div class="rap-wrap">
+    <div class="rap-card">
+      <div class="rap-head">
+        <div style="font-size:28px;">📋</div>
+        <div>
+          <div class="rh-title" id="rap-num">Nuovo Rapporto di Intervento</div>
+          <div class="rh-sub" id="rap-date">—</div>
+        </div>
+        <span class="rap-status st-open" id="rap-status" style="display:none;">Aperto</span>
+      </div>
+
+      <div class="rap-body">
+        <div class="rp-section-title">Dati anomalia</div>
+        <div class="form-group">
+          <label class="form-label">Componente / Voce check</label>
+          <input class="form-control" id="rp-componente" placeholder="Es. Arena – LED Wall">
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Area / Spazio</label>
+            <select class="form-control" id="rp-area">
+              <option value="Solaria – Roma">Solaria – Roma</option>
+              <option value="Solaria – Milano">Solaria – Milano</option>
+              <option value="Armonia – Roma">Armonia – Roma</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Tecnico / Presidio</label>
+            <input class="form-control" id="rp-tecnico" placeholder="Nome">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrizione del malfunzionamento</label>
+          <textarea class="form-control" id="rp-descrizione" rows="3" placeholder="Cosa è stato rilevato, sintomi, contesto…"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Priorità (definisce gli SLA)</label>
+          <div class="priority-btns" id="prio-btns">
+            <button class="priority-btn sel" data-p="P1">P1 – Critico</button>
+            <button class="priority-btn" data-p="P2">P2 – Alto</button>
+            <button class="priority-btn" data-p="P3">P3 – Medio</button>
+            <button class="priority-btn" data-p="P4">P4 – Basso</button>
+          </div>
+        </div>
+
+        <div id="stages-wrap" style="display:none;">
+          <div class="rp-section-title">Livelli di intervento</div>
+          <div id="stages"></div>
+        </div>
+
+        <div class="archived-box" id="archived-box">
+          <div style="font-weight:700;color:var(--green);">✓ Rapporto chiuso e archiviato</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">
+            Il PDF è stato salvato in <a href="documenti.html" style="color:var(--green);">Documenti → Rapporti</a>.
+          </div>
+        </div>
+      </div>
+
+      <div class="rap-foot">
+        <button class="btn btn-outline" onclick="history.back()">Annulla</button>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-outline" id="btn-salva" style="display:none;">Salva</button>
+          <button class="btn btn-danger" id="btn-apri">⚠ Apri rapporto</button>
+          <button class="btn btn-primary" id="btn-chiudi" style="display:none;">🔒 Chiudi &amp; archivia PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="pdf-holder" style="position:fixed;left:-9999px;top:0;width:720px;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=66"></script>
+<script src="js/app.js?v=66"></script>
+<script src="js/db.js?v=66"></script>
+<script>
+const STAGES = [
+  { key:'analisi', num:1, label:'Analisi', desc:'Analisi per determinare la natura del problema e se è risolvibile da remoto o serve un intervento fisico.' },
+  { key:'remoto',  num:2, label:'Intervento da remoto', desc:'Tentativo di risoluzione a distanza.' },
+  { key:'fisico',  num:3, label:'Intervento fisico pianificato', desc:'Intervento on-site: richiede pianificazione e presenza del tecnico.' },
+];
+const STAGE_SLA = {
+  P1: { analisi:2,  remoto:12,  fisico:24 },
+  P2: { analisi:2,  remoto:24,  fisico:48 },
+  P3: { analisi:2,  remoto:72,  fisico:120 },
+  P4: { analisi:8,  remoto:120, fisico:240 },
+};
+const AREA_ROOM = { 'Solaria – Roma':'solaria-roma','Solaria – Milano':'solaria-milano','Armonia – Roma':'armonia-roma' };
+const ROOM_AREA = { 'solaria-roma':'Solaria – Roma','solaria-milano':'Solaria – Milano','armonia-roma':'Armonia – Roma' };
+
+let rap = null;
+let priority = 'P1';
+let prefill = null;   // dati passati dal check (per collegare il ticket)
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!requireAuth()) return;
+  const u = currentUser();
+  document.getElementById('rp-tecnico').value = u?.name || '';
+
+  prefill = JSON.parse(sessionStorage.getItem('rapporto_prefill') || 'null');
+  if (prefill) {
+    document.getElementById('rp-componente').value = prefill.checkName || '';
+    document.getElementById('rp-descrizione').value = [prefill.note, prefill.fixApplied ? 'Soluzione tentata: ' + prefill.fixApplied : ''].filter(Boolean).join('\n');
+    const areaLabel = ROOM_AREA[prefill.room] || prefill.roomLabel;
+    if (areaLabel) document.getElementById('rp-area').value = areaLabel;
+    sessionStorage.removeItem('rapporto_prefill');
+  }
+
+  document.getElementById('rap-date').textContent = new Date().toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  document.querySelectorAll('#prio-btns .priority-btn').forEach(b => b.addEventListener('click', () => {
+    if (rap && rap.status) return;
+    document.querySelectorAll('#prio-btns .priority-btn').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel'); priority = b.dataset.p;
+  }));
+
+  document.getElementById('btn-apri').addEventListener('click', apriRapporto);
+  document.getElementById('btn-salva').addEventListener('click', () => persist(true));
+  document.getElementById('btn-chiudi').addEventListener('click', chiudiRapporto);
+});
+
+async function apriRapporto() {
+  const componente = document.getElementById('rp-componente').value.trim();
+  if (!componente) { toast('Inserisci il componente/voce', 'error'); return; }
+  const list = await db.getRapporti();
+  rap = {
+    id: genId(),
+    num: 'RAP-' + String(list.length + 1).padStart(3, '0'),
+    area: document.getElementById('rp-area').value,
+    room: AREA_ROOM[document.getElementById('rp-area').value] || 'solaria-roma',
+    componente,
+    descrizione: document.getElementById('rp-descrizione').value.trim(),
+    tecnico: document.getElementById('rp-tecnico').value.trim(),
+    priority,
+    status: 'open',
+    openedAt: new Date().toISOString(),
+    closedAt: null, pdfPath: null,
+    stages: {
+      analisi: { active: true, startedAt: new Date().toISOString(), note: '', esito: '', completedAt: null },
+      remoto:  { active: false, startedAt: null, note: '', esito: '', completedAt: null },
+      fisico:  { active: false, startedAt: null, pianificata: '', note: '', esito: '', completedAt: null },
+    },
+  };
+  await persist(false);
+
+  // Collega/crea il ticket in Anomalie: il rapporto di intervento e la sezione
+  // Anomalie restano allineati (i ticket "si aprono da una parte e dall'altra").
+  let ticketId = prefill && prefill.ticketId;
+  try {
+    if (!ticketId) {
+      const tk = await db.createTicket({
+        room: rap.room, priority: rap.priority, category: 'altro',
+        title: rap.componente,
+        desc: [rap.descrizione, `Da rapporto di intervento ${rap.num}.`].filter(Boolean).join('\n'),
+        segnalatore: rap.tecnico || 'Presidio', fromRapporto: true,
+      });
+      ticketId = tk.id;
+      if (prefill && prefill.fromCheck) setCheckTicket(prefill.room, prefill.date, prefill.session, prefill.fromCheck, ticketId);
+    }
+    rap.ticketId = ticketId;
+  } catch (e) { console.error('link ticket', e); }
+
+  const html = emailTemplate(`Anomalia aperta — ${rap.num} (${rap.priority})`,
+    `<p style="font-size:16px;"><b>${rap.componente}</b></p>
+     <div style="background:#f5f7ef;border-left:4px solid #86BC25;padding:10px 14px;border-radius:6px;margin:10px 0;font-size:14px;">
+       <b>Ticket:</b> ${ticketId || '(in apertura)'} — aperto nella sezione Anomalie<br>
+       <b>Rapporto di intervento:</b> ${rap.num} · <b>stato: Apertura rapporto</b> (fase analisi)
+     </div>
+     <p><b>Area:</b> ${rap.area}<br><b>Priorità:</b> ${rap.priority}<br><b>Presidio:</b> ${rap.tecnico || '—'}</p>
+     <p><b>Rilevazione:</b><br>${(rap.descrizione || '—').replace(/\n/g,'<br>')}</p>
+     <p style="color:#666;font-size:13px;">È stata avviata la fase di <b>analisi</b> (SLA ${STAGE_SLA[rap.priority].analisi}h).</p>`,
+    rap.priority === 'P1' ? '#ff4d4d' : rap.priority === 'P2' ? '#f0a030' : '#86BC25');
+  db.notify(rap.priority === 'P1' ? 'ticket-p1' : rap.priority === 'P2' ? 'ticket-p2' : 'ticket-any', `[${rap.priority}] Anomalia aperta — ${rap.componente}`, html);
+  db.notify('rapporto', `Rapporto ${rap.num} aperto — ${rap.componente}`, html);
+  toast(`Rapporto aperto ✓${ticketId ? ' — ticket ' + ticketId + ' in Anomalie' : ''}`, 'success');
+  render();
+}
+
+function render() {
+  if (!rap) return;
+  document.getElementById('rap-num').textContent = `Rapporto ${rap.num}`;
+  const st = document.getElementById('rap-status');
+  st.style.display = ''; st.textContent = rap.status === 'closed' ? 'Chiuso' : 'Aperto';
+  st.className = 'rap-status ' + (rap.status === 'closed' ? 'st-closed' : 'st-open');
+  ['rp-componente','rp-area','rp-tecnico','rp-descrizione'].forEach(id => document.getElementById(id).setAttribute('disabled','true'));
+  document.getElementById('btn-apri').style.display = 'none';
+  document.getElementById('btn-salva').style.display = rap.status === 'closed' ? 'none' : '';
+  document.getElementById('btn-chiudi').style.display = rap.status === 'closed' ? 'none' : '';
+  document.getElementById('archived-box').style.display = rap.status === 'closed' ? 'block' : 'none';
+  document.getElementById('stages-wrap').style.display = '';
+  renderStages();
+}
+
+function renderStages() {
+  const closed = rap.status === 'closed';
+  document.getElementById('stages').innerHTML = STAGES.map(sd => {
+    const s = rap.stages[sd.key];
+    const target = STAGE_SLA[rap.priority][sd.key];
+    const done = !!s.completedAt;
+    const cls = done ? 'done' : s.active ? 'on' : '';
+    let slaBadge = '';
+    if (s.active && !done && !closed) {
+      const l = slaHoursLeft(s.startedAt, target);
+      slaBadge = `<span class="stage-sla sla-${l.status}">${l.leftH > 0 ? 'SLA ' + Math.round(l.leftH) + 'h rimaste' : 'SLA SCADUTO'}</span>`;
+    } else if (done) {
+      slaBadge = `<span class="stage-sla sla-ok">✓ completato</span>`;
+    } else if (!s.active) {
+      slaBadge = `<span class="stage-sla" style="background:var(--bg-card2);color:var(--text-muted);">SLA ${target}h</span>`;
+    }
+    let body = '';
+    if (!s.active) {
+      body = closed ? `<div class="stage-collapsed" style="color:var(--text-muted);font-size:13px;">Livello non attivato.</div>`
+        : `<div class="stage-collapsed"><div class="stage-desc">${sd.desc}</div>
+             <button class="btn btn-outline btn-sm" onclick="attivaStage('${sd.key}')">+ Attiva questo livello</button></div>`;
+    } else {
+      const ro = (done || closed) ? 'disabled' : '';
+      body = `<div class="stage-body">
+        <div class="stage-desc">${sd.desc}</div>
+        ${sd.key === 'fisico' ? `<div class="form-group"><label class="form-label">Data intervento pianificata</label>
+          <input class="form-control" type="date" ${ro} value="${s.pianificata || ''}" onchange="setStage('${sd.key}','pianificata',this.value)"></div>` : ''}
+        <div class="form-group"><label class="form-label">Note / attività</label>
+          <textarea class="form-control" rows="2" ${ro} onchange="setStage('${sd.key}','note',this.value)" placeholder="Cosa è stato fatto in questo livello…">${s.note || ''}</textarea></div>
+        <div class="esito-mini">
+          <button class="${s.esito==='risolto'?'sel-ok':''}" ${ro} onclick="setEsito('${sd.key}','risolto')">✓ Risolto qui</button>
+          <button class="${s.esito==='escalato'?'sel-esc':''}" ${ro} onclick="setEsito('${sd.key}','escalato')">↑ Livello successivo</button>
+        </div>
+        ${done ? `<div style="font-size:12px;color:var(--green);">Completato il ${formatDateTime(s.completedAt)} — esito: ${s.esito || '—'}</div>`
+          : (closed ? '' : `<button class="btn btn-primary btn-sm" onclick="completaStage('${sd.key}')">Completa livello</button>`)}
+      </div>`;
+    }
+    return `<div class="stage ${cls}">
+      <div class="stage-head"><div class="stage-num">${sd.num}</div><div class="stage-title">${sd.label}</div>${slaBadge}</div>
+      ${body}</div>`;
+  }).join('');
+}
+
+function attivaStage(key) {
+  rap.stages[key].active = true;
+  rap.stages[key].startedAt = new Date().toISOString();
+  persist(false); renderStages();
+}
+function setStage(key, field, val) { rap.stages[key][field] = val; }
+function setEsito(key, val) { rap.stages[key].esito = val; renderStages(); }
+function completaStage(key) {
+  const s = rap.stages[key];
+  if (!s.esito) { toast('Scegli l\'esito del livello', 'error'); return; }
+  s.completedAt = new Date().toISOString();
+  persist(true); renderStages();
+  toast('Livello completato ✓', 'success');
+}
+
+async function persist(showToast) {
+  if (!rap) return;
+  try {
+    await db.saveRapporto(rap);
+    if (showToast) toast('Salvato ✓', 'info');
+  } catch (e) { toast('Errore salvataggio: ' + e.message, 'error'); }
+}
+
+async function chiudiRapporto() {
+  if (!rap) return;
+  const btn = document.getElementById('btn-chiudi');
+  btn.disabled = true; btn.textContent = 'Genero il PDF…';
+  try {
+    const holder = document.getElementById('pdf-holder');
+    holder.innerHTML = buildRapportoDoc(rap);
+    const fname = `${Date.now()}_${rap.num}_${(rap.componente||'rapporto').replace(/[^\w]+/g,'_')}.pdf`;
+    const blob = await html2pdf().set({
+      margin: 8, image: { type: 'jpeg', quality: .95 },
+      html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }).from(holder.firstElementChild).outputPdf('blob');
+    const path = `rapporti/${fname}`;
+    await db.uploadDoc(path, blob);
+    rap.status = 'closed'; rap.closedAt = new Date().toISOString(); rap.pdfPath = path;
+    await persist(false);
+    const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(blob); });
+    const html = emailTemplate(`Rapporto chiuso — ${rap.num}`,
+      `<p><b>${rap.componente}</b> — ${rap.area}</p>
+       <p>Il rapporto di intervento è stato <b style="color:#5a8a00;">chiuso e archiviato</b>. In allegato il PDF definitivo.</p>`, '#86BC25');
+    db.sendEmail(recipientsFor('rapporto'), `Rapporto ${rap.num} chiuso — ${rap.componente}`, html,
+      [{ filename: `${rap.num}.pdf`, content: b64, mimetype: 'application/pdf' }]);
+    holder.innerHTML = '';
+    toast('Rapporto chiuso, PDF archiviato ✓', 'success');
+    render();
+    document.getElementById('archived-box').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) {
+    toast('Errore chiusura: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = '🔒 Chiudi & archivia PDF';
+  }
+}
+
+function recipientsFor(ev) {
+  return [...new Set((getSettings().emailRecipients || []).filter(r => r.email && (r.events || []).includes(ev)).map(r => r.email))];
+}
+
+function buildRapportoDoc(r) {
+  const stageRow = (sd) => {
+    const s = r.stages[sd.key];
+    if (!s.active) return `<tr><td class="k">${sd.num}. ${sd.label}</td><td style="color:#999;">non attivato</td></tr>`;
+    return `<tr><td class="k">${sd.num}. ${sd.label}</td><td>${s.note ? s.note.replace(/\n/g,'<br>') : '—'}${sd.key==='fisico'&&s.pianificata?`<br><i>Pianificato: ${s.pianificata}</i>`:''}<br>
+      <span style="color:#5a8a00;font-size:12px;">Esito: ${s.esito || '—'}${s.completedAt?' · completato '+new Date(s.completedAt).toLocaleString('it-IT'):''}</span></td></tr>`;
+  };
+  return `<div style="font-family:Arial,sans-serif;color:#1a1a1a;width:100%;background:#fff;">
+    <div style="background:#0d0d0d;padding:16px 26px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="color:#86BC25;font-weight:800;font-size:22px;letter-spacing:1px;">AREA62</span>
+      <span style="color:#e8e8e8;font-size:12px;">Deloitte · Room Management</span></div>
+    <div style="height:5px;background:#86BC25;"></div>
+    <div style="padding:26px;">
+      <h1 style="font-size:18px;margin:0 0 4px;text-transform:uppercase;">Rapporto di Intervento — ${r.num}</h1>
+      <div style="color:#888;font-size:13px;margin-bottom:18px;">${r.area} · Priorità ${r.priority} · Aperto ${new Date(r.openedAt).toLocaleString('it-IT')} · Chiuso ${new Date().toLocaleString('it-IT')}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <tr><td style="background:#f7f7f7;color:#555;font-weight:600;padding:8px 10px;border:1px solid #e2e2e2;width:200px;">Componente / Voce</td><td style="padding:8px 10px;border:1px solid #e2e2e2;"><b>${r.componente}</b></td></tr>
+        <tr><td style="background:#f7f7f7;color:#555;font-weight:600;padding:8px 10px;border:1px solid #e2e2e2;">Tecnico / Presidio</td><td style="padding:8px 10px;border:1px solid #e2e2e2;">${r.tecnico||'—'}</td></tr>
+        <tr><td style="background:#f7f7f7;color:#555;font-weight:600;padding:8px 10px;border:1px solid #e2e2e2;">Rilevazione</td><td style="padding:8px 10px;border:1px solid #e2e2e2;">${(r.descrizione||'—').replace(/\n/g,'<br>')}</td></tr>
+      </table>
+      <div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0d0d0d;margin:22px 0 8px;padding-bottom:5px;border-bottom:2px solid #86BC25;">Livelli di intervento</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;">
+        <style>#pdf-holder td.k{background:#f7f7f7;color:#555;font-weight:600;padding:8px 10px;border:1px solid #e2e2e2;width:200px;vertical-align:top;} #pdf-holder td{padding:8px 10px;border:1px solid #e2e2e2;vertical-align:top;}</style>
+        ${STAGES.map(stageRow).join('')}
+      </table>
+      <div style="margin-top:26px;display:flex;gap:16px;">
+        <div style="flex:1;border:1px solid #e2e2e2;border-radius:6px;padding:12px;font-size:13px;color:#555;min-height:80px;">Firma referente area<br><br>Nome:<br>Firma:</div>
+        <div style="flex:1;border:1px solid #e2e2e2;border-radius:6px;padding:12px;font-size:13px;color:#555;min-height:80px;">Firma tecnico<br><br>Nome:<br>Società:<br>Firma:</div>
+      </div>
+    </div>
+    <div style="padding:14px 26px;background:#0d0d0d;color:#9a9a9a;font-size:11px;">Area62 Srl · Gestione sale immersive Solaria &amp; Armonia · Deloitte · https://rooms.area62.it</div>
+  </div>`;
+}
+</script>
+</body>
+</html>

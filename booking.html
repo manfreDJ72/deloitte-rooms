@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Prenotazioni – Deloitte Room Management</title>
+  <link rel="stylesheet" href="css/style.css?v=66">
+  <style>
+    /* ── Supporto creativo + allegati ── */
+    .creative-flag {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border: 1.5px solid var(--border);
+      border-radius: 10px; cursor: pointer; transition: all .15s; user-select: none;
+    }
+    .creative-flag:hover { border-color: var(--text-muted); }
+    .creative-flag.on { border-color: var(--green); background: rgba(134,188,37,.06); }
+    .cf-icon  { font-size: 20px; flex-shrink: 0; }
+    .cf-title { font-weight: 700; font-size: 13px; display: block; }
+    .cf-sub   { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
+    .creative-flag input { width: 18px; height: 18px; accent-color: var(--green); margin-left: auto; flex-shrink: 0; cursor: pointer; }
+
+    .attach-drop {
+      border: 1.5px dashed var(--border); border-radius: 10px;
+      padding: 16px; cursor: pointer; transition: all .15s;
+    }
+    .attach-drop:hover, .attach-drop.drag { border-color: var(--green); background: rgba(134,188,37,.04); }
+    .attach-drop-inner { display: flex; align-items: center; gap: 12px; }
+
+    .attach-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .attach-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 8px; background: var(--bg-card2);
+    }
+    .attach-thumb {
+      width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0;
+      background: var(--bg-card); display: flex; align-items: center;
+      justify-content: center; font-size: 18px; overflow: hidden;
+    }
+    .attach-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .attach-meta { flex: 1; min-width: 0; }
+    .attach-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .attach-sub  { font-size: 11px; color: var(--text-muted); }
+    .attach-x {
+      cursor: pointer; color: var(--text-muted); font-size: 15px;
+      padding: 6px 9px; border-radius: 6px; flex-shrink: 0; min-height: 32px;
+    }
+    .attach-x:hover { color: var(--red); background: rgba(255,77,77,.1); }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="assets/area62.png" alt="Area62" class="header-logo-area62">
+    <div class="header-sep"></div>
+    <img src="assets/deloitte.svg" alt="Deloitte" class="header-logo-deloitte">
+    <div class="header-sep"></div>
+    <span class="header-title">Room Management</span>
+  </div>
+  <nav class="header-nav">
+    <a href="dashboard.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="3" width="8" height="8" rx="2" fill="#86BC25"/><rect x="3" y="13" width="8" height="8" rx="2" fill="currentColor"/><rect x="13" y="13" width="8" height="8" rx="2" fill="currentColor"/></svg></span> Dashboard</a>
+    <a href="booking.html"   class="nav-link active"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3" fill="currentColor"/><path d="M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v1H3z" fill="#86BC25"/><rect x="6.5" y="12" width="3" height="3" rx="1" fill="#0a0a0a"/><rect x="14.5" y="12" width="3" height="3" rx="1" fill="#86BC25"/></svg></span> Prenotazioni</a>
+    <a href="checks.html"    class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="3" fill="currentColor"/><rect x="9" y="2.5" width="6" height="4" rx="1.6" fill="#86BC25"/><path d="M9 13.4l2.1 2.1 4-4.3" fill="none" stroke="#0a0a0a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Check Mattutini</a>
+    <a href="tickets.html"   class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3.4c.72 0 1.38.39 1.74 1.02l8.03 13.9A2 2 0 0 1 20.03 21H3.97a2 2 0 0 1-1.74-2.68l8.03-13.9A2 2 0 0 1 12 3.4z" fill="currentColor"/><rect x="11" y="8.6" width="2" height="5.6" rx="1" fill="#0a0a0a"/><circle cx="12" cy="17.3" r="1.25" fill="#86BC25"/></svg></span> Anomalie</a>
+    <a href="richieste.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="3" fill="currentColor"/><path d="M4 7.5l8 5.4 8-5.4" fill="none" stroke="#86BC25" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Richieste</a>
+    <a href="task.html"      class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="currentColor"/><circle cx="8" cy="9" r="1.5" fill="#86BC25"/><rect x="10.6" y="8" width="6.4" height="2" rx="1" fill="#0a0a0a"/><circle cx="8" cy="14.5" r="1.5" fill="#0a0a0a"/><rect x="10.6" y="13.5" width="6.4" height="2" rx="1" fill="#0a0a0a"/></svg></span> Task</a>
+    <a href="documenti.html" class="nav-link"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M6 3h7.2L19 8.5V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="currentColor"/><path d="M13 3.2V8h4.6z" fill="#86BC25"/><rect x="7.5" y="12" width="8" height="1.8" rx=".9" fill="#0a0a0a"/><rect x="7.5" y="15.6" width="8" height="1.8" rx=".9" fill="#0a0a0a"/></svg></span> Documenti</a>
+    <a href="assistente.html" class="nav-link nav-assistente"><span class="nav-icon armonia-dot"></span> ArmonIA</a>
+    <a href="settings.html"  class="nav-link nav-settings"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M13.3 2.2l.5 2.1c.5.16.97.38 1.4.66l2-.86 1.7 1.7-.86 2c.28.43.5.9.66 1.4l2.1.5v2.4l-2.1.5c-.16.5-.38.97-.66 1.4l.86 2-1.7 1.7-2-.86c-.43.28-.9.5-1.4.66l-.5 2.1h-2.4l-.5-2.1c-.5-.16-.97-.38-1.4-.66l-2 .86-1.7-1.7.86-2c-.28-.43-.5-.9-.66-1.4l-2.1-.5v-2.4l2.1-.5c.16-.5.38-.97.66-1.4l-.86-2 1.7-1.7 2 .86c.43-.28.9-.5 1.4-.66l.5-2.1z" fill="currentColor"/><circle cx="12" cy="12" r="3.4" fill="#0a0a0a"/><circle cx="12" cy="12" r="1.7" fill="#86BC25"/></svg></span> Settings</a>
+  </nav>
+  <div class="header-right">
+    <div class="user-pill">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name">Utente</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="logout-btn">Esci</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <h1 class="page-title">Prenotazioni Sale</h1>
+      <p class="page-sub">Calendario settimanale · Solaria Roma &amp; Milano · Armonia Roma</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="btn btn-primary" id="btn-nuova">+ Nuova prenotazione</button>
+    </div>
+  </div>
+
+  <div class="cols-booking">
+
+    <!-- Calendar column -->
+    <div>
+
+      <!-- Room filter tabs -->
+      <div class="tabs" id="room-filter" style="margin-bottom:16px;">
+        <div class="tab active" data-room="all">Tutte le sale</div>
+        <div class="tab" data-room="solaria-roma">
+          <span class="room-tag tag-solaria" style="pointer-events:none;">Solaria</span> Roma
+        </div>
+        <div class="tab" data-room="solaria-milano">
+          <span class="room-tag tag-solaria" style="pointer-events:none;">Solaria</span> Milano
+        </div>
+        <div class="tab" data-room="armonia-roma">
+          <span class="room-tag tag-armonia" style="pointer-events:none;">Armonia</span> Roma
+        </div>
+      </div>
+
+      <!-- Calendar toolbar -->
+      <div class="cal-toolbar">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <div class="tabs" id="view-tabs" style="margin:0;">
+            <div class="tab active" data-view="week">Settimana</div>
+            <div class="tab" data-view="month">Mese</div>
+            <div class="tab" data-view="list">Lista</div>
+          </div>
+          <div class="cal-period" id="cal-period">–</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="cal-nav-btns">
+            <button class="btn btn-ghost btn-sm btn-icon" id="cal-prev">‹</button>
+            <button class="btn btn-ghost btn-sm" id="cal-today">Oggi</button>
+            <button class="btn btn-ghost btn-sm btn-icon" id="cal-next">›</button>
+          </div>
+          <!-- Legend -->
+          <div style="display:flex;gap:10px;align-items:center;font-size:11px;color:var(--text-muted);margin-left:8px;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:#4da6ff;border-radius:2px;display:inline-block;"></span>Prenotazione</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:var(--orange);border-radius:2px;display:inline-block;"></span>Manutenzione</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:var(--green);border-radius:2px;display:inline-block;"></span>Mant. prog.</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:12px;height:3px;background:#b57edc;border-radius:2px;display:inline-block;"></span>Intervento</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar grid -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div id="cal-grid"></div>
+      </div>
+
+      <!-- List view -->
+      <div id="list-view" style="display:none;margin-top:16px;">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Data / Ora</th>
+                <th>Titolo</th>
+                <th>Sala</th>
+                <th>Referente</th>
+                <th>Tipo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="list-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div>
+      <div class="sidebar" style="margin-bottom:16px;">
+        <div class="sidebar-title">🔧 Manutenzioni programmate</div>
+        <div id="maint-list"></div>
+        <button class="btn btn-outline btn-sm" style="width:100%;margin-top:10px;" id="btn-nuova-maint">+ Aggiungi manutenzione</button>
+      </div>
+
+      <div class="sidebar">
+        <div class="sidebar-title">📊 Disponibilità questa settimana</div>
+        <div id="avail-list"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- Modal nuova prenotazione -->
+<div class="overlay" id="modal-booking">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-booking-title">Nuova Prenotazione</div>
+      <button class="modal-x" onclick="closeModal('modal-booking')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Titolo evento</label>
+        <input class="form-control" id="bk-title" placeholder="Es. Workshop, Demo, Riunione...">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sala</label>
+          <select class="form-control" id="bk-room">
+            <option value="solaria-roma">Solaria – Roma</option>
+            <option value="solaria-milano">Solaria – Milano</option>
+            <option value="armonia-roma">Armonia – Roma</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referente Operativo</label>
+          <input class="form-control" id="bk-referente" placeholder="Nome referente sala">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Organizzatore / Richiedente</label>
+        <input class="form-control" id="bk-organizzatore" placeholder="Chi ha richiesto la sala">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data e ora inizio</label>
+          <input class="form-control" type="datetime-local" id="bk-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data e ora fine</label>
+          <input class="form-control" type="datetime-local" id="bk-end">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Partecipanti</label>
+        <div class="tag-input-wrap" id="partecipanti-wrap" onclick="document.getElementById('partecipanti-input').focus()">
+          <input class="tag-text-input" id="partecipanti-input" placeholder="Nome partecipante + Invio">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Allestimento richiesto</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="allestimento-options">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Microfoni wireless"> Microfoni wireless
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Connessione video"> Connessione video
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Setup Armonia AI"> Setup Armonia AI
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Scenari personalizzati"> Scenari personalizzati
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Acqua e caffè"> Acqua e caffè
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
+            <input type="checkbox" value="Registrazione evento"> Registrazione evento
+          </label>
+        </div>
+        <input class="form-control" id="bk-allest-extra" placeholder="Altro allestimento..." style="margin-top:8px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note aggiuntive</label>
+        <textarea class="form-control" id="bk-note" placeholder="Informazioni aggiuntive per il presidio..."></textarea>
+      </div>
+
+      <!-- Supporto creativo -->
+      <div class="form-group">
+        <label class="form-label">Supporto creativo</label>
+        <label class="creative-flag" id="creative-flag">
+          <span class="cf-icon">🎨</span>
+          <span>
+            <span class="cf-title">Richiesta supporto creativo Area62</span>
+            <span class="cf-sub">Immagini per fondi, video presentazione, scenari personalizzati, grafiche…</span>
+          </span>
+          <input type="checkbox" id="bk-creative">
+        </label>
+        <textarea class="form-control" id="bk-creative-desc" style="display:none;margin-top:8px;"
+          placeholder="Descrivi cosa serve dalla parte creativa (es. sfondo con logo cliente, video intro 30s, scenario Armonia personalizzato…)"></textarea>
+      </div>
+
+      <!-- Allegati -->
+      <div class="form-group">
+        <label class="form-label">Allegati &amp; materiali</label>
+        <div class="attach-drop" id="attach-drop">
+          <input type="file" id="bk-files" multiple
+            accept="image/*,video/*,.pdf,.ppt,.pptx,.key,.doc,.docx,.zip" style="display:none;">
+          <div class="attach-drop-inner">
+            <span style="font-size:22px;">📎</span>
+            <div>
+              <div style="font-weight:600;font-size:13px;">Trascina i file qui o <span style="color:var(--green);">sfoglia</span></div>
+              <div style="font-size:11px;color:var(--text-muted);">Immagini, video, PDF, PPTX — fondi, presentazioni, materiali creativi</div>
+            </div>
+          </div>
+        </div>
+        <div class="attach-list" id="attach-list"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="btn-elimina-bk" style="display:none;margin-right:auto;">Elimina</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-booking')">Annulla</button>
+      <button class="btn btn-primary" id="btn-salva-bk">Salva prenotazione</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal manutenzione -->
+<div class="overlay" id="modal-maint">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div class="modal-title">🔧 Nuova Manutenzione</div>
+      <button class="modal-x" onclick="closeModal('modal-maint')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Titolo</label>
+        <input class="form-control" id="mt-title" placeholder="Es. Manutenzione ordinaria Q3">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sala</label>
+          <select class="form-control" id="mt-room">
+            <option value="solaria-roma">Solaria – Roma</option>
+            <option value="solaria-milano">Solaria – Milano</option>
+            <option value="armonia-roma">Armonia – Roma</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-control" id="mt-type">
+            <option value="maint">Manutenzione ordinaria</option>
+            <option value="maint_prog">Manutenzione programmata</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data inizio</label>
+          <input class="form-control" type="date" id="mt-start">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ora inizio</label>
+          <input class="form-control" type="time" id="mt-start-time" value="09:00">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data fine</label>
+          <input class="form-control" type="date" id="mt-end">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ora fine</label>
+          <input class="form-control" type="time" id="mt-end-time" value="18:00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrizione intervento</label>
+        <textarea class="form-control" id="mt-desc" placeholder="Dettaglio delle attività previste..."></textarea>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-maint')">Annulla</button>
+      <button class="btn btn-primary" id="btn-salva-maint">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal evento detail -->
+<div class="overlay" id="modal-event">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-head">
+      <div class="modal-title" id="ev-title">–</div>
+      <button class="modal-x" onclick="closeModal('modal-event')">✕</button>
+    </div>
+    <div class="modal-body" id="ev-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-danger btn-sm" id="ev-delete">Elimina</button>
+      <button class="btn btn-ghost" onclick="closeModal('modal-event')">Chiudi</button>
+      <button class="btn btn-primary" id="ev-edit">Modifica</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=66"></script>
+<script src="js/app.js?v=66"></script>
+<script src="js/db.js?v=66"></script>
+<script src="js/tour.js?v=66"></script>
+<script>
+let weekOffset = 0;
+let monthOffset = 0;
+let filterRoom = 'all';
+let viewMode   = 'week';   // 'week' | 'month' | 'list'
+let editId     = null;
+let viewEventId = null;
+let participants = [];
+let bookingAttachments = [];
+const MAX_INLINE = 1.6 * 1024 * 1024; // 1.6 MB per file: oltre → solo metadati (in produzione va su cloud storage)
+
+// ── SUPPORTO CREATIVO ──
+document.getElementById('bk-creative').addEventListener('change', e => {
+  document.getElementById('creative-flag').classList.toggle('on', e.target.checked);
+  document.getElementById('bk-creative-desc').style.display = e.target.checked ? '' : 'none';
+});
+
+// ── ALLEGATI ──
+function humanSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(0) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+function fileIcon(type = '') {
+  if (type.startsWith('image/')) return '🖼️';
+  if (type.startsWith('video/')) return '🎬';
+  if (type.includes('pdf')) return '📄';
+  if (type.includes('presentation') || type.includes('powerpoint')) return '📊';
+  if (type.includes('word') || type.includes('document')) return '📝';
+  if (type.includes('zip')) return '🗜️';
+  return '📎';
+}
+function handleFiles(fileList) {
+  Array.from(fileList).forEach(file => {
+    const att = { id: genId(), name: file.name, type: file.type || '', size: file.size };
+    const inlineOk = file.size <= MAX_INLINE && !(file.type || '').startsWith('video/');
+    if (inlineOk) {
+      const reader = new FileReader();
+      reader.onload = () => { att.dataUrl = reader.result; renderAttachments(); };
+      reader.readAsDataURL(file);
+    } else {
+      att.tooLarge = true; // solo metadati in demo
+    }
+    bookingAttachments.push(att);
+  });
+  renderAttachments();
+  document.getElementById('bk-files').value = '';
+}
+function renderAttachments() {
+  const el = document.getElementById('attach-list');
+  el.innerHTML = bookingAttachments.map(a => `
+    <div class="attach-item">
+      <div class="attach-thumb">${a.dataUrl && a.type.startsWith('image/') ? `<img src="${a.dataUrl}">` : fileIcon(a.type)}</div>
+      <div class="attach-meta">
+        <div class="attach-name">${a.name}</div>
+        <div class="attach-sub">${humanSize(a.size)}${a.tooLarge ? ' · caricamento su cloud in produzione' : ''}</div>
+      </div>
+      <span class="attach-x" data-id="${a.id}">✕</span>
+    </div>`).join('');
+  el.querySelectorAll('.attach-x').forEach(x => x.addEventListener('click', () => {
+    bookingAttachments = bookingAttachments.filter(a => a.id !== x.dataset.id);
+    renderAttachments();
+  }));
+}
+(() => {
+  const drop = document.getElementById('attach-drop');
+  const input = document.getElementById('bk-files');
+  drop.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => handleFiles(e.target.files));
+  ['dragover','dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('drag'); }));
+  ['dragleave','dragend'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('drag'); }));
+  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+})();
+
+// ── PARTICIPANTS TAG INPUT ──
+document.getElementById('partecipanti-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if (val) { addParticipant(val); e.target.value = ''; }
+  }
+});
+
+function addParticipant(name) {
+  if (participants.includes(name)) return;
+  participants.push(name);
+  renderParticipants();
+}
+function removeParticipant(name) {
+  participants = participants.filter(p => p !== name);
+  renderParticipants();
+}
+function renderParticipants() {
+  const wrap = document.getElementById('partecipanti-wrap');
+  const inp  = document.getElementById('partecipanti-input');
+  wrap.querySelectorAll('.p-tag').forEach(t => t.remove());
+  participants.forEach(p => {
+    const tag = document.createElement('span');
+    tag.className = 'p-tag';
+    tag.innerHTML = `${p}<span class="p-tag-x" data-name="${p}">×</span>`;
+    wrap.insertBefore(tag, inp);
+  });
+  wrap.querySelectorAll('.p-tag-x').forEach(x => {
+    x.addEventListener('click', () => removeParticipant(x.dataset.name));
+  });
+}
+
+// ── WEEK DATES ──
+function getWeekDates() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff + weekOffset * 7);
+  monday.setHours(0,0,0,0);
+  const days = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+}
+
+const HOURS = [8,9,10,11,12,13,14,15,16,17,18,19];
+const DAY_NAMES = ['Lun','Mar','Mer','Gio','Ven'];
+const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+function evClass(ev) {
+  return ev.type === 'booking' ? 'ev-booking'
+    : ev.type === 'maint_prog' ? 'ev-maint-prog'
+    : ev.type === 'intervento' ? 'ev-intervento' : 'ev-maint';
+}
+
+// ── VISTA MESE ──
+function renderMonth() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  document.getElementById('cal-period').textContent = `${MONTHS_IT[first.getMonth()]} ${first.getFullYear()}`;
+  const startDay = first.getDay(); // 0=dom
+  const offset = startDay === 0 ? -6 : 1 - startDay;
+  const start = new Date(first); start.setDate(first.getDate() + offset); start.setHours(0,0,0,0);
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  const allEvents = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const events    = filterRoom === 'all' ? allEvents : allEvents.filter(e => e.room === filterRoom);
+
+  const dow = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  let html = `<div class="cm-head">${dow.map(d => `<div>${d}</div>`).join('')}</div><div class="cm-grid">`;
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const inMonth = d.getMonth() === first.getMonth();
+    const isToday = d.getTime() === today.getTime();
+    const dayEnd = new Date(d); dayEnd.setDate(d.getDate() + 1);
+    const dayEvents = events.filter(ev => new Date(ev.start) < dayEnd && new Date(ev.end) > d)  // multi-giorno: mostra in ogni giorno coperto
+      .sort((a,b) => new Date(a.start) - new Date(b.start));
+    const cellISO = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9).toISOString();
+    html += `<div class="cm-cell${inMonth?'':' out'}" onclick="cellClick(event,'${cellISO}','9')">
+      <div class="cm-day${isToday?' today':''}">${d.getDate()}</div>
+      ${dayEvents.slice(0,4).map(ev => `<div class="cm-ev ${evClass(ev)}" onclick="event.stopPropagation();showEvent('${ev.id}')">${ev.title}</div>`).join('')}
+      ${dayEvents.length > 4 ? `<div class="cm-more">+${dayEvents.length - 4} altri</div>` : ''}
+    </div>`;
+  }
+  html += `</div>`;
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function renderCalendar() {
+  const days   = getWeekDates();
+  const today  = new Date(); today.setHours(0,0,0,0);
+  const months = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const startM = days[0].getMonth(), endM = days[4].getMonth();
+  const periodText = startM === endM
+    ? `${months[startM]} ${days[0].getFullYear()}`
+    : `${months[startM]} – ${months[endM]} ${days[0].getFullYear()}`;
+  document.getElementById('cal-period').textContent = periodText;
+
+  const allEvents = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const events    = filterRoom === 'all' ? allEvents : allEvents.filter(e => e.room === filterRoom);
+
+  const HOURPX = 52, gridStart = HOURS[0], gridEnd = HOURS[HOURS.length - 1] + 1;
+  // Assegna a ogni segmento una "colonna" (lane) quando più eventi si sovrappongono (stile Calendario Mac)
+  function assignLanes(segs) {
+    segs.sort((a,b) => a.cs - b.cs || b.ce - a.ce);
+    let cluster = [], active = [], clusterEnd = null;
+    const close = () => { const n = Math.max(1, ...cluster.map(s => s.lane + 1)); cluster.forEach(s => s.lanes = n); cluster = []; active = []; clusterEnd = null; };
+    for (const seg of segs) {
+      const cs = seg.cs.getTime(), ce = seg.ce.getTime();
+      if (clusterEnd !== null && cs >= clusterEnd) close();
+      active = active.filter(a => a.end > cs);
+      const used = new Set(active.map(a => a.lane));
+      let lane = 0; while (used.has(lane)) lane++;
+      seg.lane = lane; active.push({ lane, end: ce });
+      cluster.push(seg); clusterEnd = clusterEnd === null ? ce : Math.max(clusterEnd, ce);
+    }
+    if (cluster.length) close();
+    return segs;
+  }
+  // Spezza gli eventi multi-giorno in segmenti per singolo giorno (clippati alle ore visibili)
+  const segsByDay = {};
+  days.forEach(day => {
+    const dayMid = new Date(day); dayMid.setHours(0,0,0,0);
+    const nextMid = new Date(dayMid); nextMid.setDate(dayMid.getDate() + 1);
+    const visStart = new Date(day); visStart.setHours(gridStart,0,0,0);
+    const visEnd   = new Date(day); visEnd.setHours(gridEnd,0,0,0);
+    const segs = [];
+    events.forEach(ev => {
+      const s = new Date(ev.start), e2 = new Date(ev.end);
+      if (!(s < nextMid && e2 > dayMid)) return;              // non tocca questo giorno
+      const cs = s < visStart ? new Date(visStart) : s;       // clip a inizio giornata visibile
+      const ce = e2 > visEnd  ? new Date(visEnd)  : e2;       // clip a fine giornata visibile
+      if (ce <= cs) return;                                   // fuori dalle ore mostrate
+      segs.push({ ev, cs, ce, contBefore: s < dayMid, contAfter: e2 > nextMid, lane: 0, lanes: 1 });
+    });
+    segsByDay[day.toDateString()] = assignLanes(segs);
+  });
+
+  let html = `<div class="cal-grid">
+    <div class="cal-head-empty" style="border-bottom:1px solid var(--border);"></div>
+    ${days.map((d,i) => {
+      const isToday = d.getTime() === today.getTime();
+      return `<div class="cal-day-head">
+        <div class="dn">${DAY_NAMES[i]}</div>
+        <div class="dd${isToday?' today':''}">${d.getDate()}</div>
+      </div>`;
+    }).join('')}`;
+
+  HOURS.forEach(h => {
+    html += `<div class="cal-time">${String(h).padStart(2,'0')}:00</div>`;
+    days.forEach(day => {
+      const segs = (segsByDay[day.toDateString()] || []).filter(seg => seg.cs.getHours() === h);
+      let evHtml = '';
+      segs.forEach(seg => {
+        const ev = seg.ev;
+        const topPx    = seg.cs.getMinutes() / 60 * HOURPX;
+        const durH     = (seg.ce - seg.cs) / 3600000;
+        const heightPx = Math.max(18, durH * HOURPX - 3);
+        const leftPct  = seg.lane / seg.lanes * 100;
+        const widthPct = 100 / seg.lanes;
+        const cls  = evClass(ev);
+        const sFmt = seg.contBefore ? '…' : new Date(ev.start).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+        const eFmt = seg.contAfter  ? '…' : new Date(ev.end).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+        evHtml += `<div class="cal-event ${cls}" style="top:${topPx}px;height:${heightPx}px;left:calc(${leftPct}% + 2px);width:calc(${widthPct}% - 4px);right:auto;" data-id="${ev.id}" onclick="showEvent('${ev.id}')" title="${(ev.title||'').replace(/"/g,'&quot;')}">
+          <div class="ev-name">${ev.title}</div>
+          <div class="ev-time">${sFmt}–${eFmt}</div>
+        </div>`;
+      });
+      html += `<div class="cal-cell" onclick="cellClick(event,'${day.toISOString()}','${h}')">${evHtml}</div>`;
+    });
+  });
+
+  html += '</div>';
+  document.getElementById('cal-grid').innerHTML = html;
+  renderAvailability(days, events);
+}
+
+function cellClick(e, dayISO, h) {
+  if (e.target.classList.contains('cal-event') || e.target.closest('.cal-event')) return;
+  const d = new Date(dayISO);
+  d.setHours(parseInt(h), 0);
+  const end = new Date(d); end.setHours(d.getHours()+1);
+  openNewBooking(d, end);
+}
+
+function renderListView() {
+  const allEvents = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const events    = (filterRoom === 'all' ? allEvents : allEvents.filter(e => e.room === filterRoom))
+    .sort((a,b) => new Date(a.start) - new Date(b.start));
+  const tbody = document.getElementById('list-tbody');
+  tbody.innerHTML = events.map(ev => {
+    const room = ROOMS.find(r => r.id === ev.room);
+    const isBook = ev.type === 'booking';
+    return `<tr onclick="showEvent('${ev.id}')" style="cursor:pointer;">
+      <td>
+        <div style="font-weight:600;">${formatDate(ev.start)}</div>
+        <div style="font-size:12px;color:#666;">${isBook?formatTime(ev.start)+' – '+formatTime(ev.end):''}</div>
+      </td>
+      <td style="font-weight:600;">${ev.title}</td>
+      <td>
+        <span class="room-tag ${ev.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name}</span>
+        <span class="tag-${ev.room.includes('milano')?'milano':'roma'}">${room?.city}</span>
+      </td>
+      <td>${isBook ? (ev.referente||'–') : '–'}</td>
+      <td><span class="badge ${isBook?'badge-ok':'badge-p2'}">${isBook?'Prenotazione':ev.type==='maint_prog'?'Mant. prog.':ev.type==='intervento'?'Intervento':'Manutenzione'}</span></td>
+      <td><button class="btn btn-ghost btn-xs">→</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderMaintSidebar() {
+  const maint = (ls(LS.maint)||[]).filter(m => new Date(m.end) >= new Date())
+    .sort((a,b) => new Date(a.start)-new Date(b.start));
+  const el = document.getElementById('maint-list');
+  if (!maint.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--text-muted);">Nessuna manutenzione pianificata.</div>';
+    return;
+  }
+  el.innerHTML = maint.map(m => {
+    const room = ROOMS.find(r => r.id === m.room);
+    const sameDay = new Date(m.start).toDateString() === new Date(m.end).toDateString();
+    const when = sameDay
+      ? `${formatDate(m.start)} · ${formatTime(m.start)}–${formatTime(m.end)}`
+      : `${formatDate(m.start)} ${formatTime(m.start)} – ${formatDate(m.end)} ${formatTime(m.end)}`;
+    return `<div class="maint-chip">
+      <div class="maint-icon">🔧</div>
+      <div class="maint-info">
+        <div class="mi-title">${m.title}</div>
+        <div class="mi-date">
+          <span class="room-tag ${m.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span>
+          ${when}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAvailability(days, events) {
+  const el = document.getElementById('avail-list');
+  el.innerHTML = ROOMS.map(room => {
+    const roomEvents = events.filter(e => e.room === room.id);
+    const busyDays = days.filter(d =>
+      roomEvents.some(ev => new Date(ev.start).toDateString() === d.toDateString())
+    ).length;
+    const pct = Math.round((1 - busyDays/5)*100);
+    const color = pct > 60 ? 'var(--green)' : pct > 30 ? 'var(--orange)' : 'var(--red)';
+    return `<div style="margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;font-size:13px;">
+        <span class="room-tag ${room.id.includes('armonia')?'tag-armonia':'tag-solaria'}">${room.name}</span>
+        <span style="font-size:12px;color:var(--text-muted);">${room.city}</span>
+        <span style="font-weight:700;color:${color};">${pct}% libera</span>
+      </div>
+      <div class="progress"><div class="progress-fill" style="width:${pct}%;background:${color};"></div></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">${5-busyDays}/5 giorni disponibili</div>
+    </div>`;
+  }).join('');
+}
+
+// ── SHOW EVENT ──
+function showEvent(id) {
+  const all = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const ev  = all.find(e => e.id === id);
+  if (!ev) return;
+  viewEventId = id;
+  const room = ROOMS.find(r => r.id === ev.room);
+  document.getElementById('ev-title').textContent = ev.title;
+
+  let body = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+    <span class="room-tag ${ev.room.includes('armonia')?'tag-armonia':'tag-solaria'}">${room?.name} ${room?.city}</span>
+    <span class="badge ${ev.type==='booking'?'badge-ok':'badge-p2'}">${ev.type==='booking'?'Prenotazione':ev.type==='maint_prog'?'Mant. prog.':ev.type==='intervento'?'Intervento':'Manutenzione'}</span>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+    <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">INIZIO</div><div style="font-weight:600;">${formatDateTime(ev.start)}</div></div>
+    <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">FINE</div><div style="font-weight:600;">${formatDateTime(ev.end)}</div></div>
+  </div>`;
+
+  if (ev.type === 'booking') {
+    body += `<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">REFERENTE OPERATIVO</div><div style="font-weight:600;">${ev.referente||'–'}</div></div>
+    <div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">ORGANIZZATORE</div><div style="font-weight:600;">${ev.organizzatore||'–'}</div></div>`;
+    if (ev.partecipanti?.length) {
+      body += `<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">PARTECIPANTI</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">${ev.partecipanti.map(p=>`<span class="p-tag">${p}</span>`).join('')}</div></div>`;
+    }
+    if (ev.allestimento?.length) {
+      body += `<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">ALLESTIMENTO</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">${ev.allestimento.map(a=>`<span class="badge badge-ok">${a}</span>`).join('')}</div></div>`;
+    }
+    if (ev.note) {
+      body += `<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">NOTE</div><div style="font-size:13px;">${ev.note}</div></div>`;
+    }
+    if (ev.creativeSupport) {
+      body += `<div style="margin-bottom:12px;">
+        <span class="badge" style="background:rgba(134,188,37,.15);color:var(--green);">🎨 Supporto creativo richiesto</span>
+        ${ev.creativeDesc ? `<div style="font-size:13px;margin-top:6px;">${ev.creativeDesc}</div>` : ''}
+      </div>`;
+    }
+    if (ev.attachments?.length) {
+      body += `<div style="margin-bottom:4px;"><div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">ALLEGATI (${ev.attachments.length})</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">${ev.attachments.map(a => `
+          <a ${a.dataUrl ? `href="${a.dataUrl}" download="${a.name}"` : ''} style="display:flex;align-items:center;gap:10px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;text-decoration:none;color:var(--text);">
+            <span class="attach-thumb" style="width:34px;height:34px;">${a.dataUrl && a.type.startsWith('image/') ? `<img src="${a.dataUrl}">` : fileIcon(a.type)}</span>
+            <span style="flex:1;min-width:0;">
+              <span style="font-size:13px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.name}</span>
+              <span style="font-size:11px;color:var(--text-muted);">${humanSize(a.size)}</span>
+            </span>
+            <span style="font-size:12px;color:${a.dataUrl ? 'var(--green)' : 'var(--text-muted)'};">${a.dataUrl ? '↓' : 'cloud'}</span>
+          </a>`).join('')}</div></div>`;
+    }
+  } else {
+    if (ev.desc) body += `<div><div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">DESCRIZIONE</div><div style="font-size:13px;">${ev.desc}</div></div>`;
+  }
+
+  document.getElementById('ev-body').innerHTML = body;
+  openModal('modal-event');
+}
+
+document.getElementById('ev-delete').addEventListener('click', () => {
+  if (!viewEventId) return;
+  let b = ls(LS.bookings)||[];
+  let m = ls(LS.maint)||[];
+  b = b.filter(e => e.id !== viewEventId);
+  m = m.filter(e => e.id !== viewEventId);
+  lsSet(LS.bookings, b); lsSet(LS.maint, m);
+  closeModal('modal-event');
+  refresh(); toast('Evento eliminato', 'info');
+});
+document.getElementById('ev-edit').addEventListener('click', () => {
+  closeModal('modal-event');
+  const all = [...(ls(LS.bookings)||[]), ...(ls(LS.maint)||[])];
+  const ev  = all.find(e => e.id === viewEventId);
+  if (ev?.type === 'booking') openEditBooking(ev);
+});
+
+// ── NEW / EDIT BOOKING ──
+function openNewBooking(start, end) {
+  editId = null;
+  participants = [];
+  document.getElementById('modal-booking-title').textContent = 'Nuova Prenotazione';
+  document.getElementById('btn-elimina-bk').style.display = 'none';
+  document.getElementById('bk-title').value = '';
+  document.getElementById('bk-referente').value = '';
+  document.getElementById('bk-organizzatore').value = '';
+  document.getElementById('bk-note').value = '';
+  document.getElementById('bk-allest-extra').value = '';
+  document.querySelectorAll('#allestimento-options input').forEach(c => c.checked = false);
+  bookingAttachments = [];
+  document.getElementById('bk-creative').checked = false;
+  document.getElementById('creative-flag').classList.remove('on');
+  document.getElementById('bk-creative-desc').style.display = 'none';
+  document.getElementById('bk-creative-desc').value = '';
+  renderAttachments();
+  renderParticipants();
+
+  if (start) {
+    document.getElementById('bk-start').value = toLocalInput(start);
+    document.getElementById('bk-end').value   = toLocalInput(end);
+  }
+  openModal('modal-booking');
+}
+
+function openEditBooking(ev) {
+  editId = ev.id;
+  participants = [...(ev.partecipanti||[])];
+  document.getElementById('modal-booking-title').textContent = 'Modifica Prenotazione';
+  document.getElementById('btn-elimina-bk').style.display = '';
+  document.getElementById('bk-title').value        = ev.title||'';
+  document.getElementById('bk-room').value         = ev.room;
+  document.getElementById('bk-referente').value    = ev.referente||'';
+  document.getElementById('bk-organizzatore').value= ev.organizzatore||'';
+  document.getElementById('bk-note').value         = ev.note||'';
+  document.getElementById('bk-allest-extra').value = '';
+  document.getElementById('bk-start').value        = toLocalInput(new Date(ev.start));
+  document.getElementById('bk-end').value          = toLocalInput(new Date(ev.end));
+  document.querySelectorAll('#allestimento-options input').forEach(c => {
+    c.checked = (ev.allestimento||[]).includes(c.value);
+  });
+  bookingAttachments = [...(ev.attachments||[])];
+  const cs = !!ev.creativeSupport;
+  document.getElementById('bk-creative').checked = cs;
+  document.getElementById('creative-flag').classList.toggle('on', cs);
+  document.getElementById('bk-creative-desc').style.display = cs ? '' : 'none';
+  document.getElementById('bk-creative-desc').value = ev.creativeDesc || '';
+  renderAttachments();
+  renderParticipants();
+  openModal('modal-booking');
+}
+
+function toLocalInput(d) {
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+document.getElementById('btn-salva-bk').addEventListener('click', () => {
+  const title = document.getElementById('bk-title').value.trim();
+  const start = document.getElementById('bk-start').value;
+  const end   = document.getElementById('bk-end').value;
+  if (!title || !start || !end) { toast('Compila i campi obbligatori', 'error'); return; }
+
+  const allestimento = [];
+  document.querySelectorAll('#allestimento-options input:checked').forEach(c => allestimento.push(c.value));
+  const extra = document.getElementById('bk-allest-extra').value.trim();
+  if (extra) allestimento.push(extra);
+
+  let bookings = ls(LS.bookings)||[];
+  const booking = {
+    id: editId || genId(), type: 'booking',
+    room: document.getElementById('bk-room').value,
+    title,
+    referente: document.getElementById('bk-referente').value,
+    organizzatore: document.getElementById('bk-organizzatore').value,
+    partecipanti: [...participants],
+    allestimento,
+    start: new Date(start).toISOString(),
+    end:   new Date(end).toISOString(),
+    note: document.getElementById('bk-note').value,
+    creativeSupport: document.getElementById('bk-creative').checked,
+    creativeDesc: document.getElementById('bk-creative-desc').value.trim(),
+    attachments: bookingAttachments,
+  };
+
+  const prev = bookings.slice();
+  if (editId) {
+    bookings = bookings.map(b => b.id === editId ? booking : b);
+  } else {
+    bookings.push(booking);
+  }
+  try {
+    lsSet(LS.bookings, bookings);
+  } catch (err) {
+    // Quota localStorage superata dagli allegati inline (demo)
+    lsSet(LS.bookings, prev);
+    toast('Allegati troppo pesanti per la memoria demo. In produzione useremo lo storage cloud.', 'error');
+    return;
+  }
+  closeModal('modal-booking');
+  refresh();
+  toast(editId ? 'Prenotazione aggiornata ✓' : 'Prenotazione salvata ✓', 'success');
+  editId = null;
+});
+
+document.getElementById('btn-elimina-bk').addEventListener('click', () => {
+  let b = ls(LS.bookings)||[];
+  b = b.filter(e => e.id !== editId);
+  lsSet(LS.bookings, b);
+  closeModal('modal-booking');
+  refresh(); toast('Prenotazione eliminata', 'info');
+  editId = null;
+});
+
+// ── MAINTENANCE ──
+document.getElementById('btn-nuova-maint').addEventListener('click', () => openModal('modal-maint'));
+document.getElementById('btn-salva-maint').addEventListener('click', () => {
+  const title = document.getElementById('mt-title').value.trim();
+  const start = document.getElementById('mt-start').value;
+  if (!title || !start) { toast('Compila titolo e data inizio', 'error'); return; }
+  const maint = ls(LS.maint)||[];
+  const endV   = document.getElementById('mt-end').value || start;
+  const startT = document.getElementById('mt-start-time').value || '09:00';
+  const endT   = document.getElementById('mt-end-time').value   || '18:00';
+  maint.push({
+    id: genId(), type: document.getElementById('mt-type').value,
+    room: document.getElementById('mt-room').value,
+    title, desc: document.getElementById('mt-desc').value,
+    start: new Date(start+'T'+startT).toISOString(),
+    end:   new Date(endV+'T'+endT).toISOString(),
+  });
+  lsSet(LS.maint, maint);
+  closeModal('modal-maint');
+  refresh(); toast('Manutenzione aggiunta ✓', 'success');
+});
+
+// ── CONTROLS ──
+function refresh() {
+  const grid = document.getElementById('cal-grid');
+  const listV = document.getElementById('list-view');
+  if (viewMode === 'list') {
+    grid.style.display = 'none'; listV.style.display = '';
+    renderListView();
+  } else {
+    grid.style.display = ''; listV.style.display = 'none';
+    if (viewMode === 'month') renderMonth(); else renderCalendar();
+  }
+  renderMaintSidebar();
+}
+
+document.getElementById('cal-prev').addEventListener('click', () => { if (viewMode==='month') monthOffset--; else weekOffset--; refresh(); });
+document.getElementById('cal-next').addEventListener('click', () => { if (viewMode==='month') monthOffset++; else weekOffset++; refresh(); });
+document.getElementById('cal-today').addEventListener('click', () => { weekOffset = 0; monthOffset = 0; refresh(); });
+
+document.querySelectorAll('#view-tabs .tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('#view-tabs .tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active'); viewMode = t.dataset.view; refresh();
+}));
+
+document.getElementById('btn-nuova').addEventListener('click', () => {
+  const now = new Date(); now.setMinutes(0,0,0);
+  const end = new Date(now); end.setHours(now.getHours()+1);
+  openNewBooking(now, end);
+});
+
+document.querySelectorAll('#room-filter .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#room-filter .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    filterRoom = tab.dataset.room;
+    refresh();
+  });
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!requireAuth()) return;
+  refresh();  // render immediato dalla cache
+  // ricarica dati freschi dal DB (manutenzioni/prenotazioni inserite altrove o da altri utenti)
+  try {
+    await Promise.all([db.refreshCollection(LS.maint), db.refreshCollection(LS.bookings)]);
+    refresh();
+  } catch (e) { console.warn('refresh calendario', e); }
+});
+</script>
+</body>
+</html>
