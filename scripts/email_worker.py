@@ -377,6 +377,7 @@ def process_outbound(token):
             sb('PATCH', f"email_queue?id=eq.{row['id']}", token,
                {'status': 'sent', 'sent_at': 'now()'}, prefer='return=minimal')
             sent += 1
+            time.sleep(2)  # anti-raffica: Aruba respinge con 421 'policy violation' gli invii troppo ravvicinati
         except Exception as e:
             err = str(e)[:300]
             # Errori TRANSITORI di blocco IP del runner GitHub (Aruba li dà con codici
@@ -384,7 +385,7 @@ def process_outbound(token):
             # rifiutata"). Lascio l'email 'pending' → il prossimo run (~2 min) ritenta
             # con un altro IP finché non ne becca uno pulito. Dopo 12h rinuncio (-> 'error').
             el = err.lower()
-            keep_pending = any(s in el for s in ('554', 'temporaneamente rifiutata',
+            keep_pending = any(s in el for s in ('554', '421', 'policy', 'temporaneamente rifiutata',
                 'temporarily rejected', 'blacklist', 'connessione rifiutata', 'connection refused'))
             if keep_pending:
                 try:
