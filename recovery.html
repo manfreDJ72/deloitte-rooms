@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Nuova password – Deloitte Rooms</title>
+  <link rel="stylesheet" href="css/style.css?v=67">
+</head>
+<body>
+<div class="login-wrap"><div class="login-box">
+  <div class="login-logos"><img src="assets/area62.png" alt="Area62" class="logo-area62"><div class="lsep"></div><img src="assets/deloitte.svg" alt="Deloitte" class="logo-deloitte"></div>
+  <h1 class="login-headline">Nuova password</h1>
+  <p id="status" role="status">Verifica del link di recupero…</p>
+  <form id="reset-form" hidden>
+    <div class="form-group"><label for="new-password">Nuova password</label><input class="form-control" id="new-password" type="password" autocomplete="new-password" minlength="8" required></div>
+    <div class="form-group"><label for="confirm-password">Conferma password</label><input class="form-control" id="confirm-password" type="password" autocomplete="new-password" minlength="8" required></div>
+    <p>Usa almeno 8 caratteri. La password resta riservata.</p>
+    <button class="btn btn-primary" type="submit">Salva nuova password</button>
+  </form>
+  <p><a href="index.html">Torna all’accesso</a></p>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="js/config.js?v=67"></script>
+<script>
+  const recoveryHash = new URLSearchParams(location.hash.slice(1));
+  const recoveryLink = recoveryHash.get('type') === 'recovery';
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const form = document.getElementById('reset-form');
+  const status = document.getElementById('status');
+  let recoveryReady = false;
+  function showRecovery(session) {
+    if (!session) return;
+    recoveryReady = true;
+    form.hidden = false;
+    status.textContent = 'Scegli la nuova password per il tuo account Deloitte Rooms.';
+  }
+  client.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') showRecovery(session);
+  });
+  client.auth.getSession().then(({ data, error }) => {
+    if (!error && recoveryLink && data?.session) showRecovery(data.session);
+    if (!recoveryReady) status.textContent = 'Link di recupero assente o scaduto. Torna all’accesso e richiedi una nuova email con «Password dimenticata?».';
+    history.replaceState(null, '', location.pathname);
+  }).catch(() => {
+    status.textContent = 'Impossibile verificare il link. Controlla la connessione e riapri il link dall’email.';
+    history.replaceState(null, '', location.pathname);
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!recoveryReady) return;
+    const password = document.getElementById('new-password');
+    const confirmation = document.getElementById('confirm-password');
+    if (password.value !== confirmation.value) {
+      status.textContent = 'Le due password non coincidono.';
+      return;
+    }
+    const button = form.querySelector('button');
+    button.disabled = true;
+    status.textContent = 'Salvataggio in corso…';
+    try {
+      const { error } = await client.auth.updateUser({ password: password.value });
+      if (error) throw error;
+      password.value = '';
+      confirmation.value = '';
+      form.hidden = true;
+      recoveryReady = false;
+      await client.auth.signOut({ scope: 'local' });
+      localStorage.removeItem(LS.user);
+      status.textContent = 'Password aggiornata. Torna all’accesso ed entra con la nuova password.';
+    } catch (error) {
+      status.textContent = error.message || 'Salvataggio non riuscito. Riprova.';
+      button.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
