@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Accesso – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=66">
+  <link rel="stylesheet" href="css/style.css?v=67">
 </head>
 <body>
 <div class="login-wrap">
@@ -45,15 +45,18 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=66"></script>
-<script src="js/app.js?v=66"></script>
-<script src="js/db.js?v=66"></script>
+<script src="js/config.js?v=67"></script>
+<script src="js/app.js?v=67"></script>
+<script src="js/db.js?v=67"></script>
 <script>
-  (function(){
-    const _u = ls(LS.user);
-    if (_u && (DEMO_MODE || _u.sb)) window.location.href = 'dashboard.html';
-    else if (_u && !_u.sb) localStorage.removeItem(LS.user); // pulisci vecchia sessione demo
-  })();
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (new URLSearchParams(location.search).get('reason') === 'session') {
+      const err = document.getElementById('login-error');
+      err.textContent = 'La sessione è scaduta. Accedi nuovamente per caricare i dati condivisi.';
+      err.style.display = 'block';
+    }
+    if (ls(LS.user) && await db.requireSession()) location.replace('dashboard.html');
+  });
 
   document.getElementById('login-form').addEventListener('submit', async function(e) {
     e.preventDefault();

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Assistente AI – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=66">
+  <link rel="stylesheet" href="css/style.css?v=67">
   <style>
     .ai-layout { display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start; }
     @media (max-width: 900px) { .ai-layout { grid-template-columns: 1fr; } }
@@ -156,10 +156,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=66"></script>
-<script src="js/app.js?v=66"></script>
-<script src="js/db.js?v=66"></script>
-<script src="js/tour.js?v=66"></script>
+<script src="js/config.js?v=67"></script>
+<script src="js/app.js?v=67"></script>
+<script src="js/db.js?v=67"></script>
+<script src="js/tour.js?v=67"></script>
 <script>
 let messages = [];   // storico chat {role, content}
 let AN = [];         // anomalie rilevate
@@ -173,7 +173,7 @@ function roomLabel(id) {
 const SLA_RESOLVE_H = { P1: 24, P2: 48, P3: 120, P4: null };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!requireAuth()) return;
+  if (!await db.requireSession()) return;
   const u = currentUser();
   if (!can('assistente', 'vedi')) {
     document.getElementById('main-content').style.display = 'none';
