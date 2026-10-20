@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
+  <script>
+    if (new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery') {
+      location.replace('recovery.html' + location.hash);
+    }
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Accesso – Deloitte Room Management</title>
@@ -36,6 +41,8 @@
         Accedi
       </button>
     </form>
+    <button type="button" class="btn btn-ghost" id="forgot-password" style="width:100%;margin-top:12px">Password dimenticata?</button>
+    <p id="recovery-status" role="status" style="font-size:14px"></p>
 
     <p class="login-foot">
       Area62 Srl · Sistema di gestione immersiva Deloitte<br>
@@ -44,7 +51,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="js/config.js?v=67"></script>
 <script src="js/app.js?v=67"></script>
 <script src="js/db.js?v=67"></script>
@@ -56,6 +63,25 @@
       err.style.display = 'block';
     }
     if (ls(LS.user) && await db.requireSession()) location.replace('dashboard.html');
+  });
+
+  document.getElementById('forgot-password').addEventListener('click', async function () {
+    const input = document.getElementById('email');
+    if (!input.reportValidity()) return;
+    const status = document.getElementById('recovery-status');
+    this.disabled = true;
+    status.textContent = 'Richiesta in corso…';
+    try {
+      _initSb();
+      const { error } = await _sb.auth.resetPasswordForEmail(input.value.trim().toLowerCase(), {
+        redirectTo: 'https://rooms.area62.it/recovery.html'
+      });
+      if (error) throw error;
+      status.textContent = 'Se l’indirizzo è registrato, riceverai un’email per scegliere la nuova password. Controlla anche lo spam.';
+    } catch (e) {
+      status.textContent = 'Invio non riuscito. Riprova tra qualche minuto.';
+      this.disabled = false;
+    }
   });
 
   document.getElementById('login-form').addEventListener('submit', async function(e) {
