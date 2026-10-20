@@ -1,5 +1,6 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 66;
+const APP_BUILD = 67;
+let copilotSessionReady = Promise.resolve();
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
 (function installCopilotBridge() {
@@ -33,25 +34,24 @@ const APP_BUILD = 66;
     console.error('copilot bridge', e);
   }
 
-  window.addEventListener('DOMContentLoaded', async () => {
-    installCopilotReturnButton();
-    applyWorkspaceChrome();
-    setTimeout(applyWorkspaceChrome, 0);
-    if (!bridge?.access_token || !bridge?.refresh_token) return;
-    try {
-      if (typeof _initSb === 'function') _initSb();
-      if (typeof _sb !== 'undefined' && _sb) {
-        await _sb.auth.setSession({
-          access_token: bridge.access_token,
-          refresh_token: bridge.refresh_token
+  copilotSessionReady = new Promise((resolve, reject) => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      installCopilotReturnButton();
+      applyWorkspaceChrome();
+      if (!bridge) { resolve(); return; }
+      try {
+        if (!bridge.access_token || !bridge.refresh_token) throw new Error('Sessione Co-Pilot incompleta');
+        _initSb();
+        const { error } = await _sb.auth.setSession({
+          access_token: bridge.access_token, refresh_token: bridge.refresh_token
         });
-      }
-      if (typeof db !== 'undefined' && db?.hydrateAll) await db.hydrateAll();
-      if (typeof toast === 'function') toast('Sessione Co-Pilot collegata', 'success');
-    } catch (e) {
-      console.error('copilot setSession', e);
-    }
+        if (error) throw error;
+        resolve();
+      } catch (e) { reject(e); }
+    }, { once: true });
   });
+  // The page guard consumes this rejection after DOMContentLoaded.
+  copilotSessionReady.catch(() => {});
 })();
 
 function installCopilotReturnButton() {

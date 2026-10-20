@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Richieste da Cliente – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=66">
+  <link rel="stylesheet" href="css/style.css?v=67">
   <style>
     /* ── Task aperti (tracking) ── */
     .track-card {
@@ -292,11 +292,11 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=66"></script>
-<script src="js/app.js?v=66"></script>
-<script src="js/db.js?v=66"></script>
-<script src="js/report.js?v=66"></script>
-<script src="js/tour.js?v=66"></script>
+<script src="js/config.js?v=67"></script>
+<script src="js/app.js?v=67"></script>
+<script src="js/db.js?v=67"></script>
+<script src="js/report.js?v=67"></script>
+<script src="js/tour.js?v=67"></script>
 <script>
 const MONTHS_SHORT = ['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'];
 const TASK_STATI = { aperto:'Aperto', 'in-corso':'In corso', risolto:'Risolto' };
@@ -308,8 +308,9 @@ let reqType = 'software';
 let reqFilter = 'all';
 let modalTasks = []; // task in editing nel modal meeting
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!requireAuth()) return;
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!await db.requireSession()) return;
+  await db.hydrateAll();
   if (DEMO_MODE) seedIfEmpty();
   meetings = ls(LS.meetings) || [];
   reqspec  = ls(LS.reqspec)  || [];

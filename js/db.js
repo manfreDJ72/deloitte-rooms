@@ -89,12 +89,8 @@ async function hydrateAll() {
     for (const key of Object.keys(SYNC)) {
       try {
         const remote = await _fetchCollection(key);
-        const local = ls(key) || [];
-        if (remote.length === 0 && local.length > 0) {
-          await _pushCollection(key);              // primo avvio: migra i dati locali su Supabase
-        } else {
-          localStorage.setItem(key, JSON.stringify(remote)); // scrivo diretto per non ritriggerare il write-through
-        }
+        // Loading never writes stale browser data back to the shared database.
+        localStorage.setItem(key, JSON.stringify(remote));
       } catch (e) { console.error('hydrate', key, e); }
     }
     // impostazioni (destinatari, ruoli, numerazione) — riga singola condivisa
@@ -145,6 +141,44 @@ function _syncKey(key) {
 /* ── DB API (usata da alcune pagine) ────────────────── */
 const db = {
   hydrateAll,
+
+  async requireSession() {
+    if (DEMO_MODE) return !!requireAuth();
+    try {
+      await copilotSessionReady;
+      _initSb();
+      const { data: sessionData, error: sessionError } = await _sb.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        localStorage.removeItem(LS.user);
+        location.replace('index.html?reason=session');
+        return false;
+      }
+      const { data, error } = await _sb.auth.getUser();
+      if (error || !data?.user) {
+        if (error?.status >= 500 || error?.name === 'AuthRetryableFetchError') throw error;
+        localStorage.removeItem(LS.user);
+        location.replace('index.html?reason=session');
+        return false;
+      }
+      const { data: profile, error: profileError } = await _sb.from('profiles')
+        .select('name,role,avatar').eq('id', data.user.id).single();
+      if (profileError) throw profileError;
+      localStorage.setItem(LS.user, JSON.stringify({
+        id: data.user.id, email: data.user.email, name: profile.name || data.user.email,
+        role: profile.role, avatar: profile.avatar || data.user.email.slice(0, 2).toUpperCase(), sb: true
+      }));
+      return true;
+    } catch (e) {
+      console.error('session validation', e);
+      const notice = document.createElement('div');
+      notice.setAttribute('role', 'alert');
+      notice.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#111;color:#fff;display:grid;place-content:center;padding:32px;text-align:center';
+      notice.textContent = 'Impossibile verificare l’accesso ai dati. Controlla la connessione e ricarica la pagina.';
+      document.body.appendChild(notice);
+      return false;
+    }
+  },
+
 
   async signIn(email, password) {
     if (DEMO_MODE) {
