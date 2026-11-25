@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Prenotazioni – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=70">
+  <link rel="stylesheet" href="css/style.css?v=71">
   <style>
     /* ── Supporto creativo + allegati ── */
     .creative-flag {
@@ -369,10 +369,10 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=70"></script>
-<script src="js/app.js?v=70"></script>
-<script src="js/db.js?v=70"></script>
-<script src="js/tour.js?v=70"></script>
+<script src="js/config.js?v=71"></script>
+<script src="js/app.js?v=71"></script>
+<script src="js/db.js?v=71"></script>
+<script src="js/tour.js?v=71"></script>
 <script>
 let weekOffset = 0;
 let monthOffset = 0;
@@ -380,9 +380,27 @@ let filterRoom = 'all';
 let viewMode   = 'week';   // 'week' | 'month' | 'list'
 let editId     = null;
 let viewEventId = null;
+let viewEventKey = null;
+let calendarPermissionsReady = DEMO_MODE;
 let participants = [];
 let bookingAttachments = [];
 const MAX_INLINE = 1.6 * 1024 * 1024; // 1.6 MB per file: oltre → solo metadati (in produzione va su cloud storage)
+
+function calendarAllowed(action) {
+  return calendarPermissionsReady && can('prenotazioni', action);
+}
+function calendarGuard(action) {
+  if (calendarAllowed(action)) return true;
+  toast('Non hai il permesso per questa operazione. Ricarica la pagina se i permessi sono cambiati.', 'error');
+  return false;
+}
+function applyCalendarPermissions() {
+  ['btn-nuova', 'btn-nuova-maint'].forEach(id => {
+    document.getElementById(id).style.display = calendarAllowed('crea') ? '' : 'none';
+  });
+  document.getElementById('ev-delete').style.display = calendarAllowed('elimina') ? '' : 'none';
+  document.getElementById('btn-elimina-bk').style.display = editId && calendarAllowed('elimina') ? '' : 'none';
+}
 
 // ── SUPPORTO CREATIVO ──
 document.getElementById('bk-creative').addEventListener('change', e => {
@@ -716,6 +734,9 @@ function showEvent(id) {
   const ev  = all.find(e => e.id === id);
   if (!ev) return;
   viewEventId = id;
+  viewEventKey = (ls(LS.bookings) || []).some(item => item.id === id) ? LS.bookings : LS.maint;
+  document.getElementById('ev-edit').style.display = ev.type === 'booking' && calendarAllowed('crea') ? '' : 'none';
+  document.getElementById('ev-delete').style.display = calendarAllowed('elimina') ? '' : 'none';
   const room = ROOMS.find(r => r.id === ev.room);
   document.getElementById('ev-title').textContent = ev.title;
 
@@ -768,13 +789,10 @@ function showEvent(id) {
   openModal('modal-event');
 }
 
-document.getElementById('ev-delete').addEventListener('click', () => {
-  if (!viewEventId) return;
-  let b = ls(LS.bookings)||[];
-  let m = ls(LS.maint)||[];
-  b = b.filter(e => e.id !== viewEventId);
-  m = m.filter(e => e.id !== viewEventId);
-  lsSet(LS.bookings, b); lsSet(LS.maint, m);
+document.getElementById('ev-delete').addEventListener('click', async () => {
+  if (!viewEventId || !calendarGuard('elimina')) return;
+  try { await db.deleteCalendarEvent(viewEventKey, viewEventId); }
+  catch (error) { toast(error.message, 'error'); return; }
   closeModal('modal-event');
   refresh(); toast('Evento eliminato', 'info');
 });
@@ -787,6 +805,7 @@ document.getElementById('ev-edit').addEventListener('click', () => {
 
 // ── NEW / EDIT BOOKING ──
 function openNewBooking(start, end) {
+  if (!calendarGuard('crea')) return;
   editId = null;
   participants = [];
   document.getElementById('modal-booking-title').textContent = 'Nuova Prenotazione';
@@ -813,10 +832,11 @@ function openNewBooking(start, end) {
 }
 
 function openEditBooking(ev) {
+  if (!calendarGuard('crea')) return;
   editId = ev.id;
   participants = [...(ev.partecipanti||[])];
   document.getElementById('modal-booking-title').textContent = 'Modifica Prenotazione';
-  document.getElementById('btn-elimina-bk').style.display = '';
+  document.getElementById('btn-elimina-bk').style.display = calendarAllowed('elimina') ? '' : 'none';
   document.getElementById('bk-title').value        = ev.title||'';
   document.getElementById('bk-room').value         = ev.room;
   document.getElementById('bk-referente').value    = ev.referente||'';
@@ -845,6 +865,7 @@ function toLocalInput(d) {
 }
 
 document.getElementById('btn-salva-bk').addEventListener('click', () => {
+  if (!calendarGuard('crea')) return;
   const title = document.getElementById('bk-title').value.trim();
   const start = document.getElementById('bk-start').value;
   const end   = document.getElementById('bk-end').value;
@@ -892,18 +913,21 @@ document.getElementById('btn-salva-bk').addEventListener('click', () => {
   editId = null;
 });
 
-document.getElementById('btn-elimina-bk').addEventListener('click', () => {
-  let b = ls(LS.bookings)||[];
-  b = b.filter(e => e.id !== editId);
-  lsSet(LS.bookings, b);
+document.getElementById('btn-elimina-bk').addEventListener('click', async () => {
+  if (!editId || !calendarGuard('elimina')) return;
+  try { await db.deleteCalendarEvent(LS.bookings, editId); }
+  catch (error) { toast(error.message, 'error'); return; }
   closeModal('modal-booking');
   refresh(); toast('Prenotazione eliminata', 'info');
   editId = null;
 });
 
 // ── MAINTENANCE ──
-document.getElementById('btn-nuova-maint').addEventListener('click', () => openModal('modal-maint'));
+document.getElementById('btn-nuova-maint').addEventListener('click', () => {
+  if (calendarGuard('crea')) openModal('modal-maint');
+});
 document.getElementById('btn-salva-maint').addEventListener('click', () => {
+  if (!calendarGuard('crea')) return;
   const title = document.getElementById('mt-title').value.trim();
   const start = document.getElementById('mt-start').value;
   if (!title || !start) { toast('Compila titolo e data inizio', 'error'); return; }
@@ -961,8 +985,14 @@ document.querySelectorAll('#room-filter .tab').forEach(tab => {
   });
 });
 
+applyCalendarPermissions();
 document.addEventListener('DOMContentLoaded', async () => {
   if (!await db.requireSession()) return;
+  try {
+    if (!DEMO_MODE) saveSettings(await db.getAppSettings(true) || defaultSettings());
+    calendarPermissionsReady = true;
+  } catch (error) { toast(error.message, 'error'); }
+  applyCalendarPermissions();
   refresh();  // render immediato dalla cache
   // ricarica dati freschi dal DB (manutenzioni/prenotazioni inserite altrove o da altri utenti)
   try {

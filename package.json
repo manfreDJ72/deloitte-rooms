@@ -1,0 +1,10 @@
+{
+  "name": "deloitte-rooms-checks",
+  "private": true,
+  "scripts": {
+    "test": "node tests/session-test.cjs && node tests/permissions-test.cjs && node tests/logout-test.cjs && node tests/sync-test.cjs && node tests/calendar-delete-test.cjs && node --test tests/calendar-permissions-db.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14"
+  }
+}

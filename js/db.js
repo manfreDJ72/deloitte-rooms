@@ -153,6 +153,25 @@ function _syncKey(key, previous, next) {
 const db = {
   hydrateAll,
 
+  async deleteCalendarEvent(key, id) {
+    if (![LS.bookings, LS.maint].includes(key) || typeof id !== 'string' || !id) {
+      throw new Error('Evento non valido.');
+    }
+    if (!can('prenotazioni', 'elimina')) throw new Error('Non hai il permesso di eliminare questo evento.');
+    if (!DEMO_MODE) {
+      _initSb();
+      const { data, error } = await _sb.from(SYNC[key].table).delete().eq('id', id).select('id');
+      if (error) throw new Error('Eliminazione non autorizzata o non riuscita.');
+      if (!data?.length) {
+        // RLS can deny DELETE by filtering every row without returning an error.
+        throw new Error('Il database non ha confermato l’eliminazione. Ricarica i dati e verifica i permessi.');
+      }
+    }
+    const next = (ls(key) || []).filter(item => item.id !== id);
+    localStorage.setItem(key, JSON.stringify(next));
+    return true;
+  },
+
   async requireSession() {
     if (DEMO_MODE) return !!requireAuth();
     try {
@@ -525,11 +544,14 @@ const db = {
   },
 
   /* ── IMPOSTAZIONI (riga singola su app_settings) ── */
-  async getAppSettings() {
+  async getAppSettings(strict = false) {
     if (DEMO_MODE) return null;
     _initSb();
     const { data, error } = await _sb.from('app_settings').select('data').eq('id', 'global').maybeSingle();
-    if (error) { console.error('getAppSettings', error); return null; }
+    if (error) {
+      if (strict) throw new Error('Impossibile verificare i permessi condivisi.');
+      console.error('getAppSettings', error); return null;
+    }
     return data?.data || null;
   },
   async saveAppSettings(settings) {
