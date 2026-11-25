@@ -153,6 +153,44 @@ function _syncKey(key, previous, next) {
 const db = {
   hydrateAll,
 
+  async saveCalendarEvent(key, event) {
+    if (![LS.bookings, LS.maint].includes(key) || typeof event?.id !== 'string' || !event.id) {
+      throw new Error('Evento non valido.');
+    }
+    if (!can('prenotazioni', 'crea')) throw new Error('Non hai il permesso di salvare questo evento.');
+    if (!DEMO_MODE) {
+      _initSb();
+      const { data, error } = await _sb.from(SYNC[key].table).upsert(SYNC[key].toDb(event)).select('id');
+      if (error || !data?.some(row => row.id === event.id)) throw new Error('Il database non ha confermato il salvataggio dell’evento.');
+    }
+    const next = ls(key) || [];
+    const index = next.findIndex(item => item.id === event.id);
+    if (index >= 0) next[index] = event; else next.push(event);
+    try { localStorage.setItem(key, JSON.stringify(next)); }
+    catch (error) { if (DEMO_MODE) throw error; return { event, cacheUpdated: false }; }
+    return { event, cacheUpdated: true };
+  },
+
+  async deleteCalendarEvent(key, id) {
+    if (![LS.bookings, LS.maint].includes(key) || typeof id !== 'string' || !id) {
+      throw new Error('Evento non valido.');
+    }
+    if (!can('prenotazioni', 'elimina')) throw new Error('Non hai il permesso di eliminare questo evento.');
+    if (!DEMO_MODE) {
+      _initSb();
+      const { data, error } = await _sb.from(SYNC[key].table).delete().eq('id', id).select('id');
+      if (error) throw new Error('Eliminazione non autorizzata o non riuscita.');
+      if (!data?.length) {
+        // RLS can deny DELETE by filtering every row without returning an error.
+        throw new Error('Il database non ha confermato l’eliminazione. Ricarica i dati e verifica i permessi.');
+      }
+    }
+    const next = (ls(key) || []).filter(item => item.id !== id);
+    try { localStorage.setItem(key, JSON.stringify(next)); }
+    catch (error) { if (DEMO_MODE) throw error; return { cacheUpdated: false }; }
+    return { cacheUpdated: true };
+  },
+
   async requireSession() {
     if (DEMO_MODE) return !!requireAuth();
     try {
@@ -446,17 +484,17 @@ const db = {
     return data || [];
   },
   async saveCheckState(room, date, checkId, d) {
+    if (!can('check', 'esegui')) throw new Error('Non hai il permesso di eseguire i check.');
     if (DEMO_MODE) {
       const key = `${LS.checks}_${room}_${date}`;
       const state = ls(key) || {}; state[checkId] = d; lsSet(key, state); return;
     }
     _initSb();
-    try {
-      await _sb.from('checks').upsert({
+    const { data, error } = await _sb.from('checks').upsert({
         room, date, check_id: checkId, state: d.state, ts: _num(d.ts), fail_ts: _num(d.failTs),
         note: d.note, fix_applied: d.fixApplied,
-      }, { onConflict: 'room,date,check_id' });
-    } catch (e) { console.error(e); toast('Errore salvataggio check', 'error'); }
+    }, { onConflict: 'room,date,check_id' }).select('check_id');
+    if (error || !data?.length) throw new Error('Il database non ha confermato il salvataggio del check.');
   },
 
   /* ── REPOSITORY DOCUMENTI (Supabase Storage) ── */
@@ -525,11 +563,14 @@ const db = {
   },
 
   /* ── IMPOSTAZIONI (riga singola su app_settings) ── */
-  async getAppSettings() {
+  async getAppSettings(strict = false) {
     if (DEMO_MODE) return null;
     _initSb();
     const { data, error } = await _sb.from('app_settings').select('data').eq('id', 'global').maybeSingle();
-    if (error) { console.error('getAppSettings', error); return null; }
+    if (error) {
+      if (strict) throw new Error('Impossibile verificare i permessi condivisi.');
+      console.error('getAppSettings', error); return null;
+    }
     return data?.data || null;
   },
   async saveAppSettings(settings) {

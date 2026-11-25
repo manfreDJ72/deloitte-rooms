@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Check Mattutini – Deloitte Room Management</title>
-  <link rel="stylesheet" href="css/style.css?v=70">
+  <link rel="stylesheet" href="css/style.css?v=71">
   <style>
     /* ── CHECK CARD (nuovo flow) ── */
     .check-card {
@@ -285,11 +285,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="js/config.js?v=70"></script>
-<script src="js/app.js?v=70"></script>
-<script src="js/db.js?v=70"></script>
-<script src="js/tour.js?v=70"></script>
-<script src="js/storico-solaria.js?v=70"></script>
+<script src="js/config.js?v=71"></script>
+<script src="js/app.js?v=71"></script>
+<script src="js/db.js?v=71"></script>
+<script src="js/tour.js?v=71"></script>
+<script src="js/storico-solaria.js?v=71"></script>
 <script>
 /* ─────────────────────────────────────
    STATE
@@ -297,6 +297,13 @@
 let currentRoom = 'solaria-roma';
 // checkState[id] = { state: 'ok'|'ko'|'fixed'|null, ts: ISO, note:'', fixApplied:'' }
 let checkState  = {};
+let checkPermissionsReady = DEMO_MODE;
+function checkAllowed() { return checkPermissionsReady && can('check', 'esegui'); }
+function checkGuard() {
+  if (checkAllowed()) return true;
+  toast('Non hai il permesso di eseguire i check.', 'error');
+  return false;
+}
 // ── SESSIONI: più check nella stessa giornata (mattutino, pre-evento, ...) ──
 let currentSession = 1;            // sessione attiva
 let daySessions    = [1];          // sessioni esistenti oggi per la sala
@@ -311,6 +318,10 @@ function parseSession(key) { const m = key.match(/^s(\d+)::([\s\S]+)$/); return 
 ───────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   if (!await db.requireSession()) return;
+  try {
+    if (!DEMO_MODE) saveSettings(await db.getAppSettings(true) || defaultSettings());
+    checkPermissionsReady = true;
+  } catch (error) { toast(error.message, 'error'); }
 
   const now = new Date();
   document.getElementById('check-date').textContent =
@@ -318,7 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.querySelectorAll('#room-tabs .tab').forEach(tab => {
     tab.addEventListener('click', async () => {
-      await flushSave();   // salva la sala corrente PRIMA di cambiare (niente perdite)
+      try { await flushSave(); } catch (error) { toast(error.message, 'error'); return; } // salva la sala corrente PRIMA di cambiare (niente perdite)
       document.querySelectorAll('#room-tabs .tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       currentRoom = tab.dataset.room;
@@ -366,6 +377,7 @@ async function loadOpenTickets() {
 
 // apre una NUOVA sessione di check nella giornata (es. pre-evento / pre-partita)
 function newCheck() {
+  if (!checkGuard()) return;
   const next = Math.max(...daySessions) + 1;
   daySessions.push(next);
   allSessionsData[next] = {};
@@ -385,6 +397,7 @@ function showSession(n) {
 // "Chiudi e segnala": salva la sessione, apre i ticket in Anomalie per ogni
 // anomalia e invia il report (completo per il mattutino, mirato per i successivi).
 async function saveSession() {
+  if (!checkGuard()) return;
   const allItems = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
   // coerente col gating del bottone: le voci con ticket APERTO sono già gestite
   // e non bloccano la chiusura (il ticket è parte della segnalazione)
@@ -399,7 +412,8 @@ async function saveSession() {
     return;
   }
   const t = todayStr();
-  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(currentRoom, t, sessionKey(id), s)));
+  try { await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(currentRoom, t, sessionKey(id), s))); }
+  catch (error) { toast(error.message, 'error'); return; }
   document.getElementById('btn-salva').disabled = true;
   const created = await createTicketsForSession(koItems); // apre i ticket lato Anomalie
   await sendCheckReport();
@@ -441,24 +455,28 @@ async function createTicketsForSession(koItems) {
 }
 
 // ── AUTOSAVE: ogni azione salva subito il singolo check (con prefisso sessione) ──
-function autosave(id) {
-  db.saveCheckState(currentRoom, todayStr(), sessionKey(id), checkState[id]).catch(e => console.warn('autosave', id, e));
-  showAutosaved();
+async function autosave(id) {
+  try {
+    await db.saveCheckState(currentRoom, todayStr(), sessionKey(id), checkState[id]);
+    showAutosaved();
+    return true;
+  } catch (error) { toast(error.message, 'error'); return false; }
 }
 let _noteTimers = {};
 function autosaveNote(id) {
   const room = currentRoom, t = todayStr(), key = sessionKey(id), data = { ...checkState[id] };
   clearTimeout(_noteTimers[key]);
-  _noteTimers[key] = setTimeout(() => {
-    db.saveCheckState(room, t, key, data).catch(e => console.warn('autosaveNote', id, e));
-    showAutosaved();
+  _noteTimers[key] = setTimeout(async () => {
+    try { await db.saveCheckState(room, t, key, data); showAutosaved(); }
+    catch (error) { toast(error.message, 'error'); }
   }, 600);
 }
 // salva TUTTA la sessione corrente (rete di sicurezza prima di cambiare sala)
 async function flushSave() {
+  if (!checkAllowed()) return;
   const t = todayStr(), room = currentRoom, sess = currentSession;
   const keyFor = id => sess === 1 ? id : `s${sess}::${id}`;
-  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(room, t, keyFor(id), s).catch(() => {})));
+  await Promise.all(Object.entries(checkState).map(([id, s]) => db.saveCheckState(room, t, keyFor(id), s)));
 }
 let _autosaveT;
 function showAutosaved() {
@@ -732,7 +750,7 @@ function renderSessionBar() {
   }).join('');
   bar.innerHTML =
     `<span style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-faint);margin-right:2px;">Check del giorno</span>${chips}` +
-    `<button onclick="newCheck()" title="Apri un nuovo check nella giornata (es. pre-evento)" style="font-size:12.5px;font-weight:700;border:1.5px dashed var(--green);background:transparent;color:var(--green);border-radius:20px;padding:6px 14px;cursor:pointer;">+ Nuovo check</button>`;
+    `<button onclick="newCheck()" ${checkAllowed() ? '' : 'disabled'} title="Apri un nuovo check nella giornata (es. pre-evento)" style="font-size:12.5px;font-weight:700;border:1.5px dashed var(--green);background:transparent;color:var(--green);border-radius:20px;padding:6px 14px;cursor:pointer;">+ Nuovo check</button>`;
 }
 
 function renderAll() {
@@ -797,6 +815,7 @@ function renderAll() {
   });
   container.querySelectorAll('.res-note-input').forEach(inp => {
     inp.addEventListener('input', e => {
+      if (!checkGuard()) return;
       const id = inp.dataset.id;
       if (!checkState[id]) checkState[id] = {};
       checkState[id].note = e.target.value;
@@ -805,6 +824,7 @@ function renderAll() {
     });
   });
 
+  container.querySelectorAll('button,textarea').forEach(control => { control.disabled = !checkAllowed(); });
   updateSaveButton();
 }
 
@@ -815,6 +835,7 @@ function updateSaveButton() {
   const btn = document.getElementById('btn-salva');
   const hint = document.getElementById('save-hint');
   if (!btn) return;
+  if (!checkAllowed()) { btn.disabled = true; if (hint) hint.textContent = 'Consultazione: esecuzione check non autorizzata.'; return; }
   const allItems  = (CHECK_ITEMS[currentRoom] || []).flatMap(s => s.items);
   const locked    = allItems.filter(i => lockedTicket(i)).length;                              // già a ticket: fuori dal conteggio
   const handled   = allItems.filter(i => checkState[i.id]?.state || lockedTicket(i)).length;   // marcati o già a ticket
@@ -965,17 +986,21 @@ function toggleCard(id) {
   renderAll();
 }
 
-function markOk(id) {
+async function markOk(id) {
+  if (!checkGuard()) return;
+  const previous = checkState[id] ? { ...checkState[id] } : null;
   checkState[id] = { ...checkState[id], state: 'ok', ts: new Date().toISOString(), open: false };
-  autosave(id);
+  if (!await autosave(id)) { if (previous) checkState[id] = previous; else delete checkState[id]; renderAll(); return; }
   updateSaveButton();
   renderAll();
   toast('Check completato ✓', 'success');
 }
 
-function markKo(id) {
+async function markKo(id) {
+  if (!checkGuard()) return;
+  const previous = checkState[id] ? { ...checkState[id] } : null;
   checkState[id] = { ...checkState[id], state: 'ko', ts: new Date().toISOString(), failTs: new Date().toISOString(), showPanel: true, open: true };
-  autosave(id);
+  if (!await autosave(id)) { if (previous) checkState[id] = previous; else delete checkState[id]; renderAll(); return; }
   updateSaveButton();
   renderAll();
   // scroll to panel
@@ -985,10 +1010,12 @@ function markKo(id) {
   }, 100);
 }
 
-function applyFix(id, fix) {
+async function applyFix(id, fix) {
+  if (!checkGuard()) return;
+  const previous = checkState[id] ? { ...checkState[id] } : null;
   if (!checkState[id]) checkState[id] = {};
   checkState[id].fixApplied = fix;
-  autosave(id);
+  if (!await autosave(id)) { if (previous) checkState[id] = previous; else delete checkState[id]; renderAll(); return; }
   updateSaveButton();
   // Re-render just the fixes
   const allItems = Object.values(CHECK_ITEMS).flat().flatMap(s => s?.items || []);
@@ -996,17 +1023,20 @@ function applyFix(id, fix) {
   toast(`Soluzione applicata: ${fix}`, 'info');
 }
 
-function markFixed(id) {
+async function markFixed(id) {
+  if (!checkGuard()) return;
+  const previous = checkState[id] ? { ...checkState[id] } : null;
   if (!checkState[id]) checkState[id] = {};
   const note = document.querySelector(`.res-note-input[data-id="${id}"]`)?.value || checkState[id].note || '';
   checkState[id] = { ...checkState[id], state: 'fixed', ts: new Date().toISOString(), note, open: false, showPanel: false };
-  autosave(id);
+  if (!await autosave(id)) { if (previous) checkState[id] = previous; else delete checkState[id]; renderAll(); return; }
   updateSaveButton();
   renderAll();
   toast('Anomalia risolta ✓', 'success');
 }
 
-function goToIntervento(id) {
+async function goToIntervento(id) {
+  if (!checkGuard()) return;
   const sections = CHECK_ITEMS[currentRoom] || [];
   const allItems  = sections.flatMap(s => s.items);
   const item      = allItems.find(i => i.id === id);
@@ -1016,7 +1046,8 @@ function goToIntervento(id) {
 
   // salva SOLO questa voce (non chiudere l'intero check: potrebbe non essere completo)
   const t = todayStr();
-  db.saveCheckState(currentRoom, t, sessionKey(id), checkState[id]).catch(() => {});
+  try { await db.saveCheckState(currentRoom, t, sessionKey(id), checkState[id]); }
+  catch (error) { toast(error.message, 'error'); return; }
 
   // Passa i dati alla pagina rapporto tramite sessionStorage (incluso il riferimento
   // per collegare/riusare l'eventuale ticket già aperto per questa voce)
