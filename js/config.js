@@ -477,7 +477,7 @@ const CAPABILITIES = [
 ];
 
 // mappa ruoli legacy → nuovi ruoli (utenti creati prima dello split cliente/agenzia)
-const ROLE_ALIAS = { operator: 'operatore_agenzia', viewer: 'visualizzatore_agenzia' };
+const ROLE_ALIAS = { operator: 'operatore_agenzia', viewer: 'visualizzatore_agenzia', Founder: 'operatore_agenzia' };
 
 // ── EVENTI EMAIL (a chi mandare cosa) ──
 const EMAIL_EVENTS = [
@@ -547,7 +547,7 @@ function can(capKey, actionKey) {
   const roleKey = ROLE_ALIAS[u.role] || u.role;
   const roles = getSettings().roles || {};
   const r = roles[roleKey];
-  if (!r) return true;                                 // ruolo sconosciuto → non bloccare (fail-open)
+  if (!r) return false;
   return !!(r[capKey] && r[capKey][actionKey]);
 }
 

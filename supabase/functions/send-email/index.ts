@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     const { data: { user } } = await caller.auth.getUser();
     if (!user) return json({ error: 'Non autenticato' }, 401);
     const { data: prof, error: pErr } = await caller.from('profiles').select('role').eq('id', user.id).single();
-    if (pErr || !['admin', 'operator', 'operatore_agenzia', 'operatore_cliente'].includes(prof?.role || '')) {
+    if (pErr || !['admin', 'operator', 'Founder', 'operatore_agenzia', 'operatore_cliente'].includes(prof?.role || '')) {
       return json({ error: 'Operazione non autorizzata' }, 403);
     }
 

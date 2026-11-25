@@ -9,7 +9,7 @@
 let _sb = null;
 let _hydrating = false;
 const _syncQueues = new Map();
-const _memberRoles = new Set(['admin', 'operator', 'viewer', 'operatore_agenzia', 'operatore_cliente', 'visualizzatore_agenzia', 'visualizzatore_cliente']);
+const _memberRoles = new Set(['admin', 'operator', 'viewer', 'Founder', 'operatore_agenzia', 'operatore_cliente', 'visualizzatore_agenzia', 'visualizzatore_cliente']);
 
 function _initSb() {
   if (_sb || DEMO_MODE) return;

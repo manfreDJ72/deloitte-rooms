@@ -11,6 +11,7 @@ async function run(session, user, bridge=Promise.resolve(), profile={name:"Membe
 (async()=>{
  let r=await run(null,{});assert.equal(r.ok,false);assert.deepEqual(r.redirects,['index.html?reason=session']);assert.equal(r.reads,0);assert.equal(r.cache.has('user'),false);
  r=await run({}, {data:{user:{id:'1',email:'member@example.com'}}});assert.equal(r.ok,true);assert.equal(JSON.parse(r.cache.get('user')).role,'operator');
+ r=await run({}, {data:{user:{id:'1',email:'member@example.com'}}}, Promise.resolve(), {name:'Legacy',role:'Founder'});assert.equal(r.ok,true);assert.equal(JSON.parse(r.cache.get('user')).role,'Founder');
  r=await run({}, {data:{user:{id:'1',email:'member@example.com'}}}, Promise.resolve(), {name:'Pending',role:'pending'});assert.equal(r.ok,false);assert.deepEqual(r.redirects,['index.html?reason=authorization']);assert.equal(r.cache.has('user'),false);
  r=await run({}, {error:{status:401}});assert.equal(r.ok,false);assert.equal(r.redirects.length,1);
  r=await run({}, {error:{status:503}});assert.equal(r.ok,false);assert.equal(r.redirects.length,0);assert.equal(r.notices.length,1);assert.equal(r.cache.has('user'),true);
