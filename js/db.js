@@ -153,6 +153,23 @@ function _syncKey(key, previous, next) {
 const db = {
   hydrateAll,
 
+  async saveCalendarEvent(key, event) {
+    if (![LS.bookings, LS.maint].includes(key) || typeof event?.id !== 'string' || !event.id) {
+      throw new Error('Evento non valido.');
+    }
+    if (!can('prenotazioni', 'crea')) throw new Error('Non hai il permesso di salvare questo evento.');
+    if (!DEMO_MODE) {
+      _initSb();
+      const { data, error } = await _sb.from(SYNC[key].table).upsert(SYNC[key].toDb(event)).select('id');
+      if (error || !data?.some(row => row.id === event.id)) throw new Error('Il database non ha confermato il salvataggio dell’evento.');
+    }
+    const next = ls(key) || [];
+    const index = next.findIndex(item => item.id === event.id);
+    if (index >= 0) next[index] = event; else next.push(event);
+    localStorage.setItem(key, JSON.stringify(next));
+    return event;
+  },
+
   async deleteCalendarEvent(key, id) {
     if (![LS.bookings, LS.maint].includes(key) || typeof id !== 'string' || !id) {
       throw new Error('Evento non valido.');

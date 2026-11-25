@@ -864,7 +864,7 @@ function toLocalInput(d) {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-document.getElementById('btn-salva-bk').addEventListener('click', () => {
+document.getElementById('btn-salva-bk').addEventListener('click', async () => {
   if (!calendarGuard('crea')) return;
   const title = document.getElementById('bk-title').value.trim();
   const start = document.getElementById('bk-start').value;
@@ -876,7 +876,6 @@ document.getElementById('btn-salva-bk').addEventListener('click', () => {
   const extra = document.getElementById('bk-allest-extra').value.trim();
   if (extra) allestimento.push(extra);
 
-  let bookings = ls(LS.bookings)||[];
   const booking = {
     id: editId || genId(), type: 'booking',
     room: document.getElementById('bk-room').value,
@@ -893,20 +892,8 @@ document.getElementById('btn-salva-bk').addEventListener('click', () => {
     attachments: bookingAttachments,
   };
 
-  const prev = bookings.slice();
-  if (editId) {
-    bookings = bookings.map(b => b.id === editId ? booking : b);
-  } else {
-    bookings.push(booking);
-  }
-  try {
-    lsSet(LS.bookings, bookings);
-  } catch (err) {
-    // Quota localStorage superata dagli allegati inline (demo)
-    lsSet(LS.bookings, prev);
-    toast('Allegati troppo pesanti per la memoria demo. In produzione useremo lo storage cloud.', 'error');
-    return;
-  }
+  try { await db.saveCalendarEvent(LS.bookings, booking); }
+  catch (error) { toast(error.message, 'error'); return; }
   closeModal('modal-booking');
   refresh();
   toast(editId ? 'Prenotazione aggiornata ✓' : 'Prenotazione salvata ✓', 'success');
@@ -926,23 +913,23 @@ document.getElementById('btn-elimina-bk').addEventListener('click', async () => 
 document.getElementById('btn-nuova-maint').addEventListener('click', () => {
   if (calendarGuard('crea')) openModal('modal-maint');
 });
-document.getElementById('btn-salva-maint').addEventListener('click', () => {
+document.getElementById('btn-salva-maint').addEventListener('click', async () => {
   if (!calendarGuard('crea')) return;
   const title = document.getElementById('mt-title').value.trim();
   const start = document.getElementById('mt-start').value;
   if (!title || !start) { toast('Compila titolo e data inizio', 'error'); return; }
-  const maint = ls(LS.maint)||[];
   const endV   = document.getElementById('mt-end').value || start;
   const startT = document.getElementById('mt-start-time').value || '09:00';
   const endT   = document.getElementById('mt-end-time').value   || '18:00';
-  maint.push({
+  const maintenance = {
     id: genId(), type: document.getElementById('mt-type').value,
     room: document.getElementById('mt-room').value,
     title, desc: document.getElementById('mt-desc').value,
     start: new Date(start+'T'+startT).toISOString(),
     end:   new Date(endV+'T'+endT).toISOString(),
-  });
-  lsSet(LS.maint, maint);
+  };
+  try { await db.saveCalendarEvent(LS.maint, maintenance); }
+  catch (error) { toast(error.message, 'error'); return; }
   closeModal('modal-maint');
   refresh(); toast('Manutenzione aggiunta ✓', 'success');
 });
