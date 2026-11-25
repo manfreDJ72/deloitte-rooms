@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 71;
+const APP_BUILD = 72;
 let copilotSessionReady = Promise.resolve();
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
