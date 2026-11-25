@@ -11,7 +11,7 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
-const VALID_ROLES = new Set(['admin', 'operator', 'viewer']);
+const VALID_ROLES = new Set(['admin', 'operator', 'viewer', 'operatore_agenzia', 'operatore_cliente', 'visualizzatore_agenzia', 'visualizzatore_cliente']);
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

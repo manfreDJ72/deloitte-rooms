@@ -8,6 +8,8 @@
 
 let _sb = null;
 let _hydrating = false;
+const _syncQueues = new Map();
+const _memberRoles = new Set(['admin', 'operator', 'viewer', 'operatore_agenzia', 'operatore_cliente', 'visualizzatore_agenzia', 'visualizzatore_cliente']);
 
 function _initSb() {
   if (_sb || DEMO_MODE) return;
@@ -102,40 +104,49 @@ async function hydrateAll() {
 }
 
 /* ── WRITE-THROUGH: localStorage → Supabase ─────────── */
-async function _pushCollection(key) {
+async function _pushCollection(key, previous = [], next = []) {
   const cfg = SYNC[key];
   if (!cfg || !_sb) return;
-  const rows = ls(key) || [];
+  const rows = Array.isArray(next) ? next : [];
+  const oldRows = Array.isArray(previous) ? previous : [];
+  const oldById = new Map(oldRows.map(row => [row.id, row]));
+  const changed = rows.filter(row => JSON.stringify(row) !== JSON.stringify(oldById.get(row.id)));
   try {
-    if (rows.length) {
-      const { error } = await _sb.from(cfg.table).upsert(rows.map(cfg.toDb));
+    if (changed.length) {
+      const { error } = await _sb.from(cfg.table).upsert(changed.map(cfg.toDb));
       if (error) throw error;
     }
-    // riconcilia le eliminazioni
-    const { data: existing } = await _sb.from(cfg.table).select('id');
+    // Delete only rows explicitly removed from this browser's previous snapshot.
+    // A stale cache must never delete rows added concurrently by another user.
     const keep = new Set(rows.map(r => r.id));
-    const del = (existing || []).filter(e => !keep.has(e.id)).map(e => e.id);
-    if (del.length) await _sb.from(cfg.table).delete().in('id', del);
+    const del = oldRows.filter(e => !keep.has(e.id)).map(e => e.id);
+    if (del.length) {
+      const { error } = await _sb.from(cfg.table).delete().in('id', del);
+      if (error) throw error;
+    }
 
     // azioni ticket (tabella separata)
     if (cfg.hasActions) {
-      const acts = rows.flatMap(t => (t.actions || []).map(a => ({
+      const oldActs = new Map(oldRows.flatMap(t => (t.actions || []).map(a => [a.id, a])));
+      const acts = rows.flatMap(t => (t.actions || []).filter(a => JSON.stringify(a) !== JSON.stringify(oldActs.get(a.id))).map(a => ({
         id: a.id || genId(), ticket_id: t.id, ts: _num(a.ts) || new Date().toISOString(), user_name: a.user, text: a.text,
       })));
-      if (acts.length) await _sb.from('ticket_actions').upsert(acts);
-      const { data: exA } = await _sb.from('ticket_actions').select('id');
-      const keepA = new Set(acts.map(a => a.id));
-      const delA = (exA || []).filter(e => !keepA.has(e.id)).map(e => e.id);
-      if (delA.length) await _sb.from('ticket_actions').delete().in('id', delA);
+      if (acts.length) {
+        const { error } = await _sb.from('ticket_actions').upsert(acts);
+        if (error) throw error;
+      }
     }
   } catch (e) { console.error('push', key, e); toast('Errore sync con il database', 'error'); }
 }
 
 // chiamato da lsSet() in app.js dopo ogni scrittura
-function _syncKey(key) {
+function _syncKey(key, previous, next) {
   if (DEMO_MODE || _hydrating || !SYNC[key]) return;
   _initSb();
-  _pushCollection(key);
+  const before = structuredClone(previous), after = structuredClone(next);
+  const pending = (_syncQueues.get(key) || Promise.resolve()).then(() => _pushCollection(key, before, after));
+  _syncQueues.set(key, pending);
+  pending.finally(() => { if (_syncQueues.get(key) === pending) _syncQueues.delete(key); });
 }
 
 /* ── DB API (usata da alcune pagine) ────────────────── */
@@ -163,6 +174,12 @@ const db = {
       const { data: profile, error: profileError } = await _sb.from('profiles')
         .select('name,role,avatar').eq('id', data.user.id).single();
       if (profileError) throw profileError;
+      if (!_memberRoles.has(profile.role)) {
+        localStorage.removeItem(LS.user);
+        await _sb.auth.signOut({ scope: 'local' });
+        location.replace('index.html?reason=authorization');
+        return false;
+      }
       localStorage.setItem(LS.user, JSON.stringify({
         id: data.user.id, email: data.user.email, name: profile.name || data.user.email,
         role: profile.role, avatar: profile.avatar || data.user.email.slice(0, 2).toUpperCase(), sb: true
@@ -193,11 +210,16 @@ const db = {
     _initSb();
     const { data, error } = await _sb.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Email o password non corretti.' : error.message);
-    const { data: profile } = await _sb.from('profiles').select('name,role,avatar').eq('id', data.user.id).single();
+    const { data: profile, error: profileError } = await _sb.from('profiles').select('name,role,avatar').eq('id', data.user.id).single();
+    if (profileError || !profile || !_memberRoles.has(profile.role)) {
+      await _sb.auth.signOut({ scope: 'local' });
+      localStorage.removeItem(LS.user);
+      throw new Error(profileError ? 'Impossibile verificare il profilo. Riprova.' : 'Account non abilitato al portale. Contatta un amministratore.');
+    }
     const sess = {
       id: data.user.id, email: data.user.email,
       name: profile?.name || email.split('@')[0],
-      role: profile?.role || 'operator',
+      role: profile.role,
       avatar: profile?.avatar || email.slice(0, 2).toUpperCase(),
       sb: true, // sessione autenticata su Supabase
     };
