@@ -166,8 +166,9 @@ const db = {
     const next = ls(key) || [];
     const index = next.findIndex(item => item.id === event.id);
     if (index >= 0) next[index] = event; else next.push(event);
-    localStorage.setItem(key, JSON.stringify(next));
-    return event;
+    try { localStorage.setItem(key, JSON.stringify(next)); }
+    catch (error) { if (DEMO_MODE) throw error; return { event, cacheUpdated: false }; }
+    return { event, cacheUpdated: true };
   },
 
   async deleteCalendarEvent(key, id) {
@@ -185,8 +186,9 @@ const db = {
       }
     }
     const next = (ls(key) || []).filter(item => item.id !== id);
-    localStorage.setItem(key, JSON.stringify(next));
-    return true;
+    try { localStorage.setItem(key, JSON.stringify(next)); }
+    catch (error) { if (DEMO_MODE) throw error; return { cacheUpdated: false }; }
+    return { cacheUpdated: true };
   },
 
   async requireSession() {

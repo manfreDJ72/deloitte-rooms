@@ -791,10 +791,11 @@ function showEvent(id) {
 
 document.getElementById('ev-delete').addEventListener('click', async () => {
   if (!viewEventId || !calendarGuard('elimina')) return;
-  try { await db.deleteCalendarEvent(viewEventKey, viewEventId); }
+  let saved;
+  try { saved = await db.deleteCalendarEvent(viewEventKey, viewEventId); }
   catch (error) { toast(error.message, 'error'); return; }
   closeModal('modal-event');
-  refresh(); toast('Evento eliminato', 'info');
+  refresh(); toast(saved.cacheUpdated ? 'Evento eliminato' : 'Evento eliminato nel database. Memoria locale piena: ricarica la pagina.', 'info');
 });
 document.getElementById('ev-edit').addEventListener('click', () => {
   closeModal('modal-event');
@@ -892,20 +893,22 @@ document.getElementById('btn-salva-bk').addEventListener('click', async () => {
     attachments: bookingAttachments,
   };
 
-  try { await db.saveCalendarEvent(LS.bookings, booking); }
+  let saved;
+  try { saved = await db.saveCalendarEvent(LS.bookings, booking); }
   catch (error) { toast(error.message, 'error'); return; }
   closeModal('modal-booking');
   refresh();
-  toast(editId ? 'Prenotazione aggiornata ✓' : 'Prenotazione salvata ✓', 'success');
+  toast(saved.cacheUpdated ? (editId ? 'Prenotazione aggiornata ✓' : 'Prenotazione salvata ✓') : 'Prenotazione salvata nel database. Memoria locale piena: ricarica la pagina.', saved.cacheUpdated ? 'success' : 'info');
   editId = null;
 });
 
 document.getElementById('btn-elimina-bk').addEventListener('click', async () => {
   if (!editId || !calendarGuard('elimina')) return;
-  try { await db.deleteCalendarEvent(LS.bookings, editId); }
+  let saved;
+  try { saved = await db.deleteCalendarEvent(LS.bookings, editId); }
   catch (error) { toast(error.message, 'error'); return; }
   closeModal('modal-booking');
-  refresh(); toast('Prenotazione eliminata', 'info');
+  refresh(); toast(saved.cacheUpdated ? 'Prenotazione eliminata' : 'Prenotazione eliminata nel database. Memoria locale piena: ricarica la pagina.', 'info');
   editId = null;
 });
 
@@ -928,10 +931,11 @@ document.getElementById('btn-salva-maint').addEventListener('click', async () =>
     start: new Date(start+'T'+startT).toISOString(),
     end:   new Date(endV+'T'+endT).toISOString(),
   };
-  try { await db.saveCalendarEvent(LS.maint, maintenance); }
+  let saved;
+  try { saved = await db.saveCalendarEvent(LS.maint, maintenance); }
   catch (error) { toast(error.message, 'error'); return; }
   closeModal('modal-maint');
-  refresh(); toast('Manutenzione aggiunta ✓', 'success');
+  refresh(); toast(saved.cacheUpdated ? 'Manutenzione aggiunta ✓' : 'Manutenzione salvata nel database. Memoria locale piena: ricarica la pagina.', saved.cacheUpdated ? 'success' : 'info');
 });
 
 // ── CONTROLS ──
