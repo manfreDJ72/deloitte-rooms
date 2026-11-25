@@ -228,8 +228,15 @@ const db = {
   },
 
   async signOut() {
-    localStorage.removeItem(LS.user);
-    if (!DEMO_MODE && _sb) { try { await _sb.auth.signOut(); } catch {} }
+    if (!DEMO_MODE) {
+      _initSb();
+      try { await _sb.auth.signOut({ scope: 'local' }); } catch {}
+      const ref = new URL(SUPABASE_URL).hostname.split('.')[0];
+      localStorage.removeItem(`sb-${ref}-auth-token`);
+    }
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('dlt_')) localStorage.removeItem(key);
+    }
     window.location.href = 'index.html';
   },
 

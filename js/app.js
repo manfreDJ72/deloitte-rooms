@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 68;
+const APP_BUILD = 69;
 let copilotSessionReady = Promise.resolve();
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
@@ -311,9 +311,8 @@ function renderUser() {
 }
 
 // ── LOGOUT ──
-function logout() {
-  localStorage.removeItem(LS.user);
-  window.location.href = 'index.html';
+async function logout() {
+  await db.signOut();
 }
 
 // ── ACTIVE NAV LINK ──
