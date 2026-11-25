@@ -1,0 +1,18 @@
+# Revisione permessi residui — non pubblicata
+
+La configurazione corrente di `operatore_cliente` nega `anomalie.chiudi`, `anomalie.sla`, `rapporti.crea`, `rapporti.invia`, `rapporti.creanuovo`. Le policy operatore generiche non applicano queste differenze. La verifica in produzione usa solo record/file sintetici, senza notifiche o dati originali.
+
+`workflow-permissions.sql` è una proposta eseguibile nei test isolati, volutamente fuori dalle migrazioni pubblicate:
+
+- Trigger sui ticket confrontano OLD/NEW per chiusura/riapertura, priorità, esito SLA e data iniziale. Un commento o upsert completo con quei campi invariati rimane consentito. La creazione controlla `anomalie.apri`; ruoli e policy di base restano invariati. I worker con ruolo service_role non vengono limitati.
+- I rapporti nuovi richiedono `creanuovo` e `crea`; compilazione e chiusura/archiviazione sono distinte. INSERT…ON CONFLICT di un rapporto esistente passa al controllo UPDATE: non scambia un salvataggio per una nuova creazione.
+La lacuna separata sulle cartelle è stata corretta e pubblicata dalla PR #9: la policy Storage applica repository e categoria anche ai sidecar `_text`, con inventario dei soli prefissi verificato. Non occorre applicare nuovamente quelle modifiche da questa bozza. URL firmati già emessi rimangono utilizzabili fino alla loro scadenza.
+
+## Condizioni per trasformare questa bozza in rilascio
+
+1. Usare una scrittura atomica per ticket + azioni (o distinguere chiaramente esito parziale); oggi `db.upsertTicket` aggiorna la cache prima del DB e inghiotte gli errori. Il chiamante mostra comunque successo. Spostare cache e toast dopo la conferma e ricaricare il record esatto in caso di conflitto. Testare un commento a un ticket già risolto via vero upsert, non solo PATCH, e un diniego SLA nello stesso payload completo.
+2. `persist()` dei rapporti deve restituire l'esito e i chiamanti interrompersi su diniego. `apriRapporto` e `chiudiRapporto` oggi proseguono anche dopo un salvataggio fallito; `completaStage` e i check possono dichiarare una notifica inviata che è soltanto accodata o fallita. Caricare la matrice condivisa, applicare i controlli ai pulsanti e propagare l'esito, senza eseguire invii reali in QA.
+3. Separare le notifiche per evento/entità autorizzata. `send-email` accetta oggi destinatari/HTML arbitrari dagli operatori, e `email_queue` ha una policy operatore generica. Una stringa client `eventKey` da sola non basta: un utente potrebbe etichettare un rapporto come ticket. Un endpoint server deve accettare evento + ID entità, rileggere l'entità autorizzata, produrre destinatari e contenuto ammessi e accodare il messaggio. Il worker continua a usare service_role e i suoi lock esistenti. Le notifiche legittime per apertura/commento ticket dei clienti devono continuare a funzionare; i rapporti negati devono restituire 403 anche con etichetta contraffatta. Non cambiare SMTP o provider come parte di questa correzione.
+4. Applicare la migrazione solo dopo questi test: viewer/pending sempre negati; cliente commenta ma non chiude/gestisce SLA/crea rapporto; Founder commenta/chiude ma non cambia SLA salvo override; admin e service_role autorizzati; grant/deny JSON numerici rispettati; cartelle proibite e rispettivo `_text` negati; errore DB/rete non produce successo/cache divergente; nessuna email reale. Ripetere tutti i gruppi della QA di produzione sullo SHA finale e verificare pulizia dei dati sintetici.
+
+Finché questa sequenza non è completata, autenticazione e permessi granulari rimangono un problema confermato: questa proposta non rinnova prove verdi e non modifica produzione.
