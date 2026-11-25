@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {PGlite} from '@electric-sql/pglite';
 const migration=readFileSync('supabase/migrations/20261125115153_calendar_permission_matrix.sql','utf8');
-const ids={Founder:'00000000-0000-4000-8000-000000000001',operator:'00000000-0000-4000-8000-000000000002',viewer:'00000000-0000-4000-8000-000000000003',admin:'00000000-0000-4000-8000-000000000004'};
+const ids={operatore_cliente:'00000000-0000-4000-8000-000000000005',Founder:'00000000-0000-4000-8000-000000000001',operator:'00000000-0000-4000-8000-000000000002',viewer:'00000000-0000-4000-8000-000000000003',admin:'00000000-0000-4000-8000-000000000004'};
 async function fixture(){
  const db=new PGlite();
  await db.exec(`create schema auth;create schema private;create role authenticated;create role anon;create role service_role;
@@ -53,5 +53,26 @@ test('RLS calendario: Founder/viewer negati, operatore autorizzato e admin conse
    assert.equal((await asRole(db,'Founder',()=>db.query(`update ${table} set title='Updated' where id='allowed' returning id`))).rows.length,1);
    await db.query(`delete from ${table} where id='allowed'`);
   }
+ }finally{await db.close();}
+});
+
+
+test('check.esegui: cliente negato, override rispettati e Founder/admin autorizzati senza modificare storico',async()=>{
+ const db=await fixture();try{
+  await db.exec(`create table checks(id text primary key,title text);grant select,insert,update,delete on checks to authenticated;alter table checks enable row level security;
+  create policy checks_read on checks for select to authenticated using(auth.uid() is not null);
+  create policy checks_write on checks for all to authenticated using(auth.uid() is not null) with check(auth.uid() is not null);insert into checks values('history','Retained');`);
+  await db.exec(readFileSync('supabase/migrations/20261125120500_check_permission_matrix.sql','utf8'));
+  for(const role of ['operatore_cliente','viewer']){
+   await assert.rejects(asRole(db,role,()=>db.query("insert into checks values('blocked','Forbidden')")),/row-level security/);
+   assert.equal((await asRole(db,role,()=>db.query("update checks set title='Forbidden' where id='history' returning id"))).rows.length,0);
+   assert.equal((await asRole(db,role,()=>db.query("delete from checks where id='history' returning id"))).rows.length,0);
+   assert.equal((await asRole(db,role,()=>db.query("select title from checks where id='history'"))).rows[0].title,'Retained');
+  }
+  await asRole(db,'Founder',()=>db.query("insert into checks values('new-day','Created')"));
+  await setRoles(db,{operatore_agenzia:{check:{esegui:0}},operatore_cliente:{check:{esegui:1}}});
+  await assert.rejects(asRole(db,'Founder',()=>db.query("insert into checks values('denied','Forbidden')")),/row-level security/);
+  await asRole(db,'operatore_cliente',()=>db.query("insert into checks values('override','Allowed')"));
+  await asRole(db,'admin',()=>db.query("delete from checks where id='override'"));
  }finally{await db.close();}
 });

@@ -465,17 +465,17 @@ const db = {
     return data || [];
   },
   async saveCheckState(room, date, checkId, d) {
+    if (!can('check', 'esegui')) throw new Error('Non hai il permesso di eseguire i check.');
     if (DEMO_MODE) {
       const key = `${LS.checks}_${room}_${date}`;
       const state = ls(key) || {}; state[checkId] = d; lsSet(key, state); return;
     }
     _initSb();
-    try {
-      await _sb.from('checks').upsert({
+    const { data, error } = await _sb.from('checks').upsert({
         room, date, check_id: checkId, state: d.state, ts: _num(d.ts), fail_ts: _num(d.failTs),
         note: d.note, fix_applied: d.fixApplied,
-      }, { onConflict: 'room,date,check_id' });
-    } catch (e) { console.error(e); toast('Errore salvataggio check', 'error'); }
+    }, { onConflict: 'room,date,check_id' }).select('check_id');
+    if (error || !data?.length) throw new Error('Il database non ha confermato il salvataggio del check.');
   },
 
   /* ── REPOSITORY DOCUMENTI (Supabase Storage) ── */
