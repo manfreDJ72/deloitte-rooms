@@ -1,5 +1,5 @@
 /* ── AUTO-UPDATE (aggira la cache di GitHub Pages) ── */
-const APP_BUILD = 67;
+const APP_BUILD = 68;
 let copilotSessionReady = Promise.resolve();
 
 /* ── AREA 62 CO-PILOT BRIDGE ── */
@@ -194,9 +194,10 @@ function applyWorkspaceChrome() {
 
 function ls(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
 function lsSet(key, val) {
+  const previous = ls(key);
   localStorage.setItem(key, JSON.stringify(val));
   // write-through su Supabase quando non siamo in demo (definito in db.js)
-  if (typeof _syncKey === 'function') _syncKey(key);
+  if (typeof _syncKey === 'function') _syncKey(key, previous, val);
 }
 
 function toast(msg, type = 'info') {

@@ -3,3 +3,5 @@ node_modules/
 js/config.local.js
 *.log
 .env
+
+supabase/.temp/
