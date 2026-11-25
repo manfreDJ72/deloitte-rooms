@@ -20,6 +20,7 @@ async function fixture(patched=true){
  for(const table of['tickets','ticket_actions','rapporti'])await db.exec(`alter table ${table} enable row level security;create policy ${table}_read on ${table} for select to authenticated using(auth.uid() is not null);create policy ${table}_write on ${table} for all to authenticated using((select role from profiles where id=auth.uid()) in ('Founder','operatore_cliente','admin')) with check((select role from profiles where id=auth.uid()) in ('Founder','operatore_cliente','admin'));`);
  await db.exec('grant select on profiles to authenticated');for(const[role,id]of Object.entries(ids))await db.query('insert into profiles values($1,$2)',[id,role]);
  await db.exec(readFileSync('supabase/migrations/20261125115153_calendar_permission_matrix.sql','utf8'));
+ await db.exec(readFileSync('supabase/migrations/20261125121500_document_category_permissions.sql','utf8'));
  if(patched)await db.exec(readFileSync('review/workflow-permissions.sql','utf8'));return db;
 }
 async function asRole(db,role,fn){await db.exec(`set role ${role==='service_role'?'service_role':'authenticated'};select set_config('request.jwt.claim.sub','${ids[role]||''}',false)`);try{return await fn();}finally{await db.exec('reset role');}}
@@ -31,7 +32,7 @@ test('baseline riproduce bypass reali della matrice, senza invii o record origin
   assert.equal((await db.query("select private.rooms_role_permission('operatore_cliente','{}','anomalie','chiudi') as allowed")).rows[0].allowed,false);
   assert.equal((await asRole(db,'operatore_cliente',()=>db.query("update tickets set status='resolved',priority='P1',sla_respected=true where id='open' returning id"))).rows.length,1);
   assert.equal((await asRole(db,'operatore_cliente',()=>db.query("insert into rapporti(id) values('forbidden') returning id"))).rows.length,1);
-  assert.equal((await asRole(db,'operatore_cliente',()=>db.query("select name from storage.objects where name like '%contratti%'"))).rows.length,2);
+  assert.equal((await asRole(db,'operatore_cliente',()=>db.query("select name from storage.objects where name like '%contratti%'"))).rows.length,0,'Previously repaired category access remains blocked');
  }finally{await db.close();}
 });
 
@@ -64,14 +65,5 @@ test('upsert rapporto esistente distingue compila, crea nuovo e invia; viewer ne
   await asRole(db,'Founder',()=>db.query("insert into rapporti(id,status,pdf_path) values('existing','closed','rapporti/synthetic.pdf') on conflict(id) do update set status=excluded.status,pdf_path=excluded.pdf_path"));
   await assert.rejects(asRole(db,'viewer',()=>db.query("insert into tickets(id) values('viewer')")),error=>error.code==='42501');
   await asRole(db,'service_role',()=>db.query("update tickets set priority='P1',status='resolved' where id='open'"));
- }finally{await db.close();}
-});
-
-test('categoria Storage e testo estratto rispettano dinieghi senza colpire materiali o admin',async()=>{
- const db=await fixture();try{
-  assert.deepEqual((await asRole(db,'operatore_cliente',()=>db.query('select name from storage.objects order by name'))).rows.map(r=>r.name),['materiali/synthetic.txt']);
-  assert.equal((await asRole(db,'admin',()=>db.query('select name from storage.objects'))).rows.length,3);
-  await setRoles(db,{operatore_cliente:{cartelle:{contratti:1}}});
-  assert.equal((await asRole(db,'operatore_cliente',()=>db.query('select name from storage.objects'))).rows.length,3);
  }finally{await db.close();}
 });

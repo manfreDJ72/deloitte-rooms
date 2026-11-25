@@ -1,12 +1,12 @@
 # Revisione permessi residui — non pubblicata
 
-La configurazione corrente di `operatore_cliente` nega `anomalie.chiudi`, `anomalie.sla`, `rapporti.crea`, `rapporti.invia`, `rapporti.creanuovo` e `cartelle.contratti`. Le policy operatore generiche e l'accesso Storage per tutti i membri non applicano queste differenze. La verifica in produzione usa solo record/file sintetici, senza notifiche o dati originali.
+La configurazione corrente di `operatore_cliente` nega `anomalie.chiudi`, `anomalie.sla`, `rapporti.crea`, `rapporti.invia`, `rapporti.creanuovo`. Le policy operatore generiche non applicano queste differenze. La verifica in produzione usa solo record/file sintetici, senza notifiche o dati originali.
 
 `workflow-permissions.sql` è una proposta eseguibile nei test isolati, volutamente fuori dalle migrazioni pubblicate:
 
 - Trigger sui ticket confrontano OLD/NEW per chiusura/riapertura, priorità, esito SLA e data iniziale. Un commento o upsert completo con quei campi invariati rimane consentito. La creazione controlla `anomalie.apri`; ruoli e policy di base restano invariati. I worker con ruolo service_role non vengono limitati.
 - I rapporti nuovi richiedono `creanuovo` e `crea`; compilazione e chiusura/archiviazione sono distinte. INSERT…ON CONFLICT di un rapporto esistente passa al controllo UPDATE: non scambia un salvataggio per una nuova creazione.
-- Storage controlla `repository.vedi` e la categoria. `_text/contratti/...` eredita `contratti`, evitando di aggirare il limite tramite il testo estratto. I percorsi senza categoria vengono proposti come `altro`, da confermare sull'inventario dei soli percorsi prima di applicare. URL firmati già emessi rimangono utilizzabili fino alla loro scadenza.
+La lacuna separata sulle cartelle è stata corretta e pubblicata dalla PR #9: la policy Storage applica repository e categoria anche ai sidecar `_text`, con inventario dei soli prefissi verificato. Non occorre applicare nuovamente quelle modifiche da questa bozza. URL firmati già emessi rimangono utilizzabili fino alla loro scadenza.
 
 ## Condizioni per trasformare questa bozza in rilascio
 
